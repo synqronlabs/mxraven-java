@@ -1,0 +1,60 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# Gradle wrapper (must be committed)
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse
+.classpath
+.project
+.settings/
+.apt_generated/
+
+# VS Code
+.vscode/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Misc
+*.tmp
+*.swp
+
+client.md
+admin.md
+/mxraven/
+/raven/
+/mxraven-go/
+/mxraven-android/
+/mxraven-py/
+/mxraven-js/
+
+# Driver test files
+mail/src/test/java/com/mxraven/mail/Driver.java
+admin/src/test/java/com/mxraven/admin/Driver.java

@@ -1,0 +1,408 @@
+package com.mxraven.mail.model;
+
+import com.mxraven.mail.mime.ContentTransferEncoding;
+import com.mxraven.mail.mime.MimeType;
+import com.mxraven.mail.mime.MimeWriter;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Fluent builder for an outbound message.
+ *
+ * <p>Setting both {@link #textBody(String)} and {@link #htmlBody(String)}
+ * produces a {@code multipart/alternative}; adding attachments wraps the result
+ * in a {@code multipart/mixed}. Transfer encodings are applied automatically
+ * (quoted-printable for non-ASCII text, base64 for attachments) and non-ASCII
+ * header text is encoded per RFC 2047.
+ */
+public final class MailBuilder {
+    private final Headers headers = new Headers();
+    private Path from;
+    private String sender;
+    private final List<Recipient> to = new ArrayList<>();
+    private final List<Recipient> cc = new ArrayList<>();
+    private final List<Recipient> bcc = new ArrayList<>();
+    private byte[] rawBody;
+    private String rawContentType;
+    private ContentTransferEncoding rawEncoding;
+    private String textBody;
+    private String htmlBody;
+    private final List<PendingAttachment> attachments = new ArrayList<>();
+
+    private record PendingAttachment(String filename, String contentType, byte[] data,
+                                     boolean inline, String contentId) {
+    }
+
+    private record Entity(String contentType, ContentTransferEncoding encoding, byte[] body) {
+    }
+
+    public static MailBuilder create() {
+        return new MailBuilder();
+    }
+
+    public MailBuilder from(String address) {
+        this.from = Path.of(address);
+        return this;
+    }
+
+    public MailBuilder from(MailboxAddress mailbox) {
+        this.from = Path.of(mailbox);
+        return this;
+    }
+
+    public MailBuilder nullSender() {
+        this.from = Path.nullPath();
+        return this;
+    }
+
+    public MailBuilder sender(String address) {
+        this.sender = address;
+        return this;
+    }
+
+    public MailBuilder to(String... addresses) {
+        for (String address : addresses) {
+            to.add(Recipient.of(address));
+        }
+        return this;
+    }
+
+    public MailBuilder cc(String... addresses) {
+        for (String address : addresses) {
+            cc.add(Recipient.of(address));
+        }
+        return this;
+    }
+
+    public MailBuilder bcc(String... addresses) {
+        for (String address : addresses) {
+            bcc.add(Recipient.of(address));
+        }
+        return this;
+    }
+
+    public MailBuilder subject(String subject) {
+        headers.add("Subject", subject);
+        return this;
+    }
+
+    public MailBuilder header(String name, String value) {
+        headers.add(name, value);
+        return this;
+    }
+
+    public MailBuilder messageId(String id) {
+        headers.add("Message-ID", bracket(id));
+        return this;
+    }
+
+    public MailBuilder inReplyTo(String messageId) {
+        headers.add("In-Reply-To", bracket(messageId));
+        return this;
+    }
+
+    public MailBuilder references(String... messageIds) {
+        StringBuilder value = new StringBuilder();
+        for (String messageId : messageIds) {
+            if (value.length() > 0) {
+                value.append(' ');
+            }
+            value.append(bracket(messageId));
+        }
+        headers.add("References", value.toString());
+        return this;
+    }
+
+    public MailBuilder replyTo(String address) {
+        headers.add("Reply-To", address);
+        return this;
+    }
+
+    public MailBuilder date(Instant date) {
+        headers.add("Date", DateTimeFormatter.RFC_1123_DATE_TIME
+                .format(date.atZone(ZoneId.systemDefault())));
+        return this;
+    }
+
+    /** Sets a plain-text body. Combined with {@link #htmlBody} this becomes {@code multipart/alternative}. */
+    public MailBuilder textBody(String text) {
+        this.textBody = text;
+        return this;
+    }
+
+    /** Sets an HTML body. Combined with {@link #textBody} this becomes {@code multipart/alternative}. */
+    public MailBuilder htmlBody(String html) {
+        this.htmlBody = html;
+        return this;
+    }
+
+    /** Sets a raw body whose bytes are already encoded and written as-is. */
+    public MailBuilder body(byte[] data, String contentType, ContentTransferEncoding encoding) {
+        this.rawBody = data;
+        this.rawContentType = contentType;
+        this.rawEncoding = encoding;
+        return this;
+    }
+
+    /** Adds a file attachment, base64-encoded. */
+    public MailBuilder attachFile(String filename, byte[] data, MimeType contentType) {
+        return attachFile(filename, data, wire(contentType));
+    }
+
+    /** Adds a file attachment with a custom (non-enumerated) content type. */
+    public MailBuilder attachFile(String filename, byte[] data, String contentType) {
+        attachments.add(new PendingAttachment(filename, orDefault(contentType), data, false, null));
+        return this;
+    }
+
+    /** Adds an inline attachment (for example an HTML-embedded image). */
+    public MailBuilder attachInline(String filename, String contentId, byte[] data, MimeType contentType) {
+        return attachInline(filename, contentId, data, wire(contentType));
+    }
+
+    /** Adds an inline attachment with a custom (non-enumerated) content type. */
+    public MailBuilder attachInline(String filename, String contentId, byte[] data, String contentType) {
+        attachments.add(new PendingAttachment(filename, orDefault(contentType), data, true, contentId));
+        return this;
+    }
+
+    /** Adds a file attachment, reading {@code file} and guessing its content type. */
+    public MailBuilder attachFile(File file) throws IOException {
+        return attachFile(file.toPath());
+    }
+
+    /** Adds a file attachment, reading {@code file} with an explicit content type. */
+    public MailBuilder attachFile(File file, MimeType contentType) throws IOException {
+        return attachFile(file.toPath(), contentType);
+    }
+
+    /** Adds a file attachment, reading {@code path} and guessing its content type. */
+    public MailBuilder attachFile(java.nio.file.Path path) throws IOException {
+        return attachFile(path, MimeType.fromPath(path));
+    }
+
+    /** Adds a file attachment, reading {@code path} with an explicit content type. */
+    public MailBuilder attachFile(java.nio.file.Path path, MimeType contentType) throws IOException {
+        return attachFile(path.getFileName().toString(), Files.readAllBytes(path), contentType);
+    }
+
+    /** Adds an inline attachment, reading {@code file} and guessing its content type. */
+    public MailBuilder attachInline(File file, String contentId) throws IOException {
+        return attachInline(file.toPath(), contentId);
+    }
+
+    /** Adds an inline attachment, reading {@code path} and guessing its content type. */
+    public MailBuilder attachInline(java.nio.file.Path path, String contentId) throws IOException {
+        return attachInline(path, contentId, MimeType.fromPath(path));
+    }
+
+    /** Adds an inline attachment, reading {@code path} with an explicit content type. */
+    public MailBuilder attachInline(java.nio.file.Path path, String contentId, MimeType contentType)
+            throws IOException {
+        return attachInline(path.getFileName().toString(), contentId, Files.readAllBytes(path), contentType);
+    }
+
+    private static String wire(MimeType contentType) {
+        return contentType == null ? MimeType.APPLICATION_OCTET_STREAM.wire() : contentType.wire();
+    }
+
+    private static String orDefault(String contentType) {
+        return contentType == null || contentType.isBlank()
+                ? MimeType.APPLICATION_OCTET_STREAM.wire()
+                : contentType;
+    }
+
+    public Mail build() {
+        if (from == null) {
+            throw new IllegalStateException("from address is required (or call nullSender())");
+        }
+        if (to.isEmpty() && cc.isEmpty() && bcc.isEmpty()) {
+            throw new IllegalStateException("at least one recipient is required");
+        }
+
+        Entity entity = topEntity();
+        Headers contentHeaders = contentHeaders(entity);
+
+        Content content = new Content(contentHeaders, entity.body(), entity.encoding(), null);
+
+        List<Recipient> all = new ArrayList<>();
+        all.addAll(to);
+        all.addAll(cc);
+        all.addAll(bcc);
+
+        Envelope envelope = Envelope.builder()
+                .from(from)
+                .to(all)
+                .build();
+
+        return new Mail(envelope, content, List.of(), Instant.now());
+    }
+
+    private Entity topEntity() {
+        Entity base = baseEntity();
+        if (attachments.isEmpty()) {
+            return base;
+        }
+
+        String boundary = MimeWriter.newBoundary();
+        List<MimeWriter.Section> sections = new ArrayList<>();
+        sections.add(sectionFor("multipart/", base));
+        for (PendingAttachment attachment : attachments) {
+            sections.add(attachmentSection(attachment));
+        }
+        return new Entity("multipart/mixed; boundary=\"" + boundary + "\"",
+                ContentTransferEncoding.SEVEN_BIT, MimeWriter.multipart(boundary, sections));
+    }
+
+    private Entity baseEntity() {
+        if (rawBody != null) {
+            return new Entity(rawContentType == null ? "text/plain" : rawContentType,
+                    rawEncoding == null ? ContentTransferEncoding.SEVEN_BIT : rawEncoding,
+                    rawBody);
+        }
+        if (textBody != null && htmlBody != null) {
+            String boundary = MimeWriter.newBoundary();
+            List<MimeWriter.Section> sections = List.of(
+                    textSection("plain", textBody),
+                    textSection("html", htmlBody));
+            return new Entity("multipart/alternative; boundary=\"" + boundary + "\"",
+                    ContentTransferEncoding.SEVEN_BIT, MimeWriter.multipart(boundary, sections));
+        }
+        if (htmlBody != null) {
+            return textEntity("html", htmlBody);
+        }
+        if (textBody != null) {
+            return textEntity("plain", textBody);
+        }
+        return new Entity("text/plain; charset=utf-8", ContentTransferEncoding.SEVEN_BIT, new byte[0]);
+    }
+
+    private Headers contentHeaders(Entity entity) {
+        Headers contentHeaders = new Headers();
+        for (Header header : headers.fields()) {
+            String name = header.name();
+            if (name.equalsIgnoreCase("Content-Type")
+                    || name.equalsIgnoreCase("Content-Transfer-Encoding")
+                    || name.equalsIgnoreCase("MIME-Version")) {
+                continue;
+            }
+            if (name.equalsIgnoreCase("Subject")) {
+                contentHeaders.add("Subject", MimeWriter.encodeWord(header.value()));
+            } else {
+                contentHeaders.add(header);
+            }
+        }
+
+        if (!from.isNull()) {
+            contentHeaders.add("From", formatAddress(from.mailbox()));
+        }
+        if (sender != null) {
+            contentHeaders.add("Sender", sender);
+        }
+        if (!to.isEmpty()) {
+            contentHeaders.add("To", joinRecipients(to));
+        }
+        if (!cc.isEmpty()) {
+            contentHeaders.add("Cc", joinRecipients(cc));
+        }
+        if (contentHeaders.first("Date").isEmpty()) {
+            contentHeaders.add("Date", DateTimeFormatter.RFC_1123_DATE_TIME
+                    .format(Instant.now().atZone(ZoneId.systemDefault())));
+        }
+        if (contentHeaders.first("Message-ID").isEmpty()) {
+            contentHeaders.add("Message-ID", generateMessageId());
+        }
+
+        contentHeaders.add("MIME-Version", "1.0");
+        contentHeaders.add("Content-Type", entity.contentType());
+        if (!entity.contentType().startsWith("multipart/")) {
+            contentHeaders.add("Content-Transfer-Encoding", entity.encoding().wire());
+        }
+        return contentHeaders;
+    }
+
+    private static MimeWriter.Section sectionFor(String multipartPrefix, Entity entity) {
+        List<Header> partHeaders = new ArrayList<>();
+        partHeaders.add(new Header("Content-Type", entity.contentType()));
+        if (!entity.contentType().startsWith(multipartPrefix)) {
+            partHeaders.add(new Header("Content-Transfer-Encoding", entity.encoding().wire()));
+        }
+        return new MimeWriter.Section(partHeaders, entity.body());
+    }
+
+    private static MimeWriter.Section attachmentSection(PendingAttachment attachment) {
+        List<Header> partHeaders = new ArrayList<>();
+        partHeaders.add(new Header("Content-Type", attachment.contentType()));
+        partHeaders.add(new Header("Content-Transfer-Encoding", "base64"));
+        partHeaders.add(new Header("Content-Disposition", MimeWriter.contentDisposition(
+                attachment.inline() ? "inline" : "attachment", attachment.filename())));
+        if (attachment.contentId() != null && !attachment.contentId().isBlank()) {
+            partHeaders.add(new Header("Content-ID", "<" + attachment.contentId() + ">"));
+        }
+        return new MimeWriter.Section(partHeaders, MimeWriter.base64(attachment.data()));
+    }
+
+    private static MimeWriter.Section textSection(String subtype, String text) {
+        Entity entity = textEntity(subtype, text);
+        return new MimeWriter.Section(List.of(
+                new Header("Content-Type", entity.contentType()),
+                new Header("Content-Transfer-Encoding", entity.encoding().wire())), entity.body());
+    }
+
+    private static Entity textEntity(String subtype, String text) {
+        byte[] raw = normalizeLineEndings(text).getBytes(StandardCharsets.UTF_8);
+        String contentType = "text/" + subtype + "; charset=utf-8";
+        if (MimeWriter.isAscii(raw)) {
+            return new Entity(contentType, ContentTransferEncoding.SEVEN_BIT, raw);
+        }
+        return new Entity(contentType, ContentTransferEncoding.QUOTED_PRINTABLE,
+                MimeWriter.quotedPrintable(raw));
+    }
+
+    private static String joinRecipients(List<Recipient> recipients) {
+        return recipients.stream()
+                .map(recipient -> formatAddress(recipient.address().mailbox()))
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
+    }
+
+    private static String formatAddress(MailboxAddress mailbox) {
+        String email = mailbox.toString();
+        String displayName = mailbox.displayName();
+        if (displayName == null || displayName.isBlank()) {
+            return email;
+        }
+        return MimeWriter.encodeWord(displayName) + " <" + email + ">";
+    }
+
+    private String generateMessageId() {
+        String domain = from.isNull() || from.mailbox().domain().isEmpty()
+                ? (to.isEmpty() ? "localhost" : to.get(0).address().mailbox().domain())
+                : from.mailbox().domain();
+        if (domain == null || domain.isEmpty()) {
+            domain = "localhost";
+        }
+        return "<" + System.nanoTime() + "." + UUID.randomUUID() + "@" + domain + ">";
+    }
+
+    private static String bracket(String messageId) {
+        String value = messageId == null ? "" : messageId.trim();
+        if (value.startsWith("<") && value.endsWith(">")) {
+            return value;
+        }
+        return "<" + value + ">";
+    }
+
+    private static String normalizeLineEndings(String value) {
+        return value.replace("\r\n", "\n").replace('\r', '\n').replace("\n", "\r\n");
+    }
+}

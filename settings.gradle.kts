@@ -3,3 +3,5 @@ plugins {
 }
 
 rootProject.name = "mxraven-java"
+
+include("mail")

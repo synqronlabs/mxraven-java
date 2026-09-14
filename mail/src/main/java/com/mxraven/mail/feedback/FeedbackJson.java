@@ -1,0 +1,22 @@
+package com.mxraven.mail.feedback;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+
+/**
+ * Shared Jackson configuration for feedback responses. Fields use
+ * {@code snake_case} on the wire and unknown fields are ignored so the SDK
+ * tolerates additive server changes.
+ */
+final class FeedbackJson {
+    static final ObjectMapper MAPPER = new ObjectMapper()
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .setDefaultPropertyInclusion(JsonInclude.Value.construct(
+                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    private FeedbackJson() {
+    }
+}

@@ -1,0 +1,71 @@
+package com.mxraven.admin.client;
+
+import com.mxraven.admin.AdminClient;
+import com.mxraven.admin.Paged;
+import com.mxraven.admin.QueryParams;
+import com.mxraven.admin.model.AutoReplyTemplate;
+import com.mxraven.admin.model.AutoReplyTemplateData;
+import com.mxraven.admin.model.CreateAutoReplyTemplateRequest;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.function.Consumer;
+
+/**
+ * Tenant auto-reply template collection. Reads and creation return hydrated
+ * {@link AutoReplyTemplate} entities.
+ */
+public final class AutoReplyTemplatesClient {
+    private final AdminClient client;
+    private final String tenantSlug;
+
+    public AutoReplyTemplatesClient(AdminClient client, String tenantSlug) {
+        this.client = client;
+        this.tenantSlug = tenantSlug;
+    }
+
+    public Paged<AutoReplyTemplate> list() throws IOException {
+        return list(null);
+    }
+
+    Paged<AutoReplyTemplate> list(QueryParams params) throws IOException {
+        return client.paged(base(), params == null ? null : params.toMap(), AutoReplyTemplateData.class)
+                .map(data -> new AutoReplyTemplate(client, one(data.id()), data));
+    }
+
+    public AutoReplyTemplate create(Consumer<CreateAutoReplyTemplateRequest.Builder> configure) throws IOException {
+        CreateAutoReplyTemplateRequest.Builder builder = CreateAutoReplyTemplateRequest.builder();
+        configure.accept(builder);
+        return create(builder.build());
+    }
+
+    public AutoReplyTemplate create(CreateAutoReplyTemplateRequest request) throws IOException {
+        AutoReplyTemplateData data = client.post(base(), request).as(AutoReplyTemplateData.class);
+        return new AutoReplyTemplate(client, one(data.id()), data);
+    }
+
+    private String base() {
+        return "/tenants/" + tenantSlug + "/auto-reply-templates";
+    }
+
+    private String one(String id) {
+        return base() + "/" + encode(id);
+    }
+
+    private static String encode(String segment) {
+        return URLEncoder.encode(segment, StandardCharsets.UTF_8);
+    }
+
+    public AutoReplyTemplate get(String templateId) throws IOException {
+        String resourcePath = one(templateId);
+        return new AutoReplyTemplate(client, resourcePath, client.get(resourcePath).as(AutoReplyTemplateData.class));
+    }
+
+    /** Get an auto-reply template by its immutable {@code template_ref}. */
+    public AutoReplyTemplate getByRef(String templateRef) throws IOException {
+        String refPath = base() + "/ref/" + encode(templateRef);
+        AutoReplyTemplateData data = client.get(refPath).as(AutoReplyTemplateData.class);
+        return new AutoReplyTemplate(client, one(data.id()), data);
+    }
+}

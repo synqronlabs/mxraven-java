@@ -1,0 +1,367 @@
+package com.mxraven.admin;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.mxraven.admin.client.AuthClient;
+import com.mxraven.admin.exception.ApiException;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+/**
+ * Client for the mxRaven control-plane v2 REST API.
+ *
+ * <p>Construct one with the control-plane base URL and a ZITADEL-issued bearer
+ * access token, then reach resource families through the typed accessors:
+ *
+ * <pre>{@code
+ * AdminClient admin = new AdminClient("https://api.mxraven.com", token);
+ * for (Domain domain : admin.workspace("my-workspace").domains().list()) {
+ *     System.out.println(domain.domainName() + " " + domain.status());
+ * }
+ * }</pre>
+ *
+ * <p>All response timestamps are returned as ISO-8601 strings. Pagination is
+ * cursor-based: pass {@link Page#nextPageToken()} back into the same list call.
+ */
+public final class AdminClient implements AutoCloseable {
+    /**
+     * Default control-plane API version. Every request path is prefixed with
+     * {@code "/" + apiVersion} in a single place, so clients never hardcode it.
+     */
+    public static final String DEFAULT_API_VERSION = "v2";
+
+    /**
+     * Default mxRaven control-plane base URL. Used by the constructors that omit
+     * a base URL; pass an explicit URL to target another environment.
+     */
+    public static final String DEFAULT_BASE_URL = "https://api.mxraven.email";
+
+    private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper()
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .setDefaultPropertyInclusion(JsonInclude.Value.construct(
+                    JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    private final HttpClient http;
+    private final ObjectMapper json;
+    private final String baseUrl;
+    private final String token;
+    private final RateLimitConfig rateLimitConfig;
+    private final String apiVersion;
+
+    /** Construct a client against {@link #DEFAULT_BASE_URL}. */
+    public AdminClient(String token) {
+        this(DEFAULT_BASE_URL, token, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
+    }
+
+    /** Construct a client against {@link #DEFAULT_BASE_URL} with explicit rate-limit behaviour. */
+    public AdminClient(String token, RateLimitConfig rateLimitConfig) {
+        this(DEFAULT_BASE_URL, token, rateLimitConfig, DEFAULT_API_VERSION);
+    }
+
+    /** Construct a client against {@link #DEFAULT_BASE_URL} with a custom HTTP client and mapper. */
+    public AdminClient(String token, HttpClient http, ObjectMapper json) {
+        this(DEFAULT_BASE_URL, token, http, json, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
+    }
+
+    public AdminClient(String baseUrl, String token) {
+        this(baseUrl, token, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
+    }
+
+    /** Construct a client with explicit rate-limit behaviour. */
+    public AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig) {
+        this(baseUrl, token, rateLimitConfig, DEFAULT_API_VERSION);
+    }
+
+    /**
+     * Construct a client targeting a specific control-plane API version. The
+     * version is prepended to every request path (for example {@code "v2"}
+     * yields {@code /v2/...}). Pass {@link #DEFAULT_API_VERSION} for the default.
+     */
+    public AdminClient(String baseUrl, String token, String apiVersion) {
+        this(baseUrl, token, RateLimitConfig.defaults(), apiVersion);
+    }
+
+    /** Construct a client with explicit rate-limit behaviour and API version. */
+    public AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig, String apiVersion) {
+        this(baseUrl, token, HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(30))
+                .build(), DEFAULT_MAPPER, rateLimitConfig, apiVersion);
+    }
+
+    public AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json) {
+        this(baseUrl, token, http, json, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
+    }
+
+    private AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json,
+                        RateLimitConfig rateLimitConfig, String apiVersion) {
+        this.baseUrl = baseUrl.replaceAll("/+$", "");
+        this.token = token;
+        this.http = http;
+        this.json = json;
+        this.rateLimitConfig = rateLimitConfig == null ? RateLimitConfig.defaults() : rateLimitConfig;
+        this.apiVersion = normalizeApiVersion(apiVersion);
+    }
+
+    public String baseUrl() {
+        return baseUrl;
+    }
+
+    /** The control-plane API version prefix applied to every request path. */
+    public String apiVersion() {
+        return apiVersion;
+    }
+
+    public ObjectMapper json() {
+        return json;
+    }
+
+    /** The client-wide rate-limit behaviour. */
+    public RateLimitConfig rateLimitConfig() {
+        return rateLimitConfig;
+    }
+
+    // --- Tenant-scoped resource families -------------------------------------
+
+    /**
+     * Bind a tenant. The returned {@link Workspace} exposes every tenant-scoped
+     * resource family without repeating the slug.
+     */
+    public Workspace workspace(String tenantSlug) {
+        return new Workspace(this, tenantSlug);
+    }
+
+    // --- Public (unauthenticated) families -----------------------------------
+
+    /** Public tenant login context; works with a blank token. */
+    public AuthClient auth() {
+        return new AuthClient(this);
+    }
+
+    public Response get(String path) throws IOException {
+        return get(path, null);
+    }
+
+    public Response get(String path, Map<String, String> query) throws IOException {
+        return request("GET", path, query, null);
+    }
+
+    public Response post(String path, Object body) throws IOException {
+        return request("POST", path, null, body);
+    }
+
+    public Response post(String path, Map<String, String> query, Object body) throws IOException {
+        return request("POST", path, query, body);
+    }
+
+    public Response put(String path, Object body) throws IOException {
+        return request("PUT", path, null, body);
+    }
+
+    public Response delete(String path) throws IOException {
+        return request("DELETE", path, null, null);
+    }
+
+    /**
+     * Issue a GET and wrap the response in a lazily auto-paginating {@link Paged}.
+     * Subsequent pages are fetched by re-issuing the same request with the next
+     * {@code page_token}, only as the returned iterator advances.
+     */
+    public <T> Paged<T> paged(String path, Map<String, String> query, Class<T> elementType) throws IOException {
+        Function<String, Page<T>> fetchNext = pageFetcher(path, query, elementType);
+        Page<T> first = get(path, query).pageOf(elementType).withFetcher(fetchNext);
+        return new Paged<>(first, fetchNext);
+    }
+
+    private <T> Function<String, Page<T>> pageFetcher(String path, Map<String, String> query, Class<T> elementType) {
+        return token -> {
+            Map<String, String> next = new LinkedHashMap<>();
+            if (query != null) {
+                next.putAll(query);
+            }
+            next.put("page_token", token);
+            try {
+                return get(path, next).pageOf(elementType).withFetcher(pageFetcher(path, query, elementType));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+    }
+
+    /**
+     * Send a request to the control plane. A non-success status is decoded as an
+     * RFC 9457 problem and thrown as {@link ApiException}.
+     */
+    public Response request(String method, String path, Map<String, String> query, Object body) throws IOException {
+        String resolvedPath = resolvePath(path);
+        URI uri = URI.create(baseUrl + resolvedPath + encodeQuery(query));
+        HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
+                .timeout(Duration.ofSeconds(60))
+                .header("Accept", "application/json");
+        if (token != null && !token.isBlank()) {
+            builder.header("Authorization", "Bearer " + token);
+        }
+        if (body != null) {
+            builder.header("Content-Type", "application/json")
+                    .method(method, HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
+        } else {
+            builder.method(method, HttpRequest.BodyPublishers.noBody());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        int attempt = 0;
+        while (true) {
+            HttpResponse<String> response;
+            try {
+                response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("interrupted while calling " + method + " " + resolvedPath, e);
+            }
+
+            if (response.statusCode() == 429
+                    && isRetryable(method)
+                    && rateLimitConfig.enabled()
+                    && attempt < rateLimitConfig.maxRetries()) {
+                attempt++;
+                sleep(retryDelay(response));
+                continue;
+            }
+
+            JsonNode decoded = parseBody(response.body());
+            if (response.statusCode() >= 400) {
+                throw ApiException.from(response.statusCode(), response.body(), decoded, json,
+                        parseRetryAfter(response.headers()));
+            }
+            return new Response(response.statusCode(), response.headers(), decoded, json);
+        }
+    }
+
+    /**
+     * Prepend the configured API version to a client-relative path. Paths that
+     * already carry the version prefix are left untouched, so callers may pass
+     * either {@code "/tenants/acme"} or {@code "/v2/tenants/acme"}.
+     */
+    private String resolvePath(String path) {
+        String prefix = "/" + apiVersion;
+        if (path == null || path.isEmpty() || "/".equals(path)) {
+            return prefix;
+        }
+        if (path.equals(prefix) || path.startsWith(prefix + "/")) {
+            return path;
+        }
+        return prefix + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    private static String normalizeApiVersion(String apiVersion) {
+        if (apiVersion == null || apiVersion.isBlank()) {
+            return DEFAULT_API_VERSION;
+        }
+        return apiVersion.replaceAll("^/+", "").replaceAll("/+$", "");
+    }
+
+    /** Reads and idempotent deletes may be retried safely; mutations may not. */
+    private static boolean isRetryable(String method) {
+        return "GET".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method);
+    }
+
+    private Duration retryDelay(HttpResponse<?> response) {
+        Duration retryAfter = parseRetryAfter(response.headers());
+        Duration delay = retryAfter != null ? retryAfter : rateLimitConfig.defaultBackoff();
+        if (delay.isNegative()) {
+            delay = Duration.ZERO;
+        }
+        if (delay.compareTo(rateLimitConfig.maxBackoff()) > 0) {
+            delay = rateLimitConfig.maxBackoff();
+        }
+        return delay;
+    }
+
+    private static void sleep(Duration delay) throws IOException {
+        if (delay.isZero()) {
+            return;
+        }
+        try {
+            Thread.sleep(delay.toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while waiting to retry after rate limit", e);
+        }
+    }
+
+    private static Duration parseRetryAfter(HttpHeaders headers) {
+        return headers.firstValue("Retry-After").map(AdminClient::parseRetryAfter).orElse(null);
+    }
+
+    static Duration parseRetryAfter(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        try {
+            long seconds = Long.parseLong(trimmed);
+            return seconds < 0 ? Duration.ZERO : Duration.ofSeconds(seconds);
+        } catch (NumberFormatException ignored) {
+            // not delta-seconds; fall through to HTTP-date parsing
+        }
+        try {
+            ZonedDateTime retryAt = ZonedDateTime.parse(trimmed, DateTimeFormatter.RFC_1123_DATE_TIME);
+            Duration delay = Duration.between(Instant.now(), retryAt.toInstant());
+            return delay.isNegative() ? Duration.ZERO : delay;
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
+    }
+
+    @Override
+    public void close() {
+        // No-op: java.net.http.HttpClient manages its own resources and does not
+        // require explicit closing on Java 17. Retained to satisfy AutoCloseable.
+    }
+
+    private JsonNode parseBody(String body) throws IOException {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        return json.readTree(body);
+    }
+
+    private static String encodeQuery(Map<String, String> query) {
+        if (query == null || query.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> entry : query.entrySet()) {
+            if (entry.getValue() == null) {
+                continue;
+            }
+            sb.append(sb.isEmpty() ? '?' : '&');
+            sb.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
+                    .append('=')
+                    .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+        }
+        return sb.toString();
+    }
+}

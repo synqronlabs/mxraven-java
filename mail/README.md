@@ -4,8 +4,8 @@ The `mail` module is the Java client for the mxRaven email service. It sends mai
 over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
 messages, verifies and receives webhooks, and submits recipient feedback.
 
-- Group / artifact: `com.mxraven` / `mail`
-- Current version: `0.1.0-SNAPSHOT`
+- Group / artifact: `com.mxraven` / `mxraven-mail`
+- Current version: `2.0.1`
 - Requirements: **Java 17+** (the build toolchain targets Java 17)
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind` (webhook and
   feedback JSON only; SMTP and MIME are pure JDK)
@@ -33,31 +33,44 @@ What it covers:
 ./gradlew :mail:publishToMavenLocal
 ```
 
-### Gradle
+### Gradle (Maven Central)
 
 ```kotlin
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
-    implementation("com.mxraven:mail:0.1.0-SNAPSHOT")
+    implementation("com.mxraven:mxraven-mail:2.0.1")
 }
 ```
 
-### Maven
+### Maven (Maven Central)
 
 ```xml
 <dependency>
     <groupId>com.mxraven</groupId>
-    <artifactId>mail</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <artifactId>mxraven-mail</artifactId>
+    <version>2.0.1</version>
 </dependency>
 ```
 
-If you consume the repository through JitPack, add the JitPack repository and use
-the `com.github.<user>.<repo>:mail` coordinate instead.
+### JitPack
+
+Builds straight from GitHub, so you can target `main` or a commit.
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+    implementation("com.github.synqronlabs.mxraven-java:mxraven-mail:2.0.1")
+    // Latest main build:  ...:mxraven-mail:main-SNAPSHOT
+    // Or pin a commit:    ...:mxraven-mail:<commit-sha>
+}
+```
 
 ---
 

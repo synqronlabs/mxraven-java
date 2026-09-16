@@ -10,8 +10,8 @@ login context.
 It mirrors the same `/v2` surface the customer dashboard uses, with typed
 request/response models and a small dependency footprint (Jackson only).
 
-- Group / artifact: `com.mxraven` / `admin`
-- Current version: `0.1.0-SNAPSHOT`
+- Group / artifact: `com.mxraven` / `mxraven-admin`
+- Current version: `2.0.1`
 - Requirements: **Java 17+** (the build toolchain targets Java 17)
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind`
 
@@ -26,31 +26,44 @@ request/response models and a small dependency footprint (Jackson only).
 ./gradlew :admin:publishToMavenLocal
 ```
 
-### Gradle
+### Gradle (Maven Central)
 
 ```kotlin
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
-    implementation("com.mxraven:admin:0.1.0-SNAPSHOT")
+    implementation("com.mxraven:mxraven-admin:2.0.1")
 }
 ```
 
-### Maven
+### Maven (Maven Central)
 
 ```xml
 <dependency>
     <groupId>com.mxraven</groupId>
-    <artifactId>admin</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <artifactId>mxraven-admin</artifactId>
+    <version>2.0.1</version>
 </dependency>
 ```
 
-If you consume the repository through JitPack, add the JitPack repository and use
-the `com.github.<user>.<repo>:admin` coordinate instead.
+### JitPack
+
+Builds straight from GitHub, so you can target `main` or a commit.
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven { url = uri("https://jitpack.io") }
+}
+
+dependencies {
+    implementation("com.github.synqronlabs.mxraven-java:mxraven-admin:2.0.1")
+    // Latest main build:  ...:mxraven-admin:main-SNAPSHOT
+    // Or pin a commit:    ...:mxraven-admin:<commit-sha>
+}
+```
 
 ---
 

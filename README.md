@@ -52,8 +52,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail:2.0.1")    // send & receive mail
-    implementation("com.mxraven:admin:2.0.1")   // control-plane API
+    implementation("com.mxraven:mail:2.0.2")    // send & receive mail
+    implementation("com.mxraven:admin:2.0.2")   // control-plane API
 }
 ```
 
@@ -64,12 +64,12 @@ dependencies {
     <dependency>
         <groupId>com.mxraven</groupId>
         <artifactId>mail</artifactId>
-        <version>2.0.1</version>
+        <version>2.0.2</version>
     </dependency>
     <dependency>
         <groupId>com.mxraven</groupId>
         <artifactId>admin</artifactId>
-        <version>2.0.1</version>
+        <version>2.0.2</version>
     </dependency>
 </dependencies>
 ```

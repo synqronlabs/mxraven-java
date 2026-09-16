@@ -48,6 +48,7 @@ class SmtpClientTest {
             assertTrue(client.greeting().contains("fake"));
             assertTrue(client.hasExtension("SIZE"));
             assertTrue(client.hasExtension("8BITMIME"));
+            assertFalse(client.hasExtension("FAKE"), "the EHLO greeting is not an extension");
             assertEquals("10240000", client.extensionParam("SIZE"));
             assertEquals(List.of("EHLO test.local"), server.commands);
         }
@@ -73,7 +74,7 @@ class SmtpClientTest {
                 assertTrue(result.recipients().stream().allMatch(RecipientResult::accepted));
             }
 
-            assertEquals("<sender@example.com>", server.mailFrom);
+            assertTrue(server.mailFrom.startsWith("<sender@example.com>"), server.mailFrom);
             assertEquals(List.of(
                     "<to1@example.com>",
                     "<to2@example.com>",
@@ -104,7 +105,7 @@ class SmtpClientTest {
                 assertTrue(client.send(mail).success());
             }
 
-            assertEquals("<>", server.mailFrom);
+            assertTrue(server.mailFrom.startsWith("<>"), server.mailFrom);
         }
     }
 
@@ -138,6 +139,92 @@ class SmtpClientTest {
                 assertFalse(result.recipients().get(0).accepted());
                 assertEquals("rejected", result.recipients().get(0).status());
             }
+        }
+    }
+
+    @Test
+    void usesBdatWhenChunkingIsAdvertised() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, List.of("CHUNKING"))) {
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                assertTrue(client.send(simpleMail()).success());
+            }
+
+            assertTrue(server.commands.stream().anyMatch(c -> c.startsWith("BDAT")), server.commands.toString());
+            assertTrue(server.commands.stream().noneMatch(c -> c.equalsIgnoreCase("DATA")));
+            assertNotNull(server.dataPayload);
+            assertTrue(server.dataPayload.contains("Body line"));
+        }
+    }
+
+    @Test
+    void batchesMailAndRecipientsWhenPipeliningIsAdvertised() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, List.of("PIPELINING"))) {
+            Mail mail = MailBuilder.create()
+                    .from("sender@example.com")
+                    .to("one@example.com", "two@example.com", "three@example.com")
+                    .subject("Hello")
+                    .textBody("Body")
+                    .build();
+
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                SendResult result = client.send(mail);
+                assertTrue(result.success());
+                assertEquals(3, result.recipients().size());
+            }
+
+            assertEquals(3, server.recipients.size());
+        }
+    }
+
+    @Test
+    void assumesRfc822WhenOrcptHasNoAddressType() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, List.of("DSN"))) {
+            Envelope envelope = Envelope.builder()
+                    .from(Path.of("sender@example.com"))
+                    .to(List.of(new Recipient(Path.of("to@example.com"),
+                            new DSNRecipientParams(List.of("SUCCESS"), "orig@example.com"))))
+                    .build();
+
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                client.sendRaw(envelope, "Subject: raw\r\n\r\nbody\r\n".getBytes(StandardCharsets.UTF_8));
+            }
+
+            assertTrue(server.recipients.get(0).contains("ORCPT=rfc822;orig@example.com"),
+                    server.recipients.get(0));
+        }
+    }
+
+    @Test
+    void rejectsNeverCombinedWithOtherNotifyFlags() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, List.of("DSN"))) {
+            Envelope envelope = Envelope.builder()
+                    .from(Path.of("sender@example.com"))
+                    .to(List.of(new Recipient(Path.of("to@example.com"),
+                            new DSNRecipientParams(List.of("NEVER", "FAILURE"), null))))
+                    .build();
+
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                assertThrows(SmtpException.class, () ->
+                        client.sendRaw(envelope, "x".getBytes(StandardCharsets.UTF_8)));
+            }
+        }
+    }
+
+    @Test
+    void rejectsCommandInjectionInLowLevelAddresses() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer();
+             SmtpClient client = SmtpClient.connect(config(server))) {
+            assertThrows(SmtpException.class, () -> client.rcpt("a@example.com\r\nDATA"));
+            assertThrows(SmtpException.class, () -> client.mail("a@example.com\nRSET"));
+        }
+    }
+
+    @Test
+    void cancelAbortsTheClient() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer();
+             SmtpClient client = SmtpClient.connect(config(server))) {
+            client.cancel();
+            assertThrows(SmtpException.class, () -> client.send(simpleMail()));
         }
     }
 

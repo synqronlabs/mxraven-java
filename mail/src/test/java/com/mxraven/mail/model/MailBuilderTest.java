@@ -8,7 +8,9 @@ import java.time.Instant;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MailBuilderTest {
@@ -35,7 +37,7 @@ class MailBuilderTest {
         Envelope envelope = mail.envelope();
         assertEquals("sender@example.com", envelope.from().mailbox().toString());
         assertEquals(3, envelope.to().size());
-        assertEquals(0, envelope.size());
+        assertTrue(envelope.size() > 0, "size is derived from the serialized message");
         assertTrue(mail.trace().isEmpty());
         assertNotNull(mail.receivedAt());
     }
@@ -103,6 +105,50 @@ class MailBuilderTest {
                 .build();
 
         assertEquals(ContentTransferEncoding.BASE64, mail.content().encoding());
+    }
+
+    @Test
+    void nonAsciiEnvelopeAddressRequestsSmtpUtf8() {
+        Mail mail = MailBuilder.create()
+                .from("s\u00e9nder@example.com")
+                .to("c@d.com")
+                .textBody("x")
+                .build();
+
+        assertTrue(mail.envelope().smtpUtf8());
+        assertFalse(MailBuilder.create().from("a@b.com").to("c@d.com").textBody("x").build()
+                .envelope().smtpUtf8());
+    }
+
+    @Test
+    void eightBitBodyRequestsTheMatchingBodyType() {
+        Mail mail = MailBuilder.create()
+                .from("a@b.com")
+                .to("c@d.com")
+                .body("caf\u00e9".getBytes(StandardCharsets.UTF_8), "text/plain",
+                        ContentTransferEncoding.EIGHT_BIT)
+                .build();
+
+        assertEquals(BodyType.EIGHT_BIT_MIME, mail.envelope().bodyType());
+    }
+
+    @Test
+    void quotesDisplayNamesContainingSpecials() {
+        Mail mail = MailBuilder.create()
+                .from(new MailboxAddress("a", "b.com", "Doe, Jane"))
+                .to("c@d.com")
+                .build();
+
+        assertEquals("\"Doe, Jane\" <a@b.com>",
+                mail.content().headers().first("From").orElseThrow());
+    }
+
+    @Test
+    void rejectsHeaderValuesThatCouldInjectFields() {
+        assertThrows(IllegalArgumentException.class, () -> MailBuilder.create()
+                .from("a@b.com")
+                .to("c@d.com")
+                .header("X-Test", "value\r\nBcc: evil@example.com"));
     }
 
     @Test

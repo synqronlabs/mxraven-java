@@ -1,6 +1,7 @@
 package com.mxraven.mail.model;
 
 import com.mxraven.mail.mime.ContentTransferEncoding;
+import com.mxraven.mail.mime.MimeWriter;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +39,8 @@ public record Content(Headers headers, byte[] body, ContentTransferEncoding enco
     public byte[] toRaw() {
         ByteArrayOutputStream out = new ByteArrayOutputStream(body.length + 256);
         for (Header header : headers.fields()) {
-            out.writeBytes((header.name() + ": " + header.value() + "\r\n")
+            String value = MimeWriter.encodeWord(header.value());
+            out.writeBytes((MimeWriter.foldHeader(header.name(), value) + "\r\n")
                     .getBytes(StandardCharsets.ISO_8859_1));
         }
         out.writeBytes("\r\n".getBytes(StandardCharsets.ISO_8859_1));

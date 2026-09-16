@@ -292,6 +292,13 @@ public final class SmtpConfig {
             if (host == null || host.isBlank()) {
                 throw new IllegalStateException("host must not be blank");
             }
+            if (localName == null || localName.isBlank()) {
+                throw new IllegalStateException("localName must not be blank");
+            }
+            if (localName.indexOf('\r') >= 0 || localName.indexOf('\n') >= 0
+                    || localName.indexOf('\0') >= 0) {
+                throw new IllegalStateException("localName must not contain CR, LF, or NUL characters");
+            }
             return new SmtpConfig(this);
         }
     }

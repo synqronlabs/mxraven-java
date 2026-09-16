@@ -107,6 +107,23 @@ class MailBuilderMimeTest {
     }
 
     @Test
+    void foldsLongHeadersWithinTheLineLimit() {
+        String longValue = "word ".repeat(60).trim();
+        Mail mail = MailBuilder.create()
+                .from("a@example.com")
+                .to("b@example.com")
+                .header("X-Long", longValue)
+                .build();
+
+        String raw = new String(mail.content().toRaw(), StandardCharsets.UTF_8);
+        assertTrue(raw.contains("X-Long: "));
+        assertTrue(raw.contains("\r\n "), "the long header should be folded");
+        for (String line : raw.split("\r\n")) {
+            assertTrue(line.length() <= 998, "header lines must not exceed 998 octets");
+        }
+    }
+
+    @Test
     void requiresSenderAndRecipient() {
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
                 () -> MailBuilder.create().to("b@example.com").build());

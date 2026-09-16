@@ -123,9 +123,16 @@ public final class MimeWriter {
         return out.toByteArray();
     }
 
+    /** Maximum length of a complete RFC 2047 encoded-word, including delimiters. */
+    private static final int ENCODED_WORD_LIMIT = 75;
+
     /**
-     * Encodes header text as an RFC 2047 Base64 encoded-word when it contains
-     * non-ASCII characters; otherwise returns it unchanged.
+     * Encodes header text as one or more RFC 2047 Base64 encoded-words when it
+     * contains non-ASCII characters; otherwise returns it unchanged.
+     *
+     * <p>Long values are split into several encoded-words on character
+     * boundaries so that no encoded-word exceeds the 75-character limit and no
+     * multi-byte character is split.
      *
      * @param value the header text, or {@code null}
      * @return the encoded text, or {@code value} unchanged when it is {@code null}
@@ -135,8 +142,43 @@ public final class MimeWriter {
         if (value == null || isAscii(value.getBytes(StandardCharsets.UTF_8))) {
             return value;
         }
-        String encoded = Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
-        return "=?UTF-8?B?" + encoded + "?=";
+        String prefix = "=?UTF-8?B?";
+        String suffix = "?=";
+        // The payload must be base64 (a multiple of four) and keep the whole word
+        // within the limit.
+        int budget = ((ENCODED_WORD_LIMIT - prefix.length() - suffix.length()) / 4) * 4;
+
+        StringBuilder encoded = new StringBuilder(value.length() + 16);
+        StringBuilder chunk = new StringBuilder();
+        int chunkBytes = 0;
+        int index = 0;
+        while (index < value.length()) {
+            int codePoint = value.codePointAt(index);
+            String character = new String(Character.toChars(codePoint));
+            int characterBytes = character.getBytes(StandardCharsets.UTF_8).length;
+            int base64Length = ((chunkBytes + characterBytes + 2) / 3) * 4;
+            if (chunk.length() > 0 && base64Length > budget) {
+                appendEncodedWord(encoded, prefix, suffix, chunk.toString());
+                chunk.setLength(0);
+                chunkBytes = 0;
+            }
+            chunk.append(character);
+            chunkBytes += characterBytes;
+            index += Character.charCount(codePoint);
+        }
+        if (chunk.length() > 0) {
+            appendEncodedWord(encoded, prefix, suffix, chunk.toString());
+        }
+        return encoded.toString();
+    }
+
+    private static void appendEncodedWord(StringBuilder out, String prefix, String suffix, String text) {
+        if (out.length() > 0) {
+            out.append(' ');
+        }
+        out.append(prefix)
+                .append(Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8)))
+                .append(suffix);
     }
 
     /**
@@ -185,7 +227,7 @@ public final class MimeWriter {
         for (Section section : sections) {
             writeAscii(out, "--" + boundary + "\r\n");
             for (Header header : section.headers()) {
-                writeAscii(out, header.name() + ": " + header.value() + "\r\n");
+                writeAscii(out, foldHeader(header.name(), encodeWord(header.value())) + "\r\n");
             }
             writeAscii(out, "\r\n");
             byte[] body = section.body();
@@ -198,9 +240,13 @@ public final class MimeWriter {
         return out.toByteArray();
     }
 
+    /** Maximum length of a single header line, excluding the trailing CRLF. */
+    private static final int HEADER_LINE_LIMIT = 998;
+
     /**
-     * Folds a long header value at whitespace near 78 columns. Values that already
-     * contain a newline are returned unfolded.
+     * Folds a long header value at whitespace near 78 columns, and hard-splits any
+     * single token that would otherwise push a line past the RFC 5322 limit of 998
+     * octets. Values that already contain a line break are returned unfolded.
      *
      * @param name  the header field name
      * @param value the header field value
@@ -208,21 +254,46 @@ public final class MimeWriter {
      */
     public static String foldHeader(String name, String value) {
         String prefix = name + ": ";
-        if (prefix.length() + value.length() <= 78 || value.indexOf('\n') >= 0) {
+        if (value == null || value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0) {
             return prefix + value;
         }
-        StringBuilder out = new StringBuilder(prefix);
+        if (prefix.length() + value.length() <= 78) {
+            return prefix + value;
+        }
+        StringBuilder out = new StringBuilder(prefix.length() + value.length() + 16);
+        out.append(prefix);
         int lineLength = prefix.length();
-        for (String word : value.split(" ")) {
-            if (lineLength + 1 + word.length() > 78) {
+        String[] words = value.split(" ");
+        boolean first = true;
+        for (String word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (!first && lineLength + 1 + word.length() > 78) {
                 out.append("\r\n ");
                 lineLength = 1;
-            } else if (lineLength > prefix.length()) {
+            } else if (!first) {
                 out.append(' ');
                 lineLength++;
             }
-            out.append(word);
-            lineLength += word.length();
+            first = false;
+            while (!word.isEmpty()) {
+                int room = HEADER_LINE_LIMIT - lineLength;
+                if (room <= 0) {
+                    out.append("\r\n ");
+                    lineLength = 1;
+                    continue;
+                }
+                if (word.length() <= room) {
+                    out.append(word);
+                    lineLength += word.length();
+                    break;
+                }
+                out.append(word, 0, room);
+                word = word.substring(room);
+                out.append("\r\n ");
+                lineLength = 1;
+            }
         }
         return out.toString();
     }

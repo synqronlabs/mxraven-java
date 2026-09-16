@@ -5,7 +5,7 @@ over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
 messages, verifies and receives webhooks, and submits recipient feedback.
 
 - Group / artifact: `com.mxraven` / `mail`
-- Current version: `2.0.1`
+- Current version: `2.0.2`
 - JavaDoc: https://java.mxraven.com/mail/
 - Requirements: **Java 17+** (the build toolchain targets Java 17)
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind` (webhook and
@@ -15,7 +15,8 @@ What it covers:
 
 - **SMTP submission** — STARTTLS / implicit TLS, AUTH PLAIN and LOGIN, the SMTP
   extension parameters (SIZE, 8BITMIME/BINARYMIME, SMTPUTF8, REQUIRETLS,
-  DELIVERBY, DSN, AUTH).
+  DELIVERBY, DSN, AUTH), automatic CHUNKING/`BDAT` and PIPELINING, and a
+  thread-safe connection pool (`SmtpPool`) for high-throughput sending.
 - **Message building** — a fluent builder producing `multipart/alternative` and
   `multipart/mixed`, transfer encodings, and RFC 2047 header encoding.
 - **MIME parsing** — a part tree plus a convenience `ParsedEmail` view.
@@ -42,7 +43,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail:2.0.1")
+    implementation("com.mxraven:mail:2.0.2")
 }
 ```
 
@@ -52,7 +53,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>mail</artifactId>
-    <version>2.0.1</version>
+    <version>2.0.2</version>
 </dependency>
 ```
 
@@ -67,7 +68,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mail:2.0.1")
+    implementation("com.github.synqronlabs.mxraven-java:mail:2.0.2")
     // Latest main build:  ...:mail:main-SNAPSHOT
     // Or pin a commit:    ...:mail:<commit-sha>
 }
@@ -112,6 +113,48 @@ public class MailExample {
     }
 }
 ```
+
+### High-throughput sending (pool + BDAT)
+
+For bulk or multi-threaded submission, use `SmtpPool`. It keeps a bounded set of
+authenticated connections, reuses them across sends, and is safe for concurrent
+use (a bare `SmtpClient` is not).
+
+```java
+import com.mxraven.mail.SmtpPool;
+import com.mxraven.mail.SendResult;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+SmtpPool pool = new SmtpPool(config, 8);          // at most 8 connections
+ExecutorService workers = Executors.newFixedThreadPool(8);
+try {
+    for (Mail message : batch) {
+        workers.submit(() -> {
+            SendResult result = pool.send(message);   // borrows a connection
+            System.out.println(result.messageRef() + " ok=" + result.success());
+        });
+    }
+} finally {
+    workers.shutdown();
+    pool.close();
+}
+```
+
+The high-throughput path is automatic when the server supports it:
+
+- **`CHUNKING` / `BDAT`** — instead of `DATA`, the message is streamed with
+  `BDAT … LAST`. There is no dot-stuffing and one fewer round trip per message,
+  which is fastest for large bodies. You can also drive it directly with
+  `client.bdat(bytes, true)`.
+- **`PIPELINING`** — `MAIL FROM` and every `RCPT TO` are sent in one batch before
+  the replies are read, hiding round-trip latency for multi-recipient sends.
+- **`SIZE` / `BODY` / `SMTPUTF8`** — derived automatically by `MailBuilder`, so
+  the server can accept or reject before the body is transferred.
+
+No opt-in is required; each is used only when the server advertises the
+extension. To abort an in-flight send, call `SmtpClient.cancel()` from another
+thread (use a per-connection client for that, not a shared pool).
 
 Receive and parse an inbound webhook:
 
@@ -209,7 +252,13 @@ try (SmtpClient client = SmtpClient.connect(config)) {
 ```
 
 Low-level commands are available for manual transactions: `mail(String)`,
-`rcpt(String)`, `data(byte[])`, `noop()`, `reset()`, `quit()`, `lastResponse()`.
+`rcpt(String)`, `data(byte[])`, `bdat(byte[], boolean)`, `noop()`, `reset()`,
+`quit()`, and `lastResponse()`. `cancel()` aborts a blocked exchange from another
+thread.
+
+> **Concurrency:** a single `SmtpClient` owns one socket and is **not** safe for
+> concurrent use. For concurrent submissions use `SmtpPool` (see
+> [High-throughput sending](#high-throughput-sending-pool--bdat)).
 
 ### Send result
 
@@ -217,11 +266,20 @@ Low-level commands are available for manual transactions: `mail(String)`,
 
 | Member | Description |
 | --- | --- |
-| `success()` | Whether MAIL FROM and DATA were accepted. |
+| `success()` | Whether MAIL FROM was accepted, at least one recipient was accepted, and the body was accepted. |
 | `message()` | The final server reply text. |
+| `messageRef()` | The mxRaven `message_ref` id from the final reply, or `null` when absent. |
 | `recipients()` | One `RecipientResult` per recipient. |
 
-`RecipientResult` exposes `recipient()`, `accepted()`, and `status()`.
+`RecipientResult` exposes `recipient()`, `accepted()`, and `status()`. A failed
+`MAIL FROM` or a recipient-only failure short-circuits the transaction — the
+client sends `RSET` instead of `DATA`, so a send is never accepted while every
+recipient was rejected.
+
+`SmtpResponse.isSuccess()` is true only for 2xx replies; `isPositive()` also
+covers 3xx intermediates. When the server returns an RFC 3463 code,
+`response.enhancedStatus()` yields an `EnhancedStatus` (`5.1.1`, class, subject,
+detail).
 
 ### Raw messages
 
@@ -248,6 +306,11 @@ transaction:
   `BY=` (DELIVERBY), `AUTH`, `RET`, `ENVID`, and free-form `extensionParams`.
 - `RCPT TO`: `NOTIFY`, `ORCPT` (per recipient).
 
+`MailBuilder` derives `SIZE`, `BODY`, and `SMTPUTF8` automatically: the size is
+the serialized message length, `BODY` follows the content transfer encoding, and
+`SMTPUTF8` is requested when any envelope address is non-ASCII. Set them
+explicitly only on an envelope you build by hand (as below) or to override.
+
 ```java
 import com.mxraven.mail.model.*;
 
@@ -265,7 +328,13 @@ Envelope envelope = Envelope.builder()
 
 `REQUIRETLS` requires an active TLS session and server support, otherwise the
 send fails with an `SmtpException`. ENVID/ORCPT values are xtext-encoded
-(RFC 3461); `DsnXText.encode` / `DsnXText.decode` are available directly.
+(RFC 3461); `DsnXText.encode` / `DsnXText.decode` are available directly. An
+`ORCPT` without an address type is sent as `rfc822;<value>`.
+
+Parameter values are validated: an unknown `NOTIFY` flag, `NEVER` combined with
+another flag, a malformed `ORCPT` address type, or an ENVID over 100 encoded
+characters fails the send with an `SmtpException` rather than being sent or
+silently dropped.
 
 ---
 
@@ -298,6 +367,13 @@ encoded and non-ASCII header text is RFC 2047 encoded automatically.
 
 `messageId`, `inReplyTo`, and `references` accept bare or angle-bracketed ids; the
 builder adds the `<...>` brackets when they are missing.
+
+Addresses are parsed and validated: `MailboxAddress.of(String)` requires a
+`local@domain` form and rejects `"not an address"`, and `Header`/`MailboxAddress`
+reject CR, LF, and NUL so a value cannot smuggle in extra header fields or SMTP
+commands. Display names containing RFC 5322 specials are quoted
+(`"Doe, Jane" <jane@example.com>`). Long header values are folded, and non-ASCII
+header values are emitted as one or more RFC 2047 encoded-words.
 
 ### Attachments
 
@@ -570,10 +646,15 @@ feedback.unsubscribe(token);   // unauthenticated RFC 8058 one-click
 | `learnHam(byte[])` / `learnHam(InputStream)` | Teach that the message is not spam. |
 | `learn(Disposition, byte[])` | Explicit disposition (`SPAM` / `HAM`). |
 | `unsubscribe(String token)` | RFC 8058 one-click unsubscribe. |
+| `learnSpamAsync(byte[])` / `learnHamAsync(byte[])` | Non-blocking variants returning `CompletableFuture<LearningResult>`. |
+| `learnAsync(Disposition, byte[])` | Non-blocking explicit disposition. |
+| `unsubscribeAsync(String)` | Non-blocking one-click unsubscribe. |
 
-Failures are thrown as `FeedbackException`; branch on `statusCode()` rather than
-`detail()`. `retryable()` is true for `429` and `5xx`. A `404` means no stored
-evidence matched the submitted bytes.
+The `*Async` methods return a `CompletableFuture`; cancelling it aborts that one
+request. Responses are read through a 64 KiB cap, so a misbehaving service cannot
+exhaust memory. Failures are thrown as `FeedbackException`; branch on
+`statusCode()` rather than `detail()`. `retryable()` is true for `429` and `5xx`.
+A `404` means no stored evidence matched the submitted bytes.
 
 ---
 
@@ -594,8 +675,8 @@ Transport failures (SMTP I/O, raw message download, feedback HTTP) surface as
 
 ## Packages and models
 
-- `com.mxraven.mail` — `SmtpClient`, `SmtpConfig`, `SendResult`, `RecipientResult`,
-  `SmtpResponse`, `SmtpException`, `DsnXText`.
+- `com.mxraven.mail` — `SmtpClient`, `SmtpPool`, `SmtpConfig`, `SendResult`,
+  `RecipientResult`, `SmtpResponse`, `EnhancedStatus`, `SmtpException`, `DsnXText`.
 - `com.mxraven.mail.model` — `Mail`, `MailBuilder`, `Envelope`, `Path`,
   `Recipient`, `MailboxAddress`, `Headers`, `Header`, `Content`, `BodyType`,
   `DeliveryBy`, `DeliveryByMode`, `DSNEnvelopeParams`, `DSNRecipientParams`,

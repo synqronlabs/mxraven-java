@@ -11,7 +11,7 @@ It mirrors the same `/v2` surface the customer dashboard uses, with typed
 request/response models and a small dependency footprint (Jackson only).
 
 - Group / artifact: `com.mxraven` / `admin`
-- Current version: `2.0.1`
+- Current version: `2.0.2`
 - JavaDoc: https://java.mxraven.com/admin/
 - Requirements: **Java 17+** (the build toolchain targets Java 17)
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind`
@@ -35,7 +35,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:admin:2.0.1")
+    implementation("com.mxraven:admin:2.0.2")
 }
 ```
 
@@ -45,7 +45,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>admin</artifactId>
-    <version>2.0.1</version>
+    <version>2.0.2</version>
 </dependency>
 ```
 
@@ -60,7 +60,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:admin:2.0.1")
+    implementation("com.github.synqronlabs.mxraven-java:admin:2.0.2")
     // Latest main build:  ...:admin:main-SNAPSHOT
     // Or pin a commit:    ...:admin:<commit-sha>
 }

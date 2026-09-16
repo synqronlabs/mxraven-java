@@ -2,6 +2,7 @@ package com.mxraven.mail.feedback;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -11,6 +12,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Client for the mxRaven feedback service.
@@ -33,11 +36,17 @@ import java.util.Base64;
  * username and the secret is the key's secret. Only the learning methods require
  * credentials; {@link #unsubscribe(String)} is unauthenticated.
  *
- * <p>A configured {@code FeedbackClient} is safe for concurrent use.
+ * <p>A configured {@code FeedbackClient} is safe for concurrent use. The
+ * {@code *Async} methods return a {@link CompletableFuture}; cancelling it (with
+ * {@link CompletableFuture#cancel(boolean)}) aborts that request without
+ * affecting others.
  */
 public final class FeedbackClient {
     /** Default request timeout for non-streaming calls. */
     public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
+
+    /** Maximum number of response bytes accepted from the service. */
+    private static final int MAX_RESPONSE_BYTES = 64 * 1024;
 
     private static final String LEARN_PATH = "/v1/feedback/learn/";
     private static final String UNSUBSCRIBE_PATH = "/v1/feedback/unsubscribe/";
@@ -135,22 +144,9 @@ public final class FeedbackClient {
      * @throws FeedbackException        when the service returns a non-success status
      */
     public LearningResult learn(Disposition disposition, byte[] rawMime) throws IOException {
-        if (disposition == null) {
-            throw new IllegalArgumentException("disposition is required");
-        }
-        if (rawMime == null) {
-            throw new IllegalArgumentException("rawMime is required");
-        }
-        requireLearningCredentials();
-
-        HttpRequest request = baseRequest(URI.create(baseUrl + LEARN_PATH + disposition.wire()))
-                .header("Content-Type", "message/rfc822")
-                .header("Authorization", basicAuth())
-                .POST(HttpRequest.BodyPublishers.ofByteArray(rawMime))
-                .build();
-
-        HttpResponse<byte[]> response = send(request);
-        if (response.statusCode() != 200) {
+        HttpRequest request = learnRequest(disposition, rawMime);
+        Response response = send(request);
+        if (response.status() != 200) {
             throw httpError(response);
         }
         return decode(response.body());
@@ -175,6 +171,57 @@ public final class FeedbackClient {
     }
 
     /**
+     * Teaches the spam filter that {@code rawMime} is spam without blocking.
+     *
+     * <p>Cancelling the returned future aborts this request only.
+     *
+     * @param rawMime the exact raw RFC 822 message bytes mxRaven processed
+     * @return a future completing with the learning result
+     * @throws IllegalStateException when learning credentials are not configured
+     */
+    public CompletableFuture<LearningResult> learnSpamAsync(byte[] rawMime) {
+        return learnAsync(Disposition.SPAM, rawMime);
+    }
+
+    /**
+     * Teaches the spam filter that {@code rawMime} is not spam without blocking.
+     *
+     * <p>Cancelling the returned future aborts this request only.
+     *
+     * @param rawMime the exact raw RFC 822 message bytes mxRaven processed
+     * @return a future completing with the learning result
+     * @throws IllegalStateException when learning credentials are not configured
+     */
+    public CompletableFuture<LearningResult> learnHamAsync(byte[] rawMime) {
+        return learnAsync(Disposition.HAM, rawMime);
+    }
+
+    /**
+     * Submits one training example without blocking.
+     *
+     * <p>Cancelling the returned future aborts this request only.
+     *
+     * @param disposition the training label to apply
+     * @param rawMime     the exact raw RFC 822 message bytes mxRaven processed
+     * @return a future completing with the learning result
+     * @throws IllegalArgumentException when the disposition or raw message is {@code null}
+     * @throws IllegalStateException    when learning credentials are not configured
+     */
+    public CompletableFuture<LearningResult> learnAsync(Disposition disposition, byte[] rawMime) {
+        HttpRequest request = learnRequest(disposition, rawMime);
+        return sendAsync(request).thenApply(response -> {
+            if (response.status() != 200) {
+                throw new CompletionException(httpError(response));
+            }
+            try {
+                return decode(response.body());
+            } catch (IOException e) {
+                throw new CompletionException(e);
+            }
+        });
+    }
+
+    /**
      * Performs an RFC 8058 one-click unsubscribe for a token. This is the
      * operation a recipient mail client performs against the
      * {@code List-Unsubscribe} URL; applications rarely call it directly.
@@ -185,19 +232,53 @@ public final class FeedbackClient {
      * @throws FeedbackException        when the service returns a non-success status
      */
     public void unsubscribe(String token) throws IOException {
+        Response response = send(unsubscribeRequest(token));
+        if (response.status() != 200) {
+            throw httpError(response);
+        }
+    }
+
+    /**
+     * Performs a one-click unsubscribe without blocking.
+     *
+     * <p>Cancelling the returned future aborts this request only.
+     *
+     * @param token the unsubscribe token
+     * @return a future completing when the request finishes
+     * @throws IllegalArgumentException when the token is {@code null} or blank
+     */
+    public CompletableFuture<Void> unsubscribeAsync(String token) {
+        return sendAsync(unsubscribeRequest(token)).thenAccept(response -> {
+            if (response.status() != 200) {
+                throw new CompletionException(httpError(response));
+            }
+        });
+    }
+
+    private HttpRequest learnRequest(Disposition disposition, byte[] rawMime) {
+        if (disposition == null) {
+            throw new IllegalArgumentException("disposition is required");
+        }
+        if (rawMime == null) {
+            throw new IllegalArgumentException("rawMime is required");
+        }
+        requireLearningCredentials();
+        return baseRequest(URI.create(baseUrl + LEARN_PATH + disposition.wire()))
+                .header("Content-Type", "message/rfc822")
+                .header("Authorization", basicAuth())
+                .POST(HttpRequest.BodyPublishers.ofByteArray(rawMime))
+                .build();
+    }
+
+    private HttpRequest unsubscribeRequest(String token) {
         if (token == null || token.isBlank()) {
             throw new IllegalArgumentException("unsubscribe token is required");
         }
         URI uri = URI.create(baseUrl + UNSUBSCRIBE_PATH + encodePathSegment(token.trim()));
-        HttpRequest request = baseRequest(uri)
+        return baseRequest(uri)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString("List-Unsubscribe=One-Click"))
                 .build();
-
-        HttpResponse<byte[]> response = send(request);
-        if (response.statusCode() != 200) {
-            throw httpError(response);
-        }
     }
 
     private HttpRequest.Builder baseRequest(URI uri) {
@@ -218,15 +299,49 @@ public final class FeedbackClient {
         return "Basic " + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
     }
 
-    private HttpResponse<byte[]> send(HttpRequest request) throws IOException {
+    private Response send(HttpRequest request) throws IOException {
         try {
-            return http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<InputStream> response =
+                    http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            return read(response);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("interrupted while calling " + request.method() + " " + request.uri(), e);
         } catch (IOException e) {
             throw new IOException(request.method() + " " + request.uri() + " failed: " + e, e);
         }
+    }
+
+    private CompletableFuture<Response> sendAsync(HttpRequest request) {
+        return http.sendAsync(request, HttpResponse.BodyHandlers.ofInputStream())
+                .thenApply(response -> {
+                    try {
+                        return read(response);
+                    } catch (IOException e) {
+                        throw new CompletionException(e);
+                    }
+                });
+    }
+
+    private Response read(HttpResponse<InputStream> response) throws IOException {
+        try (InputStream stream = response.body()) {
+            return new Response(response.statusCode(), readCapped(stream, MAX_RESPONSE_BYTES));
+        }
+    }
+
+    private static byte[] readCapped(InputStream stream, int maxBytes) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int total = 0;
+        int read;
+        while ((read = stream.read(buffer)) != -1) {
+            total += read;
+            if (total > maxBytes) {
+                throw new IOException("response exceeds the " + maxBytes + "-byte limit");
+            }
+            out.write(buffer, 0, read);
+        }
+        return out.toByteArray();
     }
 
     private static LearningResult decode(byte[] body) throws IOException {
@@ -236,7 +351,7 @@ public final class FeedbackClient {
         return FeedbackJson.MAPPER.readValue(body, LearningResult.class);
     }
 
-    private static FeedbackException httpError(HttpResponse<byte[]> response) {
+    private static FeedbackException httpError(Response response) {
         String detail = null;
         byte[] body = response.body();
         if (body != null && body.length > 0) {
@@ -250,7 +365,7 @@ public final class FeedbackClient {
                 // Fall back to a message without the service detail.
             }
         }
-        return new FeedbackException(response.statusCode(), detail);
+        return new FeedbackException(response.status(), detail);
     }
 
     private static String encodePathSegment(String value) {
@@ -267,6 +382,10 @@ public final class FeedbackClient {
             }
         }
         return encoded.toString();
+    }
+
+    /** A status code and bounded body captured from a response. */
+    private record Response(int status, byte[] body) {
     }
 
     /** Builds a {@link FeedbackClient}. */

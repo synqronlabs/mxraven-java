@@ -60,6 +60,14 @@ class SmtpConfigTest {
     }
 
     @Test
+    void localNameRejectsInjection() {
+        assertThrows(IllegalStateException.class,
+                () -> SmtpConfig.builder().host("h").localName("bad\r\nMAIL FROM:<x>").build());
+        assertThrows(IllegalStateException.class,
+                () -> SmtpConfig.builder().host("h").localName("  ").build());
+    }
+
+    @Test
     void defaultsToTheProductionHost() {
         assertEquals("smtp.mxraven.email", SmtpConfig.DEFAULT_HOST);
         assertEquals(SmtpConfig.DEFAULT_HOST, SmtpConfig.builder().build().host());

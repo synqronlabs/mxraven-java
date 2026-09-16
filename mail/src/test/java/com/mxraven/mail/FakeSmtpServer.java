@@ -98,6 +98,16 @@ final class FakeSmtpServer implements Closeable {
                     writeLine(out, "354 End data with <CR><LF>.<CR><LF>");
                     dataPayload = new String(readData(in), StandardCharsets.UTF_8);
                     writeLine(out, "250 Queued");
+                } else if (upper.startsWith("BDAT")) {
+                    String rest = line.substring("BDAT".length()).trim();
+                    boolean last = rest.toUpperCase(Locale.ROOT).endsWith("LAST");
+                    if (last) {
+                        rest = rest.substring(0, rest.toUpperCase(Locale.ROOT).lastIndexOf("LAST")).trim();
+                    }
+                    byte[] chunk = readExact(in, Integer.parseInt(rest));
+                    dataPayload = (dataPayload == null ? "" : dataPayload)
+                            + new String(chunk, StandardCharsets.UTF_8);
+                    writeLine(out, "250 Chunk received");
                 } else if (upper.startsWith("AUTH PLAIN")) {
                     decodePlain(line.substring("AUTH PLAIN".length()).trim());
                     writeLine(out, "235 Authenticated");
@@ -173,6 +183,19 @@ final class FakeSmtpServer implements Closeable {
             return null;
         }
         return buffer.toString(StandardCharsets.UTF_8);
+    }
+
+    private static byte[] readExact(InputStream in, int size) throws IOException {
+        byte[] data = new byte[size];
+        int offset = 0;
+        while (offset < size) {
+            int read = in.read(data, offset, size - offset);
+            if (read == -1) {
+                break;
+            }
+            offset += read;
+        }
+        return data;
     }
 
     private static byte[] readData(InputStream in) throws IOException {

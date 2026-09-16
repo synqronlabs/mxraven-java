@@ -37,66 +37,133 @@ public final class RateLimitConfig {
         this.maxBackoff = builder.maxBackoff;
     }
 
-    /** Retry on {@code 429} up to 3 times, honouring {@code Retry-After}. */
+    /**
+     * Retry on {@code 429} up to 3 times, honouring {@code Retry-After}.
+     *
+     * @return the shared default configuration
+     */
     public static RateLimitConfig defaults() {
         return DEFAULTS;
     }
 
-    /** Surface {@code 429} immediately without retrying. */
+    /**
+     * Surface {@code 429} immediately without retrying.
+     *
+     * @return a configuration with retries disabled
+     */
     public static RateLimitConfig disabled() {
         return builder().enabled(false).build();
     }
 
+    /**
+     * Creates a builder with the default settings.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /** Whether {@code 429} responses are retried. */
+    /**
+     * Whether {@code 429} responses are retried.
+     *
+     * @return {@code true} if retries are enabled
+     */
     public boolean enabled() {
         return enabled;
     }
 
-    /** Maximum retries after the initial attempt. */
+    /**
+     * Maximum retries after the initial attempt.
+     *
+     * @return the maximum number of retries
+     */
     public int maxRetries() {
         return maxRetries;
     }
 
-    /** Delay used when a {@code 429} has no usable {@code Retry-After}. */
+    /**
+     * Delay used when a {@code 429} has no usable {@code Retry-After}.
+     *
+     * @return the default backoff delay
+     */
     public Duration defaultBackoff() {
         return defaultBackoff;
     }
 
-    /** Upper bound applied to any server-provided {@code Retry-After}. */
+    /**
+     * Upper bound applied to any server-provided {@code Retry-After}.
+     *
+     * @return the maximum backoff delay
+     */
     public Duration maxBackoff() {
         return maxBackoff;
     }
 
+    /**
+     * Mutable builder for {@link RateLimitConfig}. Starts from the same defaults
+     * as {@link RateLimitConfig#defaults()}.
+     */
     public static final class Builder {
         private boolean enabled = true;
         private int maxRetries = 3;
         private Duration defaultBackoff = Duration.ofSeconds(1);
         private Duration maxBackoff = Duration.ofSeconds(60);
 
+        /**
+         * Sets whether {@code 429} responses are retried.
+         *
+         * @param enabled {@code true} to retry, {@code false} to surface
+         *                immediately
+         * @return this builder
+         */
         public Builder enabled(boolean enabled) {
             this.enabled = enabled;
             return this;
         }
 
+        /**
+         * Sets the maximum number of retries after the initial attempt.
+         *
+         * @param maxRetries maximum retries; must not be negative
+         * @return this builder
+         */
         public Builder maxRetries(int maxRetries) {
             this.maxRetries = maxRetries;
             return this;
         }
 
+        /**
+         * Sets the delay used when a {@code 429} has no usable
+         * {@code Retry-After}.
+         *
+         * @param defaultBackoff default backoff delay; must not be negative
+         * @return this builder
+         */
         public Builder defaultBackoff(Duration defaultBackoff) {
             this.defaultBackoff = defaultBackoff;
             return this;
         }
 
+        /**
+         * Sets the upper bound applied to any server-provided
+         * {@code Retry-After}.
+         *
+         * @param maxBackoff maximum backoff delay; must not be negative
+         * @return this builder
+         */
         public Builder maxBackoff(Duration maxBackoff) {
             this.maxBackoff = maxBackoff;
             return this;
         }
 
+        /**
+         * Builds the configuration.
+         *
+         * @return a new configuration
+         * @throws IllegalArgumentException if a duration is negative or
+         *                                  {@code maxRetries} is negative
+         */
         public RateLimitConfig build() {
             if (maxRetries < 0) {
                 throw new IllegalArgumentException("maxRetries must not be negative");

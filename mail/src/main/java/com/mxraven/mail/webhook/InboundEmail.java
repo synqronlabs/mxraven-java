@@ -42,6 +42,9 @@ public record InboundEmail(
         List<HeaderField> headers,
         RawEmail rawEmail) implements WebhookEvent {
 
+    /**
+     * Creates an inbound email delivery, copying the header list.
+     */
     public InboundEmail {
         headers = headers == null ? List.of() : List.copyOf(headers);
     }
@@ -55,8 +58,9 @@ public record InboundEmail(
     /**
      * Downloads and parses the full message referenced by {@link #rawEmail()}.
      *
-     * @throws IOException         when the download fails
-     * @throws WebhookException    when the delivery carries no raw message reference
+     * @return the parsed message
+     * @throws IOException      when the download fails
+     * @throws WebhookException when the delivery carries no raw message reference
      */
     public ParsedEmail parse() throws IOException {
         return parse(null);
@@ -65,6 +69,11 @@ public record InboundEmail(
     /**
      * Downloads with {@code client} and parses the full message referenced by
      * {@link #rawEmail()}.
+     *
+     * @param client the HTTP client to download with, or {@code null} for a default client
+     * @return the parsed message
+     * @throws IOException      when the download fails
+     * @throws WebhookException when the delivery carries no raw message reference
      */
     public ParsedEmail parse(HttpClient client) throws IOException {
         if (rawEmail == null) {

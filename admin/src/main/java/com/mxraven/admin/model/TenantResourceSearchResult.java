@@ -5,6 +5,13 @@ package com.mxraven.admin.model;
  *
  * <p>{@code resourceType} is a {@code TenantSearchResourceType} value. Results
  * are ordered by exact, then prefix, then substring relevance.
+ *
+ * @param resourceType type of the matched resource
+ * @param resourceId identifier of the matched resource
+ * @param parentResourceId identifier of the parent resource, if any
+ * @param label human-readable resource label
+ * @param reference stable resource reference
+ * @param description resource description
  */
 public record TenantResourceSearchResult(
         TenantSearchResourceType resourceType,

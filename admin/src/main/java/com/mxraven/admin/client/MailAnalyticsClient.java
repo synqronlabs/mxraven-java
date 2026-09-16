@@ -34,6 +34,12 @@ public final class MailAnalyticsClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Create a client for the tenant-scoped mail-analytics endpoints.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug whose analytics are read
+     */
     public MailAnalyticsClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
@@ -44,6 +50,11 @@ public final class MailAnalyticsClient {
      *
      * @param startAt inclusive UTC start of the analytics interval
      * @param endAt   exclusive UTC end of the analytics interval
+     * @return the overview metrics for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsOverview getMailAnalyticsOverview(String startAt, String endAt)
             throws IOException {
@@ -53,8 +64,15 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Overview of the fixed Phase 1 analytics catalog for the interval.
+     *
      * @param params required {@code start_at} and {@code end_at}; the interval may
      *               span at most 31 days
+     * @return the overview metrics for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsOverview getMailAnalyticsOverview(QueryParams params)
             throws IOException {
@@ -70,6 +88,12 @@ public final class MailAnalyticsClient {
      * @param endAt            exclusive UTC task-origin cohort end
      * @param observationEndAt exclusive UTC upper bound for observed facts; must
      *                         not precede {@code endAt}
+     * @return the lifecycle analytics for the cohort
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid, the
+     *                                  observation end precedes the cohort end,
+     *                                  the cohort exceeds seven days, or the
+     *                                  observation horizon exceeds eight days
      */
     public MailAnalyticsLifecycle getMailAnalyticsLifecycle(String startAt, String endAt,
                                                             String observationEndAt) throws IOException {
@@ -80,9 +104,17 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Task lifecycle analytics for the task-origin cohort.
+     *
      * @param params required {@code start_at}, {@code end_at}, and
      *               {@code observation_end_at}; the cohort may span at most seven
      *               days and the observation horizon at most eight days
+     * @return the lifecycle analytics for the cohort
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid, the
+     *                                  observation end precedes the cohort end,
+     *                                  the cohort exceeds seven days, or the
+     *                                  observation horizon exceeds eight days
      */
     public MailAnalyticsLifecycle getMailAnalyticsLifecycle(QueryParams params)
             throws IOException {
@@ -95,8 +127,15 @@ public final class MailAnalyticsClient {
     /**
      * Bounded breakdown grouping one additive metric by one ledger dimension.
      *
+     * @param startAt   inclusive UTC start of the analytics interval
+     * @param endAt     exclusive UTC end of the analytics interval
      * @param metric    an allow-listed additive metric
      * @param dimension a compatible ledger dimension
+     * @return the ranked breakdown for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsBreakdown getMailAnalyticsBreakdown(String startAt, String endAt,
                                                             MailAnalyticsMetric metric,
@@ -107,7 +146,15 @@ public final class MailAnalyticsClient {
     /**
      * Bounded breakdown grouping one additive metric by one ledger dimension.
      *
-     * @param limit maximum ranked items to return, between 1 and 20
+     * @param startAt   inclusive UTC start of the analytics interval
+     * @param endAt     exclusive UTC end of the analytics interval
+     * @param metric    an allow-listed additive metric
+     * @param dimension a compatible ledger dimension
+     * @param limit     maximum ranked items to return, between 1 and 20
+     * @return the ranked breakdown for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid or {@code limit}
+     *                                  is outside 1–20
      */
     public MailAnalyticsBreakdown getMailAnalyticsBreakdown(String startAt, String endAt,
                                                             MailAnalyticsMetric metric,
@@ -122,8 +169,14 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Bounded breakdown grouping one additive metric by one ledger dimension.
+     *
      * @param params required {@code start_at}, {@code end_at}, {@code metric},
      *               and {@code dimension}; optional {@code limit}
+     * @return the ranked breakdown for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid or {@code limit}
+     *                                  is outside 1–20
      */
     public MailAnalyticsBreakdown getMailAnalyticsBreakdown(QueryParams params)
             throws IOException {
@@ -136,6 +189,14 @@ public final class MailAnalyticsClient {
     /**
      * Overview metrics for the requested interval and the immediately preceding
      * interval of equal duration.
+     *
+     * @param startAt inclusive UTC start of the analytics interval
+     * @param endAt   exclusive UTC end of the analytics interval
+     * @return the current and preceding interval metrics
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsComparison getMailAnalyticsComparison(String startAt, String endAt)
             throws IOException {
@@ -145,7 +206,15 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Overview metrics for the requested interval and the immediately preceding
+     * interval of equal duration.
+     *
      * @param params required {@code start_at} and {@code end_at}
+     * @return the current and preceding interval metrics
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsComparison getMailAnalyticsComparison(QueryParams params)
             throws IOException {
@@ -156,6 +225,14 @@ public final class MailAnalyticsClient {
 
     /**
      * UTC task activity heatmap with exactly 168 zero-filled weekday/hour cells.
+     *
+     * @param startAt inclusive UTC start of the analytics interval
+     * @param endAt   exclusive UTC end of the analytics interval
+     * @return the zero-filled task activity heatmap
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsActivityHeatmap getMailAnalyticsActivityHeatmap(String startAt,
                                                                         String endAt) throws IOException {
@@ -165,7 +242,14 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * UTC task activity heatmap with exactly 168 zero-filled weekday/hour cells.
+     *
      * @param params required {@code start_at} and {@code end_at}
+     * @return the zero-filled task activity heatmap
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsActivityHeatmap getMailAnalyticsActivityHeatmap(QueryParams params)
             throws IOException {
@@ -176,6 +260,16 @@ public final class MailAnalyticsClient {
 
     /**
      * Bounded additive time series for one allow-listed metric and dimension.
+     *
+     * @param startAt   inclusive UTC start of the analytics interval
+     * @param endAt     exclusive UTC end of the analytics interval
+     * @param metric    an allow-listed additive metric
+     * @param dimension a compatible ledger dimension
+     * @return the additive time series for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsSeries getMailAnalyticsSeries(String startAt, String endAt,
                                                       MailAnalyticsMetric metric,
@@ -186,7 +280,15 @@ public final class MailAnalyticsClient {
     /**
      * Bounded additive time series for one allow-listed metric and dimension.
      *
-     * @param limit number of top dimension values to select, between 1 and 20
+     * @param startAt   inclusive UTC start of the analytics interval
+     * @param endAt     exclusive UTC end of the analytics interval
+     * @param metric    an allow-listed additive metric
+     * @param dimension a compatible ledger dimension
+     * @param limit     number of top dimension values to select, between 1 and 20
+     * @return the additive time series for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid or {@code limit}
+     *                                  is outside 1–20
      */
     public MailAnalyticsSeries getMailAnalyticsSeries(String startAt, String endAt,
                                                       MailAnalyticsMetric metric,
@@ -201,8 +303,14 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Bounded additive time series for one allow-listed metric and dimension.
+     *
      * @param params required {@code start_at}, {@code end_at}, {@code metric},
      *               and {@code dimension}; optional {@code limit}
+     * @return the additive time series for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid or {@code limit}
+     *                                  is outside 1–20
      */
     public MailAnalyticsSeries getMailAnalyticsSeries(QueryParams params) throws IOException {
         validateInterval(value(params, "start_at"), value(params, "end_at"));
@@ -214,7 +322,15 @@ public final class MailAnalyticsClient {
     /**
      * Bounded recipient-domain lifecycle analytics for a task-origin cohort.
      *
+     * @param startAt          inclusive UTC task-origin cohort start
+     * @param endAt            exclusive UTC task-origin cohort end
      * @param observationEndAt exclusive UTC end of the observation horizon
+     * @return the recipient-domain lifecycle analytics
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid, the
+     *                                  observation end precedes the cohort end,
+     *                                  the cohort exceeds seven days, or the
+     *                                  observation horizon exceeds eight days
      */
     public MailAnalyticsDomainLifecycle getMailAnalyticsDomainLifecycle(String startAt,
                                                                         String endAt, String observationEndAt)
@@ -225,8 +341,18 @@ public final class MailAnalyticsClient {
     /**
      * Bounded recipient-domain lifecycle analytics for a task-origin cohort.
      *
-     * @param recipientDomain optional recipient-domain filter
-     * @param limit           maximum ranked domains to return, between 1 and 20
+     * @param startAt          inclusive UTC task-origin cohort start
+     * @param endAt            exclusive UTC task-origin cohort end
+     * @param observationEndAt exclusive UTC end of the observation horizon
+     * @param recipientDomain  optional recipient-domain filter
+     * @param limit            maximum ranked domains to return, between 1 and 20
+     * @return the recipient-domain lifecycle analytics
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid, the
+     *                                  observation end precedes the cohort end,
+     *                                  the cohort exceeds seven days, the
+     *                                  observation horizon exceeds eight days, or
+     *                                  {@code limit} is outside 1–20
      */
     public MailAnalyticsDomainLifecycle getMailAnalyticsDomainLifecycle(String startAt,
                                                                         String endAt, String observationEndAt,
@@ -241,9 +367,16 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Bounded recipient-domain lifecycle analytics for a task-origin cohort.
+     *
      * @param params required {@code start_at}, {@code end_at}, and
      *               {@code observation_end_at}; optional {@code recipient_domain}
      *               and {@code limit}
+     * @return the recipient-domain lifecycle analytics
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is invalid, the
+     *                                  observation bounds are exceeded, or
+     *                                  {@code limit} is outside 1–20
      */
     public MailAnalyticsDomainLifecycle getMailAnalyticsDomainLifecycle(QueryParams params)
             throws IOException {
@@ -257,6 +390,14 @@ public final class MailAnalyticsClient {
     /**
      * Zero-filled UTC buckets with averages and approximate t-digest percentiles
      * over task-created message sizes.
+     *
+     * @param startAt inclusive UTC start of the analytics interval
+     * @param endAt   exclusive UTC end of the analytics interval
+     * @return the task-size statistics for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsTaskSizeStatistics getMailAnalyticsTaskSizeStatistics(String startAt,
                                                                               String endAt) throws IOException {
@@ -266,7 +407,15 @@ public final class MailAnalyticsClient {
     }
 
     /**
+     * Zero-filled UTC buckets with averages and approximate t-digest percentiles
+     * over task-created message sizes.
+     *
      * @param params required {@code start_at} and {@code end_at}
+     * @return the task-size statistics for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
      */
     public MailAnalyticsTaskSizeStatistics getMailAnalyticsTaskSizeStatistics(QueryParams params)
             throws IOException {

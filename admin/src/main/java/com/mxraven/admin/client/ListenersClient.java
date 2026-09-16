@@ -20,16 +20,32 @@ public final class ListenersClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Create a client for the listener collection of a tenant.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug whose listeners are accessed
+     */
     public ListenersClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
-    /** Start a typed, fluent list request. */
+    /**
+     * Start a typed, fluent list request.
+     *
+     * @return a new listener query
+     */
     public ListenerQuery query() {
         return new ListenerQuery(this);
     }
 
+    /**
+     * List all listeners (first page fetched eagerly, remaining pages lazy).
+     *
+     * @return a lazily paginating collection of listeners
+     * @throws IOException if the first page request fails or is interrupted
+     */
     public Paged<Listener> list() throws IOException {
         return list(null);
     }
@@ -39,28 +55,59 @@ public final class ListenersClient {
                 .map(data -> new Listener(client, base() + "/" + data.id(), data));
     }
 
+    /**
+     * Get a listener by its identifier.
+     *
+     * @param listenerId listener identifier
+     * @return the hydrated listener
+     * @throws IOException if the request fails or is interrupted
+     */
     public Listener get(String listenerId) throws IOException {
         String resourcePath = base() + "/" + listenerId;
         return new Listener(client, resourcePath, client.get(resourcePath).as(ListenerData.class));
     }
 
+    /**
+     * Create a listener from a configured builder.
+     *
+     * @param configure consumer that configures the request builder
+     * @return the created listener
+     * @throws IOException if the request fails or is interrupted
+     */
     public Listener create(Consumer<CreateListenerRequest.Builder> configure) throws IOException {
         CreateListenerRequest.Builder builder = CreateListenerRequest.builder();
         configure.accept(builder);
         return create(builder.build());
     }
 
+    /**
+     * Create a listener.
+     *
+     * @param request creation request
+     * @return the created listener
+     * @throws IOException if the request fails or is interrupted
+     */
     public Listener create(CreateListenerRequest request) throws IOException {
         ListenerData data = client.post(base(), request).as(ListenerData.class);
         return new Listener(client, base() + "/" + data.id(), data);
     }
 
-    /** Fetch every MTA listener, following cursor pages. */
+    /**
+     * Fetch every MTA listener, following cursor pages.
+     *
+     * @return all MTA listeners
+     * @throws IOException if a page request fails or is interrupted
+     */
     public List<Listener> listMtaListeners() throws IOException {
         return listByType(ListenerType.MTA);
     }
 
-    /** Fetch every submission listener, following cursor pages. */
+    /**
+     * Fetch every submission listener, following cursor pages.
+     *
+     * @return all submission listeners
+     * @throws IOException if a page request fails or is interrupted
+     */
     public List<Listener> listSubmissionListeners() throws IOException {
         return listByType(ListenerType.SUBMISSION);
     }

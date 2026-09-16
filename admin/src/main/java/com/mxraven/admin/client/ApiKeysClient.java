@@ -21,11 +21,25 @@ public final class ApiKeysClient {
     private final AdminClient client;
     private final String basePath;
 
+    /**
+     * Create a client for the API-key collection at the given path.
+     *
+     * @param client underlying admin client
+     * @param basePath client-relative path of the API-key collection
+     */
     public ApiKeysClient(AdminClient client, String basePath) {
         this.client = client;
         this.basePath = basePath;
     }
 
+    /**
+     * List the API keys (first page fetched eagerly, remaining pages lazy).
+     *
+     * <p>Secret material is never returned by listing.
+     *
+     * @return a lazily paginating collection of API keys
+     * @throws IOException if the first page request fails or is interrupted
+     */
     public Paged<APIKey> list() throws IOException {
         return list(null);
     }
@@ -38,6 +52,9 @@ public final class ApiKeysClient {
     /**
      * Issues an API key and returns its one-time plaintext secret. This operation
      * is non-idempotent; do not blind-retry an uncertain response.
+     *
+     * @return the issued key, including its one-time plaintext secret
+     * @throws IOException if the request fails or is interrupted
      */
     public IssuedAPIKey create() throws IOException {
         return client.post(basePath, null).as(IssuedAPIKey.class);

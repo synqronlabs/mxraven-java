@@ -66,7 +66,11 @@ public final class WebhookServer implements AutoCloseable {
         this.banner = builder.banner;
     }
 
-    /** Creates a server builder. */
+    /**
+     * Creates a server builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -100,12 +104,20 @@ public final class WebhookServer implements AutoCloseable {
         System.err.println("         Terminate TLS at a reverse proxy and use a hardened server in production.");
     }
 
-    /** The bound port, or the configured port before {@link #start()}. */
+    /**
+     * Returns the bound port, or the configured port before {@link #start()}.
+     *
+     * @return the port
+     */
     public synchronized int port() {
         return server == null ? address.getPort() : server.getAddress().getPort();
     }
 
-    /** The path this server serves. */
+    /**
+     * Returns the path this server serves.
+     *
+     * @return the request path
+     */
     public String path() {
         return path;
     }
@@ -183,7 +195,13 @@ public final class WebhookServer implements AutoCloseable {
         private Builder() {
         }
 
-        /** Sets the bind host. Defaults to {@code 127.0.0.1} (loopback only). */
+        /**
+         * Sets the bind host. Defaults to {@code 127.0.0.1} (loopback only).
+         *
+         * @param host the bind host
+         * @return this builder
+         * @throws IllegalArgumentException when {@code host} is {@code null} or blank
+         */
         public Builder host(String host) {
             if (host == null || host.isBlank()) {
                 throw new IllegalArgumentException("host must not be empty");
@@ -192,7 +210,13 @@ public final class WebhookServer implements AutoCloseable {
             return this;
         }
 
-        /** Sets the bind port. Use {@code 0} for an ephemeral port. Defaults to 8080. */
+        /**
+         * Sets the bind port. Use {@code 0} for an ephemeral port. Defaults to 8080.
+         *
+         * @param port the bind port
+         * @return this builder
+         * @throws IllegalArgumentException when {@code port} is outside {@code 0} to {@code 65535}
+         */
         public Builder port(int port) {
             if (port < 0 || port > 65535) {
                 throw new IllegalArgumentException("port must be between 0 and 65535");
@@ -201,7 +225,13 @@ public final class WebhookServer implements AutoCloseable {
             return this;
         }
 
-        /** Sets the path to serve. Defaults to {@code /mxraven/webhook}. */
+        /**
+         * Sets the path to serve. Defaults to {@code /mxraven/webhook}.
+         *
+         * @param path the request path, which must start with {@code '/'}
+         * @return this builder
+         * @throws IllegalArgumentException when {@code path} is not absolute
+         */
         public Builder path(String path) {
             if (path == null || !path.startsWith("/")) {
                 throw new IllegalArgumentException("path must start with '/'");
@@ -210,13 +240,23 @@ public final class WebhookServer implements AutoCloseable {
             return this;
         }
 
-        /** Sets the handler to serve. Build one with {@link WebhookHandler#builder()}. */
+        /**
+         * Sets the handler to serve. Build one with {@link WebhookHandler#builder()}.
+         *
+         * @param handler the webhook handler
+         * @return this builder
+         */
         public Builder handler(WebhookHandler handler) {
             this.handler = Objects.requireNonNull(handler, "handler");
             return this;
         }
 
-        /** Sets the executor used to dispatch requests. Defaults to a small daemon pool. */
+        /**
+         * Sets the executor used to dispatch requests. Defaults to a small daemon pool.
+         *
+         * @param executor the executor
+         * @return this builder
+         */
         public Builder executor(Executor executor) {
             this.executor = Objects.requireNonNull(executor, "executor");
             this.ownsExecutor = false;
@@ -226,13 +266,21 @@ public final class WebhookServer implements AutoCloseable {
         /**
          * Whether {@link WebhookServer#start()} prints the "development server" banner
          * and warning to {@code System.err}. Enabled by default; disable for production.
+         *
+         * @param banner {@code true} to print the banner and warning
+         * @return this builder
          */
         public Builder banner(boolean banner) {
             this.banner = banner;
             return this;
         }
 
-        /** Binds, validates, and builds the server. A handler is required. */
+        /**
+         * Binds, validates, and builds the server. A handler is required.
+         *
+         * @return the configured server
+         * @throws IllegalStateException when the handler has not been set
+         */
         public WebhookServer build() {
             if (handler == null) {
                 throw new IllegalStateException("a handler is required (call handler(...))");

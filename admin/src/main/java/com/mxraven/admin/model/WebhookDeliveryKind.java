@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Webhook delivery kind. */
 public enum WebhookDeliveryKind {
+    /** A delivery webhook. */
     DELIVER_WEBHOOK("deliver_webhook"),
+    /** A notification webhook. */
     NOTIFY_WEBHOOK("notify_webhook");
 
     private final String wire;
@@ -14,12 +16,23 @@ public enum WebhookDeliveryKind {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static WebhookDeliveryKind fromWire(String value) {
         if (value == null) {

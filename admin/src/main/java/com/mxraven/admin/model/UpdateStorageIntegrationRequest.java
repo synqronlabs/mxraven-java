@@ -21,10 +21,16 @@ public record UpdateStorageIntegrationRequest(
         String endpointUrl,
         boolean forcePathStyle) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds {@link UpdateStorageIntegrationRequest} instances. */
     public static final class Builder {
         private String displayName;
         private String accessKey;
@@ -34,41 +40,89 @@ public record UpdateStorageIntegrationRequest(
         private String endpointUrl;
         private boolean forcePathStyle;
 
+        /**
+         * Sets the human-readable integration name.
+         *
+         * @param displayName human-readable integration name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the storage access key.
+         *
+         * @param accessKey storage access key
+         * @return this builder
+         */
         public Builder accessKey(String accessKey) {
             this.accessKey = accessKey;
             return this;
         }
 
+        /**
+         * Sets the storage secret key.
+         *
+         * @param secretKey storage secret key
+         * @return this builder
+         */
         public Builder secretKey(String secretKey) {
             this.secretKey = secretKey;
             return this;
         }
 
+        /**
+         * Sets the target bucket name.
+         *
+         * @param bucketName target bucket name
+         * @return this builder
+         */
         public Builder bucketName(String bucketName) {
             this.bucketName = bucketName;
             return this;
         }
 
+        /**
+         * Sets the bucket region.
+         *
+         * @param region bucket region
+         * @return this builder
+         */
         public Builder region(String region) {
             this.region = region;
             return this;
         }
 
+        /**
+         * Sets the custom S3-compatible endpoint; use an empty string for AWS.
+         *
+         * @param endpointUrl endpoint URL; may be empty for AWS
+         * @return this builder
+         */
         public Builder endpointUrl(String endpointUrl) {
             this.endpointUrl = endpointUrl;
             return this;
         }
 
+        /**
+         * Sets whether path-style bucket addressing is used.
+         *
+         * @param forcePathStyle whether path-style addressing is used
+         * @return this builder
+         */
         public Builder forcePathStyle(boolean forcePathStyle) {
             this.forcePathStyle = forcePathStyle;
             return this;
         }
 
+        /**
+         * Builds the request.
+         *
+         * @return the update request
+         * @throws IllegalArgumentException if a field fails validation
+         */
         public UpdateStorageIntegrationRequest build() {
             validateCommon(displayName, accessKey, secretKey, bucketName, region, endpointUrl);
             return new UpdateStorageIntegrationRequest(displayName, accessKey, secretKey, bucketName, region, endpointUrl, forcePathStyle);

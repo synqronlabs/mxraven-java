@@ -10,6 +10,13 @@ import java.util.List;
  *
  * <p>Replaces all writable fields; {@code textBody} and {@code htmlBody} may be
  * null.
+ *
+ * @param displayName human-readable template name
+ * @param fromAddress From address used for replies
+ * @param subject template subject
+ * @param textBody plain-text body; may be null
+ * @param htmlBody HTML body; may be null
+ * @param headers additional template headers
  */
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record UpdateAutoReplyTemplateRequest(
@@ -20,10 +27,16 @@ public record UpdateAutoReplyTemplateRequest(
         String htmlBody,
         List<AutoReplyTemplateHeader> headers) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds {@link UpdateAutoReplyTemplateRequest} instances. */
     public static final class Builder {
         private String displayName;
         private String fromAddress;
@@ -32,36 +45,78 @@ public record UpdateAutoReplyTemplateRequest(
         private String htmlBody;
         private List<AutoReplyTemplateHeader> headers;
 
+        /**
+         * Sets the human-readable template name.
+         *
+         * @param displayName human-readable template name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the From address used for replies.
+         *
+         * @param fromAddress From address used for replies
+         * @return this builder
+         */
         public Builder fromAddress(String fromAddress) {
             this.fromAddress = fromAddress;
             return this;
         }
 
+        /**
+         * Sets the template subject.
+         *
+         * @param subject template subject
+         * @return this builder
+         */
         public Builder subject(String subject) {
             this.subject = subject;
             return this;
         }
 
+        /**
+         * Sets the plain-text body.
+         *
+         * @param textBody plain-text body; may be null
+         * @return this builder
+         */
         public Builder textBody(String textBody) {
             this.textBody = textBody;
             return this;
         }
 
+        /**
+         * Sets the HTML body.
+         *
+         * @param htmlBody HTML body; may be null
+         * @return this builder
+         */
         public Builder htmlBody(String htmlBody) {
             this.htmlBody = htmlBody;
             return this;
         }
 
+        /**
+         * Sets the additional template headers.
+         *
+         * @param headers additional template headers
+         * @return this builder
+         */
         public Builder headers(List<AutoReplyTemplateHeader> headers) {
             this.headers = headers;
             return this;
         }
 
+        /**
+         * Builds the request.
+         *
+         * @return the update request
+         * @throws IllegalArgumentException if a field fails validation
+         */
         public UpdateAutoReplyTemplateRequest build() {
             if (displayName == null || displayName.isBlank()) {
                 throw new IllegalArgumentException("display_name is required");

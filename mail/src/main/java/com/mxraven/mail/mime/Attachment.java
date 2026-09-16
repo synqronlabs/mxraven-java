@@ -19,6 +19,9 @@ import java.nio.file.Path;
  */
 public record Attachment(String filename, String contentType, boolean inline, String contentId, byte[] data) {
 
+    /**
+     * Creates an attachment, replacing {@code null} fields with empty defaults.
+     */
     public Attachment {
         filename = filename == null ? "" : filename;
         contentType = contentType == null ? "application/octet-stream" : contentType;
@@ -30,7 +33,11 @@ public record Attachment(String filename, String contentType, boolean inline, St
         return data.clone();
     }
 
-    /** The decoded content length in bytes. */
+    /**
+     * The decoded content length in bytes.
+     *
+     * @return the content length
+     */
     public long size() {
         return data.length;
     }
@@ -40,7 +47,9 @@ public record Attachment(String filename, String contentType, boolean inline, St
      * existing directory and the attachment has a filename, the file is written
      * inside it under that name.
      *
+     * @param destination the target file or directory
      * @return the path actually written
+     * @throws IOException if the file cannot be written
      */
     public Path download(Path destination) throws IOException {
         Path target = Files.isDirectory(destination) && !filename.isEmpty()
@@ -50,22 +59,43 @@ public record Attachment(String filename, String contentType, boolean inline, St
         return target;
     }
 
-    /** Writes the attachment to {@code destination}. */
+    /**
+     * Writes the attachment to {@code destination}.
+     *
+     * @param destination the target file or directory
+     * @return the path actually written
+     * @throws IOException if the file cannot be written
+     */
     public Path download(File destination) throws IOException {
         return download(destination.toPath());
     }
 
-    /** Writes the attachment to {@code destination}. */
+    /**
+     * Writes the attachment to {@code destination}.
+     *
+     * @param destination the target file or directory
+     * @return the path actually written
+     * @throws IOException if the file cannot be written
+     */
     public Path download(String destination) throws IOException {
         return download(Path.of(destination));
     }
 
-    /** The decoded content as a stream. Callers own the returned stream. */
+    /**
+     * The decoded content as a stream. Callers own the returned stream.
+     *
+     * @return a stream over the decoded content
+     */
     public InputStream openStream() {
         return new ByteArrayInputStream(data);
     }
 
-    /** Writes the decoded content to {@code out} without closing it. */
+    /**
+     * Writes the decoded content to {@code out} without closing it.
+     *
+     * @param out the stream to write to
+     * @throws IOException if writing fails
+     */
     public void writeTo(OutputStream out) throws IOException {
         out.write(data);
     }

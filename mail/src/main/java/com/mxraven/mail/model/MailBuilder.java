@@ -45,30 +45,64 @@ public final class MailBuilder {
     private record Entity(String contentType, ContentTransferEncoding encoding, byte[] body) {
     }
 
+    /**
+     * Creates a new, empty builder.
+     *
+     * @return a new builder
+     */
     public static MailBuilder create() {
         return new MailBuilder();
     }
 
+    /**
+     * Sets the reverse path from an address string.
+     *
+     * @param address the sender address
+     * @return this builder
+     */
     public MailBuilder from(String address) {
         this.from = Path.of(address);
         return this;
     }
 
+    /**
+     * Sets the reverse path from a mailbox.
+     *
+     * @param mailbox the sender mailbox
+     * @return this builder
+     */
     public MailBuilder from(MailboxAddress mailbox) {
         this.from = Path.of(mailbox);
         return this;
     }
 
+    /**
+     * Sets the reverse path to the null address, {@code <>}.
+     *
+     * @return this builder
+     */
     public MailBuilder nullSender() {
         this.from = Path.nullPath();
         return this;
     }
 
+    /**
+     * Sets the {@code Sender} header value.
+     *
+     * @param address the sender address
+     * @return this builder
+     */
     public MailBuilder sender(String address) {
         this.sender = address;
         return this;
     }
 
+    /**
+     * Adds recipients to the {@code To} list.
+     *
+     * @param addresses the recipient addresses
+     * @return this builder
+     */
     public MailBuilder to(String... addresses) {
         for (String address : addresses) {
             to.add(Recipient.of(address));
@@ -76,6 +110,12 @@ public final class MailBuilder {
         return this;
     }
 
+    /**
+     * Adds recipients to the {@code Cc} list.
+     *
+     * @param addresses the recipient addresses
+     * @return this builder
+     */
     public MailBuilder cc(String... addresses) {
         for (String address : addresses) {
             cc.add(Recipient.of(address));
@@ -83,6 +123,13 @@ public final class MailBuilder {
         return this;
     }
 
+    /**
+     * Adds recipients to the {@code Bcc} list. Blind recipients are placed on the
+     * envelope but no {@code Bcc} header is written.
+     *
+     * @param addresses the recipient addresses
+     * @return this builder
+     */
     public MailBuilder bcc(String... addresses) {
         for (String address : addresses) {
             bcc.add(Recipient.of(address));
@@ -90,26 +137,60 @@ public final class MailBuilder {
         return this;
     }
 
+    /**
+     * Sets the {@code Subject} header.
+     *
+     * @param subject the subject text
+     * @return this builder
+     */
     public MailBuilder subject(String subject) {
         headers.add("Subject", subject);
         return this;
     }
 
+    /**
+     * Adds an arbitrary header field.
+     *
+     * @param name  the field name
+     * @param value the field value
+     * @return this builder
+     */
     public MailBuilder header(String name, String value) {
         headers.add(name, value);
         return this;
     }
 
+    /**
+     * Sets the {@code Message-ID} header, adding angle brackets when the identifier
+     * does not already carry them.
+     *
+     * @param id the message identifier
+     * @return this builder
+     */
     public MailBuilder messageId(String id) {
         headers.add("Message-ID", bracket(id));
         return this;
     }
 
+    /**
+     * Sets the {@code In-Reply-To} header, adding angle brackets when the
+     * identifier does not already carry them.
+     *
+     * @param messageId the identifier of the message being replied to
+     * @return this builder
+     */
     public MailBuilder inReplyTo(String messageId) {
         headers.add("In-Reply-To", bracket(messageId));
         return this;
     }
 
+    /**
+     * Sets the {@code References} header from the given message identifiers,
+     * separated by spaces.
+     *
+     * @param messageIds the referenced message identifiers
+     * @return this builder
+     */
     public MailBuilder references(String... messageIds) {
         StringBuilder value = new StringBuilder();
         for (String messageId : messageIds) {
@@ -122,30 +203,62 @@ public final class MailBuilder {
         return this;
     }
 
+    /**
+     * Sets the {@code Reply-To} header.
+     *
+     * @param address the reply address
+     * @return this builder
+     */
     public MailBuilder replyTo(String address) {
         headers.add("Reply-To", address);
         return this;
     }
 
+    /**
+     * Sets the {@code Date} header from an instant, rendered in the system default
+     * time zone.
+     *
+     * @param date the message date
+     * @return this builder
+     */
     public MailBuilder date(Instant date) {
         headers.add("Date", DateTimeFormatter.RFC_1123_DATE_TIME
                 .format(date.atZone(ZoneId.systemDefault())));
         return this;
     }
 
-    /** Sets a plain-text body. Combined with {@link #htmlBody} this becomes {@code multipart/alternative}. */
+    /**
+     * Sets a plain-text body. Combined with {@link #htmlBody} this becomes
+     * {@code multipart/alternative}.
+     *
+     * @param text the plain-text body
+     * @return this builder
+     */
     public MailBuilder textBody(String text) {
         this.textBody = text;
         return this;
     }
 
-    /** Sets an HTML body. Combined with {@link #textBody} this becomes {@code multipart/alternative}. */
+    /**
+     * Sets an HTML body. Combined with {@link #textBody} this becomes
+     * {@code multipart/alternative}.
+     *
+     * @param html the HTML body
+     * @return this builder
+     */
     public MailBuilder htmlBody(String html) {
         this.htmlBody = html;
         return this;
     }
 
-    /** Sets a raw body whose bytes are already encoded and written as-is. */
+    /**
+     * Sets a raw body whose bytes are already encoded and written as-is.
+     *
+     * @param data        the raw body bytes
+     * @param contentType the body content type
+     * @param encoding    the content transfer encoding
+     * @return this builder
+     */
     public MailBuilder body(byte[] data, String contentType, ContentTransferEncoding encoding) {
         this.rawBody = data;
         this.rawContentType = contentType;
@@ -153,59 +266,137 @@ public final class MailBuilder {
         return this;
     }
 
-    /** Adds a file attachment, base64-encoded. */
+    /**
+     * Adds a file attachment, base64-encoded.
+     *
+     * @param filename    the attachment filename
+     * @param data        the attachment bytes
+     * @param contentType the media type
+     * @return this builder
+     */
     public MailBuilder attachFile(String filename, byte[] data, MimeType contentType) {
         return attachFile(filename, data, wire(contentType));
     }
 
-    /** Adds a file attachment with a custom (non-enumerated) content type. */
+    /**
+     * Adds a file attachment with a custom (non-enumerated) content type.
+     *
+     * @param filename    the attachment filename
+     * @param data        the attachment bytes
+     * @param contentType the content type string
+     * @return this builder
+     */
     public MailBuilder attachFile(String filename, byte[] data, String contentType) {
         attachments.add(new PendingAttachment(filename, orDefault(contentType), data, false, null));
         return this;
     }
 
-    /** Adds an inline attachment (for example an HTML-embedded image). */
+    /**
+     * Adds an inline attachment (for example an HTML-embedded image).
+     *
+     * @param filename    the attachment filename
+     * @param contentId   the {@code Content-ID} to reference the part
+     * @param data        the attachment bytes
+     * @param contentType the media type
+     * @return this builder
+     */
     public MailBuilder attachInline(String filename, String contentId, byte[] data, MimeType contentType) {
         return attachInline(filename, contentId, data, wire(contentType));
     }
 
-    /** Adds an inline attachment with a custom (non-enumerated) content type. */
+    /**
+     * Adds an inline attachment with a custom (non-enumerated) content type.
+     *
+     * @param filename    the attachment filename
+     * @param contentId   the {@code Content-ID} to reference the part
+     * @param data        the attachment bytes
+     * @param contentType the content type string
+     * @return this builder
+     */
     public MailBuilder attachInline(String filename, String contentId, byte[] data, String contentType) {
         attachments.add(new PendingAttachment(filename, orDefault(contentType), data, true, contentId));
         return this;
     }
 
-    /** Adds a file attachment, reading {@code file} and guessing its content type. */
+    /**
+     * Adds a file attachment, reading {@code file} and guessing its content type.
+     *
+     * @param file the file to attach
+     * @return this builder
+     * @throws IOException if {@code file} cannot be read
+     */
     public MailBuilder attachFile(File file) throws IOException {
         return attachFile(file.toPath());
     }
 
-    /** Adds a file attachment, reading {@code file} with an explicit content type. */
+    /**
+     * Adds a file attachment, reading {@code file} with an explicit content type.
+     *
+     * @param file        the file to attach
+     * @param contentType the media type
+     * @return this builder
+     * @throws IOException if {@code file} cannot be read
+     */
     public MailBuilder attachFile(File file, MimeType contentType) throws IOException {
         return attachFile(file.toPath(), contentType);
     }
 
-    /** Adds a file attachment, reading {@code path} and guessing its content type. */
+    /**
+     * Adds a file attachment, reading {@code path} and guessing its content type.
+     *
+     * @param path the file to attach
+     * @return this builder
+     * @throws IOException if {@code path} cannot be read
+     */
     public MailBuilder attachFile(java.nio.file.Path path) throws IOException {
         return attachFile(path, MimeType.fromPath(path));
     }
 
-    /** Adds a file attachment, reading {@code path} with an explicit content type. */
+    /**
+     * Adds a file attachment, reading {@code path} with an explicit content type.
+     *
+     * @param path        the file to attach
+     * @param contentType the media type
+     * @return this builder
+     * @throws IOException if {@code path} cannot be read
+     */
     public MailBuilder attachFile(java.nio.file.Path path, MimeType contentType) throws IOException {
         return attachFile(path.getFileName().toString(), Files.readAllBytes(path), contentType);
     }
 
-    /** Adds an inline attachment, reading {@code file} and guessing its content type. */
+    /**
+     * Adds an inline attachment, reading {@code file} and guessing its content type.
+     *
+     * @param file      the file to attach
+     * @param contentId the {@code Content-ID} to reference the part
+     * @return this builder
+     * @throws IOException if {@code file} cannot be read
+     */
     public MailBuilder attachInline(File file, String contentId) throws IOException {
         return attachInline(file.toPath(), contentId);
     }
 
-    /** Adds an inline attachment, reading {@code path} and guessing its content type. */
+    /**
+     * Adds an inline attachment, reading {@code path} and guessing its content type.
+     *
+     * @param path      the file to attach
+     * @param contentId the {@code Content-ID} to reference the part
+     * @return this builder
+     * @throws IOException if {@code path} cannot be read
+     */
     public MailBuilder attachInline(java.nio.file.Path path, String contentId) throws IOException {
         return attachInline(path, contentId, MimeType.fromPath(path));
     }
 
-    /** Adds an inline attachment, reading {@code path} with an explicit content type. */
+    /**
+     * Adds an inline attachment, reading {@code path} with an explicit content type.
+     *
+     * @param path        the file to attach
+     * @param contentId   the {@code Content-ID} to reference the part
+     * @param contentType the media type
+     * @return this builder
+     * @throws IOException if {@code path} cannot be read
+     */
     public MailBuilder attachInline(java.nio.file.Path path, String contentId, MimeType contentType)
             throws IOException {
         return attachInline(path.getFileName().toString(), contentId, Files.readAllBytes(path), contentType);
@@ -221,6 +412,14 @@ public final class MailBuilder {
                 : contentType;
     }
 
+    /**
+     * Builds the message, encoding bodies, assembling multipart structures, and
+     * generating default {@code Date} and {@code Message-ID} headers when absent.
+     *
+     * @return the built message
+     * @throws IllegalStateException if no reverse path was set or no recipient was
+     *                               added
+     */
     public Mail build() {
         if (from == null) {
             throw new IllegalStateException("from address is required (or call nullSender())");

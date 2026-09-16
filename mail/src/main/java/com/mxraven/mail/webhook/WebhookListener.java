@@ -27,6 +27,10 @@ package com.mxraven.mail.webhook;
  */
 @FunctionalInterface
 public interface WebhookListener {
-    /** Handles one verified event. */
+    /**
+     * Handles one verified event.
+     *
+     * @param event the verified event
+     */
     void onEvent(WebhookEvent event);
 }

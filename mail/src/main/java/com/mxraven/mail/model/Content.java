@@ -11,15 +11,30 @@ import java.nio.charset.StandardCharsets;
  * <p>{@link #toRaw()} serializes the content to wire bytes. Note that the body
  * is written as-is; apply the transfer encoding when building the message (as
  * {@link MailBuilder} does) rather than here.
+ *
+ * @param headers  the header block; a {@code null} value is replaced with an empty
+ *                 {@link Headers}
+ * @param body     the transfer-encoded body bytes; a {@code null} value is replaced
+ *                 with an empty array
+ * @param encoding the applied content transfer encoding; a {@code null} value is
+ *                 replaced with {@link ContentTransferEncoding#SEVEN_BIT}
+ * @param charset  the declared character set, or {@code null}
  */
 public record Content(Headers headers, byte[] body, ContentTransferEncoding encoding, String charset) {
+    /**
+     * Creates content, replacing {@code null} fields with empty defaults.
+     */
     public Content {
         headers = headers == null ? new Headers() : headers;
         body = body == null ? new byte[0] : body;
         encoding = encoding == null ? ContentTransferEncoding.SEVEN_BIT : encoding;
     }
 
-    /** Serializes the header block and body to raw message bytes. */
+    /**
+     * Serializes the header block and body to raw message bytes.
+     *
+     * @return the serialized message, with CRLF line endings between fields
+     */
     public byte[] toRaw() {
         ByteArrayOutputStream out = new ByteArrayOutputStream(body.length + 256);
         for (Header header : headers.fields()) {

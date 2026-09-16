@@ -20,16 +20,32 @@ public final class SuppressionsClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Creates a client bound to the given tenant.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug
+     */
     public SuppressionsClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
-    /** Start a typed, fluent list request. */
+    /**
+     * Starts a typed, fluent list request.
+     *
+     * @return a new suppression query
+     */
     public SuppressionQuery query() {
         return new SuppressionQuery(this);
     }
 
+    /**
+     * Lists suppressions for the tenant.
+     *
+     * @return a lazily paginated collection of tenant suppressions
+     * @throws IOException if the request fails or is interrupted
+     */
     public Paged<TenantSuppression> list() throws IOException {
         return list(null);
     }
@@ -39,12 +55,26 @@ public final class SuppressionsClient {
                 .map(data -> new TenantSuppression(client, one(data.emailAddress()), data));
     }
 
+    /**
+     * Creates a suppression configured through the given builder consumer.
+     *
+     * @param configure consumer that populates the creation request builder
+     * @return the created suppression
+     * @throws IOException if the request fails or is interrupted
+     */
     public TenantSuppression create(Consumer<CreateTenantSuppressionRequest.Builder> configure) throws IOException {
         CreateTenantSuppressionRequest.Builder builder = CreateTenantSuppressionRequest.builder();
         configure.accept(builder);
         return create(builder.build());
     }
 
+    /**
+     * Creates a suppression described by the given request.
+     *
+     * @param request suppression creation request
+     * @return the created suppression
+     * @throws IOException if the request fails or is interrupted
+     */
     public TenantSuppression create(CreateTenantSuppressionRequest request) throws IOException {
         TenantSuppressionData data = client.post(base(), request).as(TenantSuppressionData.class);
         return new TenantSuppression(client, one(data.emailAddress()), data);
@@ -62,6 +92,13 @@ public final class SuppressionsClient {
         return URLEncoder.encode(segment, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Gets a suppression by email address.
+     *
+     * @param emailAddress suppressed email address
+     * @return the suppression
+     * @throws IOException if the request fails or is interrupted
+     */
     public TenantSuppression get(String emailAddress) throws IOException {
         String resourcePath = one(emailAddress);
         return new TenantSuppression(client, resourcePath, client.get(resourcePath).as(TenantSuppressionData.class));

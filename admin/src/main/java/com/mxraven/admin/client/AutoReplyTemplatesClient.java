@@ -20,11 +20,24 @@ public final class AutoReplyTemplatesClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Create a client for the auto-reply-template collection of a tenant.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug whose templates are accessed
+     */
     public AutoReplyTemplatesClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
+    /**
+     * List the auto-reply templates (first page fetched eagerly, remaining pages
+     * lazy).
+     *
+     * @return a lazily paginating collection of auto-reply templates
+     * @throws IOException if the first page request fails or is interrupted
+     */
     public Paged<AutoReplyTemplate> list() throws IOException {
         return list(null);
     }
@@ -34,12 +47,26 @@ public final class AutoReplyTemplatesClient {
                 .map(data -> new AutoReplyTemplate(client, one(data.id()), data));
     }
 
+    /**
+     * Create an auto-reply template from a configured builder.
+     *
+     * @param configure consumer that configures the request builder
+     * @return the created auto-reply template
+     * @throws IOException if the request fails or is interrupted
+     */
     public AutoReplyTemplate create(Consumer<CreateAutoReplyTemplateRequest.Builder> configure) throws IOException {
         CreateAutoReplyTemplateRequest.Builder builder = CreateAutoReplyTemplateRequest.builder();
         configure.accept(builder);
         return create(builder.build());
     }
 
+    /**
+     * Create an auto-reply template.
+     *
+     * @param request creation request
+     * @return the created auto-reply template
+     * @throws IOException if the request fails or is interrupted
+     */
     public AutoReplyTemplate create(CreateAutoReplyTemplateRequest request) throws IOException {
         AutoReplyTemplateData data = client.post(base(), request).as(AutoReplyTemplateData.class);
         return new AutoReplyTemplate(client, one(data.id()), data);
@@ -57,12 +84,25 @@ public final class AutoReplyTemplatesClient {
         return URLEncoder.encode(segment, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Get an auto-reply template by its identifier.
+     *
+     * @param templateId template identifier
+     * @return the hydrated auto-reply template
+     * @throws IOException if the request fails or is interrupted
+     */
     public AutoReplyTemplate get(String templateId) throws IOException {
         String resourcePath = one(templateId);
         return new AutoReplyTemplate(client, resourcePath, client.get(resourcePath).as(AutoReplyTemplateData.class));
     }
 
-    /** Get an auto-reply template by its immutable {@code template_ref}. */
+    /**
+     * Get an auto-reply template by its immutable {@code template_ref}.
+     *
+     * @param templateRef immutable template reference
+     * @return the hydrated auto-reply template
+     * @throws IOException if the request fails or is interrupted
+     */
     public AutoReplyTemplate getByRef(String templateRef) throws IOException {
         String refPath = base() + "/ref/" + encode(templateRef);
         AutoReplyTemplateData data = client.get(refPath).as(AutoReplyTemplateData.class);

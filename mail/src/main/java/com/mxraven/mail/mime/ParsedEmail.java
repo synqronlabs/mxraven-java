@@ -39,67 +39,121 @@ public final class ParsedEmail {
         this.leaves = List.copyOf(collected);
     }
 
-    /** Parses a complete raw message. */
+    /**
+     * Parses a complete raw message.
+     *
+     * @param raw the raw message bytes
+     * @return the parsed email
+     */
     public static ParsedEmail parse(byte[] raw) {
         return new ParsedEmail(MimeParser.parse(raw));
     }
 
-    /** Wraps an already-parsed MIME tree. */
+    /**
+     * Wraps an already-parsed MIME tree.
+     *
+     * @param root the root MIME entity
+     * @return the parsed email view
+     */
     public static ParsedEmail of(MimePart root) {
         return new ParsedEmail(root);
     }
 
-    /** The root MIME entity. */
+    /**
+     * The root MIME entity.
+     *
+     * @return the root part
+     */
     public MimePart mime() {
         return root;
     }
 
-    /** The top-level message headers (raw, undecoded). */
+    /**
+     * The top-level message headers (raw, undecoded).
+     *
+     * @return the root headers
+     */
     public Headers headers() {
         return root.headers();
     }
 
-    /** The decoded {@code Subject}, or {@code ""} when absent. */
+    /**
+     * The decoded {@code Subject}, or {@code ""} when absent.
+     *
+     * @return the decoded subject
+     */
     public String subject() {
         return EncodedWords.decode(root.headers().first("Subject").orElse(""));
     }
 
-    /** The decoded {@code From} mailboxes. */
+    /**
+     * The decoded {@code From} mailboxes.
+     *
+     * @return the sender mailboxes, empty when the header is absent
+     */
     public List<MailboxAddress> from() {
         return addresses(root.headers().first("From").orElse(null));
     }
 
-    /** The decoded {@code To} mailboxes. */
+    /**
+     * The decoded {@code To} mailboxes.
+     *
+     * @return the recipient mailboxes, empty when the header is absent
+     */
     public List<MailboxAddress> to() {
         return addresses(root.headers().first("To").orElse(null));
     }
 
-    /** The decoded {@code Cc} mailboxes. */
+    /**
+     * The decoded {@code Cc} mailboxes.
+     *
+     * @return the carbon-copy mailboxes, empty when the header is absent
+     */
     public List<MailboxAddress> cc() {
         return addresses(root.headers().first("Cc").orElse(null));
     }
 
-    /** The {@code Message-ID}, when present. */
+    /**
+     * The {@code Message-ID}, when present.
+     *
+     * @return the trimmed message identifier, or empty
+     */
     public Optional<String> messageId() {
         return root.headers().first("Message-ID").map(String::trim).filter(value -> !value.isEmpty());
     }
 
-    /** The parsed {@code Date}, when present and recognizable. */
+    /**
+     * The parsed {@code Date}, when present and recognizable.
+     *
+     * @return the parsed instant, or empty
+     */
     public Optional<Instant> date() {
         return root.headers().first("Date").flatMap(ParsedEmail::parseDate);
     }
 
-    /** The first non-attachment {@code text/plain} body. */
+    /**
+     * The first non-attachment {@code text/plain} body.
+     *
+     * @return the plain-text body, or empty when none is present
+     */
     public Optional<String> textBody() {
         return firstBody("text/plain");
     }
 
-    /** The first non-attachment {@code text/html} body. */
+    /**
+     * The first non-attachment {@code text/html} body.
+     *
+     * @return the HTML body, or empty when none is present
+     */
     public Optional<String> htmlBody() {
         return firstBody("text/html");
     }
 
-    /** Every attachment (or inline part) in the message. */
+    /**
+     * Every attachment (or inline part) in the message.
+     *
+     * @return an immutable list of the decoded attachments
+     */
     public List<Attachment> attachments() {
         List<Attachment> out = new ArrayList<>();
         for (MimePart part : leaves) {

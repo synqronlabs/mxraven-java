@@ -43,17 +43,37 @@ public record RawEmail(
     private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(30);
     private static final long MAX_BYTES = 64L << 20;
 
-    /** Downloads the message with a default client and a 60-second timeout. */
+    /**
+     * Downloads the message with a default client and a 60-second timeout.
+     *
+     * @return the raw message bytes
+     * @throws IOException      when the download fails
+     * @throws WebhookException when the URL or access token is empty, the response
+     *                          is not {@code 200}, or the size or digest does not match
+     */
     public byte[] fetch() throws IOException {
         return fetch(null);
     }
 
-    /** Downloads the message and parses it into a {@link ParsedEmail}. */
+    /**
+     * Downloads the message and parses it into a {@link ParsedEmail}.
+     *
+     * @return the parsed message
+     * @throws IOException      when the download fails
+     * @throws WebhookException when the fetch fails
+     */
     public ParsedEmail parse() throws IOException {
         return ParsedEmail.parse(fetch());
     }
 
-    /** Downloads with {@code client} and parses it into a {@link ParsedEmail}. */
+    /**
+     * Downloads with {@code client} and parses it into a {@link ParsedEmail}.
+     *
+     * @param client the HTTP client to download with, or {@code null} for a default client
+     * @return the parsed message
+     * @throws IOException      when the download fails
+     * @throws WebhookException when the fetch fails
+     */
     public ParsedEmail parse(HttpClient client) throws IOException {
         return ParsedEmail.parse(fetch(client));
     }
@@ -61,6 +81,12 @@ public record RawEmail(
     /**
      * Downloads the message, verifying the declared size and SHA-256 digest.
      * A {@code null} client uses a default client with a 60-second timeout.
+     *
+     * @param client the HTTP client to download with, or {@code null} for a default client
+     * @return the raw message bytes
+     * @throws IOException      when the download fails
+     * @throws WebhookException when the URL or access token is empty, the response
+     *                          is not {@code 200}, or the size or digest does not match
      */
     public byte[] fetch(HttpClient client) throws IOException {
         if (url == null || url.isBlank()) {

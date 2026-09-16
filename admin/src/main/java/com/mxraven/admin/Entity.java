@@ -14,15 +14,36 @@ import java.io.IOException;
  * @param <D> the wire record backing this entity
  */
 public abstract class Entity<D> {
+    /** The client used to issue requests for this entity. */
     protected final AdminClient client;
+
+    /** Client-relative path of this resource. */
     protected final String path;
+
+    /** Raw wire record backing this entity. */
     protected final D data;
+
     private volatile boolean deleted;
 
+    /**
+     * Creates an entity bound to a client, path, and backing data.
+     *
+     * @param client admin client used for requests
+     * @param path resource path
+     * @param data backing wire record
+     */
     protected Entity(AdminClient client, String path, D data) {
         this(client, path, data, false);
     }
 
+    /**
+     * Creates an entity bound to a client, path, backing data, and delete state.
+     *
+     * @param client admin client used for requests
+     * @param path resource path
+     * @param data backing wire record
+     * @param deleted whether the entity is considered deleted
+     */
     protected Entity(AdminClient client, String path, D data, boolean deleted) {
         this.client = client;
         this.path = path;
@@ -30,7 +51,11 @@ public abstract class Entity<D> {
         this.deleted = deleted;
     }
 
-    /** The raw wire record backing this entity. */
+    /**
+     * The raw wire record backing this entity.
+     *
+     * @return the underlying wire record
+     */
     public D data() {
         return data;
     }
@@ -38,6 +63,8 @@ public abstract class Entity<D> {
     /**
      * Whether this entity has been deleted through this instance. Local state
      * only; not authoritative server state.
+     *
+     * @return {@code true} if deleted through this instance
      */
     public boolean isDeleted() {
         return deleted;
@@ -46,6 +73,10 @@ public abstract class Entity<D> {
     /**
      * Delete this resource. Idempotent: once this instance has deleted it,
      * further calls are a local no-op.
+     *
+     * @return {@code true} once the resource has been deleted through this
+     *         instance
+     * @throws IOException if the delete request fails or is interrupted
      */
     public boolean delete() throws IOException {
         if (deleted) {
@@ -56,6 +87,11 @@ public abstract class Entity<D> {
         return deleted;
     }
 
+    /**
+     * Returns the client-relative path of this resource.
+     *
+     * @return the resource path
+     */
     protected String path() {
         return path;
     }

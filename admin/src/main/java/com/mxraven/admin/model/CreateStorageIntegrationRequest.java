@@ -24,10 +24,16 @@ public record CreateStorageIntegrationRequest(
         String endpointUrl,
         boolean forcePathStyle) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds a {@link CreateStorageIntegrationRequest}. */
     public static final class Builder {
         private String storageRef;
         private String displayName;
@@ -38,41 +44,89 @@ public record CreateStorageIntegrationRequest(
         private String endpointUrl;
         private boolean forcePathStyle;
 
+        /**
+         * Sets the immutable storage reference.
+         *
+         * @param storageRef storage reference
+         * @return this builder
+         */
         public Builder storageRef(String storageRef) {
             this.storageRef = storageRef;
             return this;
         }
 
+        /**
+         * Sets the human-readable integration name.
+         *
+         * @param displayName integration name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the storage access key.
+         *
+         * @param accessKey access key
+         * @return this builder
+         */
         public Builder accessKey(String accessKey) {
             this.accessKey = accessKey;
             return this;
         }
 
+        /**
+         * Sets the storage secret key.
+         *
+         * @param secretKey secret key
+         * @return this builder
+         */
         public Builder secretKey(String secretKey) {
             this.secretKey = secretKey;
             return this;
         }
 
+        /**
+         * Sets the target bucket name.
+         *
+         * @param bucketName bucket name
+         * @return this builder
+         */
         public Builder bucketName(String bucketName) {
             this.bucketName = bucketName;
             return this;
         }
 
+        /**
+         * Sets the bucket region.
+         *
+         * @param region bucket region
+         * @return this builder
+         */
         public Builder region(String region) {
             this.region = region;
             return this;
         }
 
+        /**
+         * Sets the custom S3-compatible endpoint.
+         *
+         * @param endpointUrl endpoint URL; empty for AWS
+         * @return this builder
+         */
         public Builder endpointUrl(String endpointUrl) {
             this.endpointUrl = endpointUrl;
             return this;
         }
 
+        /**
+         * Sets whether to use path-style bucket addressing.
+         *
+         * @param forcePathStyle path-style flag
+         * @return this builder
+         */
         public Builder forcePathStyle(boolean forcePathStyle) {
             this.forcePathStyle = forcePathStyle;
             return this;
@@ -80,6 +134,12 @@ public record CreateStorageIntegrationRequest(
 
         private static final Pattern REFERENCE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]*$");
 
+        /**
+         * Builds the request.
+         *
+         * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
+         */
         public CreateStorageIntegrationRequest build() {
             if (storageRef == null || storageRef.isBlank()) {
                 throw new IllegalArgumentException("storage_ref is required");

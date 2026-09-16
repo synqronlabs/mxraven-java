@@ -24,13 +24,19 @@ import java.io.IOException;
  */
 public sealed interface WebhookEvent permits InboundEmail, DeliveryStatus, StorageStatus {
 
-    /** Identifies the payload shape. */
+    /**
+     * Identifies the payload shape.
+     *
+     * @return the event type
+     */
     WebhookEventType type();
 
     /**
      * The delivery task ID. Stable across retries and shared by status
      * callbacks for the same task; use it to deduplicate at-least-once
      * deliveries.
+     *
+     * @return the delivery task ID
      */
     String taskId();
 
@@ -45,7 +51,9 @@ public sealed interface WebhookEvent permits InboundEmail, DeliveryStatus, Stora
      * {@link WebhookVerifier#verifyAndDecode} first when the payload came from
      * the network.
      *
-     * @throws WebhookException when the body is not a recognized payload
+     * @param body the raw JSON payload bytes
+     * @return the decoded event
+     * @throws WebhookException when the body is null or not a recognized payload
      */
     static WebhookEvent decode(byte[] body) {
         if (body == null) {

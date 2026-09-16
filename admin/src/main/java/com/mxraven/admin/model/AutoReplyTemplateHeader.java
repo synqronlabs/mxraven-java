@@ -4,6 +4,9 @@ import java.util.List;
 
 /**
  * A custom header stored on an auto-reply template.
+ *
+ * @param name header name
+ * @param value header value
  */
 public record AutoReplyTemplateHeader(
         String name,

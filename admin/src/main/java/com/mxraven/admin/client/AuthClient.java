@@ -13,6 +13,11 @@ import java.nio.charset.StandardCharsets;
 public final class AuthClient {
     private final AdminClient client;
 
+    /**
+     * Create a client for the public authentication-context operations.
+     *
+     * @param client underlying admin client
+     */
     public AuthClient(AdminClient client) {
         this.client = client;
     }
@@ -22,6 +27,10 @@ public final class AuthClient {
      *
      * <p>Unknown, unavailable, suspended, deleted, and unprovisioned tenants all
      * return the same not-found problem. The tenant path segment is URL-encoded.
+     *
+     * @param tenantSlug tenant slug to resolve
+     * @return the resolved tenant login context
+     * @throws IOException if the request fails or is interrupted
      */
     public TenantLoginContext loginContext(String tenantSlug) throws IOException {
         return client.get("/auth/tenants/" + URLEncoder.encode(tenantSlug, StandardCharsets.UTF_8)

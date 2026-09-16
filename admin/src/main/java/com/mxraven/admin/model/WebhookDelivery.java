@@ -5,6 +5,17 @@ package com.mxraven.admin.model;
  * bodies, and raw upstream errors are not exposed.
  *
  * <p>{@code deliveryKind} is {@code deliver_webhook} or {@code notify_webhook}.
+ *
+ * @param id unique delivery identifier
+ * @param taskId identifier of the delivery task
+ * @param listenerId identifier of the listener that produced the delivery
+ * @param deliveryKind kind of webhook delivery
+ * @param outcome delivery outcome
+ * @param attempt one-based attempt number
+ * @param statusCode HTTP response status code, if any
+ * @param targetUrlHost host of the delivery target
+ * @param signingKid key identifier used to sign the delivery
+ * @param occurredAt timestamp when the attempt occurred
  */
 public record WebhookDelivery(
         String id,

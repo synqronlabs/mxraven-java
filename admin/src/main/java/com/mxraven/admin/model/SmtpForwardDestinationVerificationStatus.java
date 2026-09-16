@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Verification status of an SMTP forward destination. */
 public enum SmtpForwardDestinationVerificationStatus {
+    /** Verification has not completed. */
     PENDING("pending"),
+    /** Ownership has been verified. */
     VERIFIED("verified");
 
     private final String wire;
@@ -14,12 +16,23 @@ public enum SmtpForwardDestinationVerificationStatus {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static SmtpForwardDestinationVerificationStatus fromWire(String value) {
         if (value == null) {

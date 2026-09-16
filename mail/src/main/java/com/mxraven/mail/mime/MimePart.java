@@ -40,57 +40,102 @@ public final class MimePart {
         this.parts = parts;
     }
 
-    /** The part's headers. */
+    /**
+     * The part's headers.
+     *
+     * @return the headers
+     */
     public Headers headers() {
         return headers;
     }
 
-    /** The lowercased media type, for example {@code "text/html"}. */
+    /**
+     * The lowercased media type, for example {@code "text/html"}.
+     *
+     * @return the media type
+     */
     public String mediaType() {
         return mediaType;
     }
 
-    /** The declared charset, or {@code null} when the part did not declare one. */
+    /**
+     * The declared charset, or {@code null} when the part did not declare one.
+     *
+     * @return the charset, or {@code null}
+     */
     public String charset() {
         return charset;
     }
 
-    /** The declared content transfer encoding. */
+    /**
+     * The declared content transfer encoding.
+     *
+     * @return the content transfer encoding
+     */
     public ContentTransferEncoding encoding() {
         return encoding;
     }
 
-    /** The attachment filename, if any. */
+    /**
+     * The attachment filename, if any.
+     *
+     * @return the filename, or empty
+     */
     public Optional<String> filename() {
         return Optional.ofNullable(filename);
     }
 
-    /** The {@code Content-ID} value without angle brackets, if any. */
+    /**
+     * The {@code Content-ID} value without angle brackets, if any.
+     *
+     * @return the content identifier, or empty
+     */
     public Optional<String> contentId() {
         return Optional.ofNullable(contentId);
     }
 
-    /** The content disposition token, for example {@code "attachment"} or {@code "inline"}. */
+    /**
+     * The content disposition token, for example {@code "attachment"} or
+     * {@code "inline"}.
+     *
+     * @return the disposition token, or empty
+     */
     public Optional<String> disposition() {
         return Optional.ofNullable(disposition);
     }
 
-    /** Whether this part is multipart and has children. */
+    /**
+     * Whether this part is multipart and has children.
+     *
+     * @return {@code true} when this part has child parts
+     */
     public boolean isMultipart() {
         return !parts.isEmpty();
     }
 
-    /** Child parts of a multipart entity, in order. */
+    /**
+     * Child parts of a multipart entity, in order.
+     *
+     * @return the child parts
+     */
     public List<MimePart> parts() {
         return parts;
     }
 
-    /** The raw, still transfer-encoded body bytes. */
+    /**
+     * The raw, still transfer-encoded body bytes.
+     *
+     * @return a copy of the raw body bytes
+     */
     public byte[] rawBody() {
         return rawBody.clone();
     }
 
-    /** The transfer-decoded body bytes. */
+    /**
+     * The transfer-decoded body bytes.
+     *
+     * @return a copy of the decoded body bytes
+     */
     public byte[] decodedBody() {
         return switch (encoding) {
             case BASE64 -> Base64.getMimeDecoder().decode(rawBody);
@@ -99,7 +144,11 @@ public final class MimePart {
         };
     }
 
-    /** The decoded body interpreted as text using the declared charset. */
+    /**
+     * The decoded body interpreted as text using the declared charset.
+     *
+     * @return the decoded text
+     */
     public String text() {
         return EncodedWords.decodeCharset(decodedBody(), charset);
     }
@@ -107,6 +156,8 @@ public final class MimePart {
     /**
      * Whether this part is an attachment: an explicit {@code attachment}
      * disposition or any part carrying a filename.
+     *
+     * @return {@code true} when this part is treated as an attachment
      */
     public boolean isAttachment() {
         if (disposition != null && disposition.equalsIgnoreCase("attachment")) {
@@ -115,7 +166,12 @@ public final class MimePart {
         return filename != null && !isTextBody();
     }
 
-    /** Whether this part is a body text part ({@code text/plain} or {@code text/html}). */
+    /**
+     * Whether this part is a body text part ({@code text/plain} or
+     * {@code text/html}).
+     *
+     * @return {@code true} when this part is {@code text/plain} or {@code text/html}
+     */
     public boolean isTextBody() {
         String type = mediaType.toLowerCase(Locale.ROOT);
         return type.equals("text/plain") || type.equals("text/html");

@@ -10,21 +10,37 @@ import com.mxraven.mail.exception.MxRavenException;
  * succeed if retried later.
  */
 public final class FeedbackException extends MxRavenException {
+    /** The HTTP response status. */
     private final int statusCode;
+    /** The service's error message, or {@code null} when none was returned. */
     private final String detail;
 
+    /**
+     * Creates an exception for a non-success response.
+     *
+     * @param statusCode the HTTP response status
+     * @param detail     the service's error message, or {@code null} when none was returned
+     */
     public FeedbackException(int statusCode, String detail) {
         super(message(statusCode, detail));
         this.statusCode = statusCode;
         this.detail = detail;
     }
 
-    /** The HTTP response status. */
+    /**
+     * Returns the HTTP response status.
+     *
+     * @return the HTTP status code
+     */
     public int statusCode() {
         return statusCode;
     }
 
-    /** The service's error message, or {@code null} when none was returned. */
+    /**
+     * Returns the service's error message, or {@code null} when none was returned.
+     *
+     * @return the service error detail, or {@code null}
+     */
     public String detail() {
         return detail;
     }
@@ -32,6 +48,8 @@ public final class FeedbackException extends MxRavenException {
     /**
      * Whether the request may succeed if retried later. Rate limits (429) and
      * server-side failures (5xx) are retryable.
+     *
+     * @return {@code true} when the request is retryable
      */
     public boolean retryable() {
         return statusCode == 429 || statusCode >= 500;

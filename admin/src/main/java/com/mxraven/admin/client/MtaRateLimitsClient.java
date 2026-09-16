@@ -17,21 +17,48 @@ public final class MtaRateLimitsClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Create a client for the tenant-level MTA rate-limit override.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug whose override is accessed
+     */
     public MtaRateLimitsClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
+    /**
+     * Get the tenant's MTA rate-limit override, including the inherited policy.
+     *
+     * @return the current tenant rate-limit override
+     * @throws IOException if the request fails or is interrupted
+     */
     public MTARateLimitOverride get() throws IOException {
         return client.get(tenantPath()).as(MTARateLimitOverride.class);
     }
 
+    /**
+     * Replace the tenant's MTA rate-limit override. The policy must not be looser
+     * than the currently inherited limits.
+     *
+     * @param policy replacement policy; only tighter than the inherited limits
+     * @return the updated tenant rate-limit override
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the policy is looser than the inherited
+     *                                  limits
+     */
     public MTARateLimitOverride put(MTARateLimitPolicy policy) throws IOException {
         MTARateLimitOverride current = get();
         policy.validateStricterThan(current.inherited());
         return client.put(tenantPath(), policy).as(MTARateLimitOverride.class);
     }
 
+    /**
+     * Remove the tenant's MTA rate-limit override so it inherits again.
+     *
+     * @throws IOException if the request fails or is interrupted
+     */
     public void delete() throws IOException {
         client.delete(tenantPath());
     }

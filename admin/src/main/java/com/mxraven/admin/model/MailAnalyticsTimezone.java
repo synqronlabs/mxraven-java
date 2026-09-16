@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Timezone used by mail analytics. */
 public enum MailAnalyticsTimezone {
+    /** Coordinated Universal Time. */
     UTC("UTC");
 
     private final String wire;
@@ -13,12 +14,23 @@ public enum MailAnalyticsTimezone {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static MailAnalyticsTimezone fromWire(String value) {
         if (value == null) {

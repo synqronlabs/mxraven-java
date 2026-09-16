@@ -5,10 +5,15 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Effective source of an MTA rate limit. */
 public enum MtaRateLimitSource {
+    /** Built-in default limit. */
     DEFAULT("default"),
+    /** Global override. */
     GLOBAL("global"),
+    /** Guardrail limit. */
     GUARDRAIL("guardrail"),
+    /** Tenant override. */
     TENANT("tenant"),
+    /** Listener override. */
     LISTENER("listener");
 
     private final String wire;
@@ -17,12 +22,23 @@ public enum MtaRateLimitSource {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static MtaRateLimitSource fromWire(String value) {
         if (value == null) {

@@ -39,47 +39,97 @@ public final class TerminalActionPayload {
         this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 
-    /** Wrap a raw free-form payload. Prefer the typed factories. */
+    /**
+     * Wrap a raw free-form payload. Prefer the typed factories.
+     *
+     * @param values raw payload values
+     * @return a payload wrapping the values
+     */
     @JsonCreator
     public static TerminalActionPayload of(Map<String, Object> values) {
         return new TerminalActionPayload(values == null ? Map.of() : values);
     }
 
+    /**
+     * Returns the payload as a map of wire fields.
+     *
+     * @return the payload map
+     */
     @JsonValue
     public Map<String, Object> values() {
         return values;
     }
 
+    /**
+     * Returns whether the payload is empty.
+     *
+     * @return {@code true} if the payload has no fields
+     */
     public boolean isEmpty() {
         return values.isEmpty();
     }
 
     // --- typed reads ---------------------------------------------------------
 
+    /**
+     * Returns the {@code pool_id} value.
+     *
+     * @return the pool identifier, or {@code null} if absent
+     */
     public String poolId() {
         return stringValue("pool_id");
     }
 
+    /**
+     * Returns the {@code relay_ref} value.
+     *
+     * @return the relay reference, or {@code null} if absent
+     */
     public String relayRef() {
         return stringValue("relay_ref");
     }
 
+    /**
+     * Returns the {@code template_ref} value.
+     *
+     * @return the template reference, or {@code null} if absent
+     */
     public String templateRef() {
         return stringValue("template_ref");
     }
 
+    /**
+     * Returns the {@code audit_reason} value.
+     *
+     * @return the audit reason, or {@code null} if absent
+     */
     public String auditReason() {
         return stringValue("audit_reason");
     }
 
+    /**
+     * Returns the {@code enhanced_status_code} value.
+     *
+     * @return the enhanced status code, or {@code null} if absent
+     */
     public String enhancedStatusCode() {
         return stringValue("enhanced_status_code");
     }
 
+    /**
+     * Returns the {@code message} value.
+     *
+     * @return the rejection message, or {@code null} if absent
+     */
     public String message() {
         return stringValue("message");
     }
 
+    /**
+     * Returns the {@code smtp_status_code} value.
+     *
+     * @return the SMTP status code, or {@code null} if absent
+     */
     public Integer smtpStatusCode() {
         Object value = values.get("smtp_status_code");
         return value instanceof Number number ? number.intValue() : null;
@@ -87,17 +137,31 @@ public final class TerminalActionPayload {
 
     // --- factories -----------------------------------------------------------
 
-    /** An empty payload, for actions that take none ({@code DELIVER}, {@code DROP}). */
+    /**
+     * An empty payload, for actions that take none ({@code DELIVER}, {@code DROP}).
+     *
+     * @return an empty payload
+     */
     public static TerminalActionPayload empty() {
         return of(Map.of());
     }
 
-    /** {@code DELIVER}: shared delivery, no payload. */
+    /**
+     * {@code DELIVER}: shared delivery, no payload.
+     *
+     * @return an empty payload
+     */
     public static TerminalActionPayload deliver() {
         return empty();
     }
 
-    /** {@code DELIVER_DEDICATED}: {@code pool_id} must reference a leased dedicated pool. */
+    /**
+     * {@code DELIVER_DEDICATED}: {@code pool_id} must reference a leased dedicated pool.
+     *
+     * @param poolId identifier of the dedicated IP pool
+     * @return the payload
+     * @throws IllegalArgumentException if {@code poolId} is not a UUID
+     */
     public static TerminalActionPayload deliverDedicated(String poolId) {
         String value = require(poolId, "pool_id");
         if (!UUID.matcher(value).matches()) {
@@ -106,38 +170,82 @@ public final class TerminalActionPayload {
         return of(Map.of("pool_id", value));
     }
 
-    /** {@code SMARTHOST_RELAY}: {@code relay_ref} must reference an active relay. */
+    /**
+     * {@code SMARTHOST_RELAY}: {@code relay_ref} must reference an active relay.
+     *
+     * @param relayRef reference of the smart host
+     * @return the payload
+     * @throws IllegalArgumentException if {@code relayRef} is missing or invalid
+     */
     public static TerminalActionPayload smartHostRelay(String relayRef) {
         return relay(relayRef);
     }
 
-    /** {@code RELAY}: {@code relay_ref} must reference an active relay. */
+    /**
+     * {@code RELAY}: {@code relay_ref} must reference an active relay.
+     *
+     * @param relayRef reference of the relay
+     * @return the payload
+     * @throws IllegalArgumentException if {@code relayRef} is missing or invalid
+     */
     public static TerminalActionPayload relay(String relayRef) {
         return of(Map.of("relay_ref", requireRef(relayRef, "relay_ref")));
     }
 
-    /** {@code AUTO_REPLY}: {@code template_ref} must reference an active template. */
+    /**
+     * {@code AUTO_REPLY}: {@code template_ref} must reference an active template.
+     *
+     * @param templateRef reference of the auto-reply template
+     * @return the payload
+     * @throws IllegalArgumentException if {@code templateRef} is missing or invalid
+     */
     public static TerminalActionPayload autoReply(String templateRef) {
         return of(Map.of("template_ref", requireRef(templateRef, "template_ref")));
     }
 
-    /** {@code DROP}: no payload. */
+    /**
+     * {@code DROP}: no payload.
+     *
+     * @return an empty payload
+     */
     public static TerminalActionPayload drop() {
         return empty();
     }
 
-    /** {@code DROP}: no payload with an optional audit reason. */
+    /**
+     * {@code DROP}: no payload with an optional audit reason.
+     *
+     * @param auditReason reason recorded for the drop; may be {@code null}
+     * @return the payload
+     */
     public static TerminalActionPayload drop(String auditReason) {
         String reason = trimToNull(auditReason);
         return reason == null ? drop() : of(Map.of("audit_reason", reason));
     }
 
-    /** {@code REJECT}: 5xx SMTP status, enhanced status, and rejection message. */
+    /**
+     * {@code REJECT}: 5xx SMTP status, enhanced status, and rejection message.
+     *
+     * @param smtpStatusCode     SMTP status code in the 5xx range
+     * @param enhancedStatusCode enhanced status code of the form {@code 5.subject.detail}
+     * @param message            rejection message
+     * @return the payload
+     * @throws IllegalArgumentException if the status codes or message are invalid
+     */
     public static TerminalActionPayload reject(int smtpStatusCode, String enhancedStatusCode, String message) {
         return reject(smtpStatusCode, enhancedStatusCode, message, null);
     }
 
-    /** {@code REJECT}: as above, with an optional audit reason. */
+    /**
+     * {@code REJECT}: as above, with an optional audit reason.
+     *
+     * @param smtpStatusCode     SMTP status code in the 5xx range
+     * @param enhancedStatusCode enhanced status code of the form {@code 5.subject.detail}
+     * @param message            rejection message
+     * @param auditReason        reason recorded for the rejection; may be {@code null}
+     * @return the payload
+     * @throws IllegalArgumentException if the status codes, message, or reason are invalid
+     */
     public static TerminalActionPayload reject(int smtpStatusCode, String enhancedStatusCode, String message,
                                                String auditReason) {
         if (smtpStatusCode < 500 || smtpStatusCode > 599) {

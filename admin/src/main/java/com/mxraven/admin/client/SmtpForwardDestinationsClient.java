@@ -22,11 +22,23 @@ public final class SmtpForwardDestinationsClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Creates a client bound to the given tenant.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug
+     */
     public SmtpForwardDestinationsClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
+    /**
+     * Lists SMTP forward destinations for the tenant.
+     *
+     * @return a lazily paginated collection of forward destinations
+     * @throws IOException if the request fails or is interrupted
+     */
     public Paged<SmtpForwardDestination> list() throws IOException {
         return list(null);
     }
@@ -36,12 +48,26 @@ public final class SmtpForwardDestinationsClient {
                 .map(data -> new SmtpForwardDestination(client, one(data.id()), data));
     }
 
+    /**
+     * Creates a forward destination configured through the given builder consumer.
+     *
+     * @param configure consumer that populates the creation request builder
+     * @return the created forward destination
+     * @throws IOException if the request fails or is interrupted
+     */
     public SmtpForwardDestination create(Consumer<CreateSmtpForwardDestinationRequest.Builder> configure) throws IOException {
         CreateSmtpForwardDestinationRequest.Builder builder = CreateSmtpForwardDestinationRequest.builder();
         configure.accept(builder);
         return create(builder.build());
     }
 
+    /**
+     * Creates a forward destination described by the given request.
+     *
+     * @param request forward-destination creation request
+     * @return the created forward destination
+     * @throws IOException if the request fails or is interrupted
+     */
     public SmtpForwardDestination create(CreateSmtpForwardDestinationRequest request) throws IOException {
         SmtpForwardDestinationData data = client.post(base(), request).as(SmtpForwardDestinationData.class);
         return new SmtpForwardDestination(client, one(data.id()), data);
@@ -50,17 +76,35 @@ public final class SmtpForwardDestinationsClient {
     /**
      * Confirms ownership with an emailed token. This operation is
      * account-level, not tenant-scoped.
+     *
+     * @param token emailed confirmation token
+     * @return the confirmation outcome
+     * @throws IOException if the request fails or is interrupted
      */
     public SmtpForwardDestinationConfirmation confirm(String token) throws IOException {
         return confirm(ConfirmSmtpForwardDestinationRequest.builder().token(token).build());
     }
 
+    /**
+     * Confirms ownership through the given builder consumer.
+     *
+     * @param configure consumer that populates the confirmation request builder
+     * @return the confirmation outcome
+     * @throws IOException if the request fails or is interrupted
+     */
     public SmtpForwardDestinationConfirmation confirm(Consumer<ConfirmSmtpForwardDestinationRequest.Builder> configure) throws IOException {
         ConfirmSmtpForwardDestinationRequest.Builder builder = ConfirmSmtpForwardDestinationRequest.builder();
         configure.accept(builder);
         return confirm(builder.build());
     }
 
+    /**
+     * Confirms ownership with the given request.
+     *
+     * @param request confirmation request carrying the emailed token
+     * @return the confirmation outcome
+     * @throws IOException if the request fails or is interrupted
+     */
     public SmtpForwardDestinationConfirmation confirm(ConfirmSmtpForwardDestinationRequest request) throws IOException {
         return client.post("/smtp-forward-destination-verifications/confirm", request)
                 .as(SmtpForwardDestinationConfirmation.class);
@@ -78,12 +122,25 @@ public final class SmtpForwardDestinationsClient {
         return URLEncoder.encode(segment, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Gets a forward destination by its identifier.
+     *
+     * @param destinationId forward-destination identifier
+     * @return the forward destination
+     * @throws IOException if the request fails or is interrupted
+     */
     public SmtpForwardDestination get(String destinationId) throws IOException {
         String resourcePath = one(destinationId);
         return new SmtpForwardDestination(client, resourcePath, client.get(resourcePath).as(SmtpForwardDestinationData.class));
     }
 
-    /** Get an SMTP forward destination by its immutable {@code destination_ref}. */
+    /**
+     * Gets an SMTP forward destination by its immutable {@code destination_ref}.
+     *
+     * @param destinationRef immutable forward-destination reference
+     * @return the forward destination
+     * @throws IOException if the request fails or is interrupted
+     */
     public SmtpForwardDestination getByRef(String destinationRef) throws IOException {
         String refPath = base() + "/ref/" + encode(destinationRef);
         SmtpForwardDestinationData data = client.get(refPath).as(SmtpForwardDestinationData.class);

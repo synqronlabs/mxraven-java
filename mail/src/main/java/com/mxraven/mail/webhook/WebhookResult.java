@@ -24,7 +24,11 @@ public enum WebhookResult {
         this.status = status;
     }
 
-    /** The HTTP status code to return to the sender. */
+    /**
+     * Returns the HTTP status code to return to the sender.
+     *
+     * @return the HTTP status code
+     */
     public int status() {
         return status;
     }

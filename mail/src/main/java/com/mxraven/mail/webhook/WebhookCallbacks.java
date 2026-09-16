@@ -42,15 +42,27 @@ public interface WebhookCallbacks extends WebhookListener {
         }
     }
 
-    /** Handles a {@code DELIVER_WEBHOOK} inbound message. Ignored by default. */
+    /**
+     * Handles a {@code DELIVER_WEBHOOK} inbound message. Ignored by default.
+     *
+     * @param email the inbound message
+     */
     default void onInboundEmail(InboundEmail email) {
     }
 
-    /** Handles an SMTP {@code NOTIFY_WEBHOOK} delivery status. Ignored by default. */
+    /**
+     * Handles an SMTP {@code NOTIFY_WEBHOOK} delivery status. Ignored by default.
+     *
+     * @param status the delivery status
+     */
     default void onDeliveryStatus(DeliveryStatus status) {
     }
 
-    /** Handles an object-storage {@code NOTIFY_WEBHOOK} status. Ignored by default. */
+    /**
+     * Handles an object-storage {@code NOTIFY_WEBHOOK} status. Ignored by default.
+     *
+     * @param storage the storage status
+     */
     default void onStorageStatus(StorageStatus storage) {
     }
 }

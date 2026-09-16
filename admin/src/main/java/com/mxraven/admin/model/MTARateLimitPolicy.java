@@ -4,6 +4,12 @@ package com.mxraven.admin.model;
  * Writable MTA rate-limit policy used for global, tenant, and listener
  * overrides. Every field must be positive, and an override must not be looser
  * than the limits it inherits from.
+ *
+ * @param messageRatePerMinute   message rate limit per minute
+ * @param recipientRatePerMinute recipient rate limit per minute
+ * @param taskRatePerMinute      task rate limit per minute
+ * @param burst                  burst allowance
+ * @param maxConcurrency         maximum number of concurrent deliveries
  */
 public record MTARateLimitPolicy(
         double messageRatePerMinute,
@@ -12,6 +18,17 @@ public record MTARateLimitPolicy(
         int burst,
         int maxConcurrency) {
 
+    /**
+     * Validates and creates a rate-limit policy.
+     *
+     * @param messageRatePerMinute message rate limit per minute
+     * @param recipientRatePerMinute recipient rate limit per minute
+     * @param taskRatePerMinute task rate limit per minute
+     * @param burst burst allowance
+     * @param maxConcurrency maximum number of concurrent deliveries
+     * @throws IllegalArgumentException if a rate is not positive, or burst or concurrency is
+     *         below 1
+     */
     public MTARateLimitPolicy {
         requirePositive(messageRatePerMinute, "message_rate_per_minute");
         requirePositive(recipientRatePerMinute, "recipient_rate_per_minute");
@@ -27,6 +44,9 @@ public record MTARateLimitPolicy(
     /**
      * Throws when this override is looser than {@code inherited} on any limit.
      * Overrides may only tighten the inherited limits.
+     *
+     * @param inherited limits to compare against; {@code null} is ignored
+     * @throws IllegalArgumentException when a limit is looser than the inherited limit
      */
     public void validateStricterThan(MTARateLimitPolicy inherited) {
         if (inherited == null) {

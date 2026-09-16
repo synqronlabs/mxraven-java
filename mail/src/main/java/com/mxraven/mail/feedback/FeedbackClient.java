@@ -56,32 +56,64 @@ public final class FeedbackClient {
         this.requestTimeout = builder.requestTimeout;
     }
 
-    /** Creates a feedback client builder. */
+    /**
+     * Creates a feedback client builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
-    /** The configured feedback service base URL. */
+    /**
+     * Returns the configured feedback service base URL.
+     *
+     * @return the base URL
+     */
     public String baseUrl() {
         return baseUrl;
     }
 
-    /** Teaches the spam filter that {@code rawMime} is spam. */
+    /**
+     * Teaches the spam filter that {@code rawMime} is spam.
+     *
+     * @param rawMime the exact raw RFC 822 message bytes mxRaven processed
+     * @return the learning result
+     * @throws IOException when the request fails
+     */
     public LearningResult learnSpam(byte[] rawMime) throws IOException {
         return learn(Disposition.SPAM, rawMime);
     }
 
-    /** Teaches the spam filter that {@code rawMime} is not spam. */
+    /**
+     * Teaches the spam filter that {@code rawMime} is not spam.
+     *
+     * @param rawMime the exact raw RFC 822 message bytes mxRaven processed
+     * @return the learning result
+     * @throws IOException when the request fails
+     */
     public LearningResult learnHam(byte[] rawMime) throws IOException {
         return learn(Disposition.HAM, rawMime);
     }
 
-    /** Teaches the spam filter that {@code rawMime} is spam. */
+    /**
+     * Teaches the spam filter that {@code rawMime} is spam.
+     *
+     * @param rawMime the raw RFC 822 message stream, read fully
+     * @return the learning result
+     * @throws IOException when the request or the read fails
+     */
     public LearningResult learnSpam(InputStream rawMime) throws IOException {
         return learn(Disposition.SPAM, rawMime);
     }
 
-    /** Teaches the spam filter that {@code rawMime} is not spam. */
+    /**
+     * Teaches the spam filter that {@code rawMime} is not spam.
+     *
+     * @param rawMime the raw RFC 822 message stream, read fully
+     * @return the learning result
+     * @throws IOException when the request or the read fails
+     */
     public LearningResult learnHam(InputStream rawMime) throws IOException {
         return learn(Disposition.HAM, rawMime);
     }
@@ -93,6 +125,14 @@ public final class FeedbackClient {
      * including the original line endings. A message with no matching evidence
      * fails with a {@link FeedbackException} whose {@link FeedbackException#statusCode()
      * status code} is {@code 404}.
+     *
+     * @param disposition the training label to apply
+     * @param rawMime     the exact raw RFC 822 message bytes mxRaven processed
+     * @return the learning result
+     * @throws IOException              when the request fails
+     * @throws IllegalArgumentException when the disposition or raw message is {@code null}
+     * @throws IllegalStateException    when learning credentials are not configured
+     * @throws FeedbackException        when the service returns a non-success status
      */
     public LearningResult learn(Disposition disposition, byte[] rawMime) throws IOException {
         if (disposition == null) {
@@ -116,7 +156,17 @@ public final class FeedbackClient {
         return decode(response.body());
     }
 
-    /** Submits one training example read fully from {@code rawMime}. */
+    /**
+     * Submits one training example read fully from {@code rawMime}.
+     *
+     * @param disposition the training label to apply
+     * @param rawMime     the raw RFC 822 message stream, read fully
+     * @return the learning result
+     * @throws IOException              when the request or the read fails
+     * @throws IllegalArgumentException when the raw message is {@code null}
+     * @throws IllegalStateException    when learning credentials are not configured
+     * @throws FeedbackException        when the service returns a non-success status
+     */
     public LearningResult learn(Disposition disposition, InputStream rawMime) throws IOException {
         if (rawMime == null) {
             throw new IllegalArgumentException("rawMime is required");
@@ -128,6 +178,11 @@ public final class FeedbackClient {
      * Performs an RFC 8058 one-click unsubscribe for a token. This is the
      * operation a recipient mail client performs against the
      * {@code List-Unsubscribe} URL; applications rarely call it directly.
+     *
+     * @param token the unsubscribe token
+     * @throws IOException              when the request fails
+     * @throws IllegalArgumentException when the token is {@code null} or blank
+     * @throws FeedbackException        when the service returns a non-success status
      */
     public void unsubscribe(String token) throws IOException {
         if (token == null || token.isBlank()) {
@@ -227,7 +282,13 @@ public final class FeedbackClient {
         private Builder() {
         }
 
-        /** Sets the feedback service base URL, for example {@code "https://feedback.mxraven.com"}. */
+        /**
+         * Sets the feedback service base URL, for example {@code "https://feedback.mxraven.com"}.
+         *
+         * @param baseUrl the base URL
+         * @return this builder
+         * @throws IllegalArgumentException when {@code baseUrl} is {@code null} or blank
+         */
         public Builder baseUrl(String baseUrl) {
             if (baseUrl == null || baseUrl.isBlank()) {
                 throw new IllegalArgumentException("base URL must not be empty");
@@ -236,7 +297,15 @@ public final class FeedbackClient {
             return this;
         }
 
-        /** Sets the submission API key used to authenticate learning requests. */
+        /**
+         * Sets the submission API key used to authenticate learning requests.
+         *
+         * @param username the key's username
+         * @param secret   the key's secret
+         * @return this builder
+         * @throws IllegalArgumentException when {@code username} is blank or
+         *                                  {@code secret} is empty
+         */
         public Builder credentials(String username, String secret) {
             if (username == null || username.isBlank()) {
                 throw new IllegalArgumentException("username must not be empty");
@@ -249,7 +318,13 @@ public final class FeedbackClient {
             return this;
         }
 
-        /** Sets the HTTP client used for requests. */
+        /**
+         * Sets the HTTP client used for requests.
+         *
+         * @param httpClient the HTTP client
+         * @return this builder
+         * @throws IllegalArgumentException when {@code httpClient} is {@code null}
+         */
         public Builder httpClient(HttpClient httpClient) {
             if (httpClient == null) {
                 throw new IllegalArgumentException("HTTP client must not be null");
@@ -258,7 +333,14 @@ public final class FeedbackClient {
             return this;
         }
 
-        /** Sets the per-request timeout. Defaults to 30 seconds. */
+        /**
+         * Sets the per-request timeout. Defaults to 30 seconds.
+         *
+         * @param requestTimeout the request timeout
+         * @return this builder
+         * @throws IllegalArgumentException when {@code requestTimeout} is {@code null} or
+         *                                  not positive
+         */
         public Builder requestTimeout(Duration requestTimeout) {
             if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
                 throw new IllegalArgumentException("request timeout must be positive");
@@ -267,7 +349,12 @@ public final class FeedbackClient {
             return this;
         }
 
-        /** Builds the client. A base URL is required. */
+        /**
+         * Builds the client. A base URL is required.
+         *
+         * @return the configured client
+         * @throws IllegalStateException when the base URL has not been set
+         */
         public FeedbackClient build() {
             if (baseUrl == null || baseUrl.isBlank()) {
                 throw new IllegalStateException("base URL is required (call baseUrl(...))");

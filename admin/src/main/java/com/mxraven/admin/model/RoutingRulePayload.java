@@ -33,68 +33,142 @@ public final class RoutingRulePayload {
         this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
     }
 
-    /** Wrap a raw free-form payload. Prefer the typed factories. */
+    /**
+     * Wraps a raw free-form payload. Prefer the typed factories.
+     *
+     * @param values raw payload values
+     * @return a payload wrapping the values
+     */
     @JsonCreator
     public static RoutingRulePayload of(Map<String, Object> values) {
         return new RoutingRulePayload(null, values == null ? Map.of() : values);
     }
 
+    /**
+     * Returns the raw payload values.
+     *
+     * @return the raw payload values
+     */
     @JsonValue
     public Map<String, Object> values() {
         return values;
     }
 
-    /** The action this payload was built for, or {@code null} when wrapped from raw JSON. */
+    /**
+     * The action this payload was built for, or {@code null} when wrapped from raw JSON.
+     *
+     * @return the action kind, or {@code null}
+     */
     public RoutingRuleActionKind kind() {
         return kind;
     }
 
     // --- typed reads ---------------------------------------------------------
 
+    /**
+     * Returns the {@code pool_id} value.
+     *
+     * @return the {@code pool_id} value, or {@code null} when absent
+     */
     public String poolId() {
         return stringValue("pool_id");
     }
 
+    /**
+     * Returns the {@code relay_ref} value.
+     *
+     * @return the {@code relay_ref} value, or {@code null} when absent
+     */
     public String relayRef() {
         return stringValue("relay_ref");
     }
 
+    /**
+     * Returns the {@code template_ref} value.
+     *
+     * @return the {@code template_ref} value, or {@code null} when absent
+     */
     public String templateRef() {
         return stringValue("template_ref");
     }
 
+    /**
+     * Returns the {@code webhook_ref} value.
+     *
+     * @return the {@code webhook_ref} value, or {@code null} when absent
+     */
     public String webhookRef() {
         return stringValue("webhook_ref");
     }
 
+    /**
+     * Returns the {@code destination_ref} value.
+     *
+     * @return the {@code destination_ref} value, or {@code null} when absent
+     */
     public String destinationRef() {
         return stringValue("destination_ref");
     }
 
+    /**
+     * Returns the {@code storage_ref} value.
+     *
+     * @return the {@code storage_ref} value, or {@code null} when absent
+     */
     public String storageRef() {
         return stringValue("storage_ref");
     }
 
+    /**
+     * Returns the {@code object_key_prefix} value.
+     *
+     * @return the {@code object_key_prefix} value, or {@code null} when absent
+     */
     public String objectKeyPrefix() {
         return stringValue("object_key_prefix");
     }
 
+    /**
+     * Returns the {@code object_key_template} value.
+     *
+     * @return the {@code object_key_template} value, or {@code null} when absent
+     */
     public String objectKeyTemplate() {
         return stringValue("object_key_template");
     }
 
+    /**
+     * Returns the {@code audit_reason} value.
+     *
+     * @return the {@code audit_reason} value, or {@code null} when absent
+     */
     public String auditReason() {
         return stringValue("audit_reason");
     }
 
+    /**
+     * Returns the {@code enhanced_status_code} value.
+     *
+     * @return the {@code enhanced_status_code} value, or {@code null} when absent
+     */
     public String enhancedStatusCode() {
         return stringValue("enhanced_status_code");
     }
 
+    /**
+     * Returns the {@code message} value.
+     *
+     * @return the {@code message} value, or {@code null} when absent
+     */
     public String message() {
         return stringValue("message");
     }
 
+    /**
+     * Returns the {@code smtp_status_code} value, or {@code null} when absent.
+     *
+     * @return the {@code smtp_status_code} value, or {@code null} when absent
+     */
     public Integer smtpStatusCode() {
         Object value = values.get("smtp_status_code");
         return value instanceof Number number ? number.intValue() : null;
@@ -102,6 +176,13 @@ public final class RoutingRulePayload {
 
     // --- factories -----------------------------------------------------------
 
+    /**
+     * Creates a deliver-to-dedicated-pool payload.
+     *
+     * @param poolId identifier of the dedicated IP pool
+     * @return the payload
+     * @throws IllegalArgumentException if {@code poolId} is not a UUID
+     */
     public static RoutingRulePayload deliverDedicated(String poolId) {
         String value = require(poolId, "pool_id");
         if (!UUID.matcher(value).matches()) {
@@ -110,51 +191,129 @@ public final class RoutingRulePayload {
         return of(RoutingRuleActionKind.DELIVER_DEDICATED, Map.of("pool_id", value));
     }
 
+    /**
+     * Creates a default delivery payload.
+     *
+     * @return the payload
+     */
     public static RoutingRulePayload deliver() {
         return of(RoutingRuleActionKind.DELIVER, Map.of());
     }
 
+    /**
+     * Creates a smart-host relay payload.
+     *
+     * @param relayRef reference of the smart host
+     * @return the payload
+     * @throws IllegalArgumentException if {@code relayRef} is missing or too long
+     */
     public static RoutingRulePayload smartHostRelay(String relayRef) {
         return of(RoutingRuleActionKind.SMARTHOST_RELAY, Map.of("relay_ref", requireMax(relayRef, "relay_ref", 100)));
     }
 
+    /**
+     * Creates a relay payload.
+     *
+     * @param relayRef reference of the relay
+     * @return the payload
+     * @throws IllegalArgumentException if {@code relayRef} is missing or too long
+     */
     public static RoutingRulePayload relay(String relayRef) {
         return of(RoutingRuleActionKind.RELAY, Map.of("relay_ref", requireMax(relayRef, "relay_ref", 100)));
     }
 
+    /**
+     * Creates an auto-reply payload.
+     *
+     * @param templateRef reference of the auto-reply template
+     * @return the payload
+     * @throws IllegalArgumentException if {@code templateRef} is missing or too long
+     */
     public static RoutingRulePayload autoReply(String templateRef) {
         return of(RoutingRuleActionKind.AUTO_REPLY,
                 Map.of("template_ref", requireMax(templateRef, "template_ref", 100)));
     }
 
+    /**
+     * Creates a webhook notification payload.
+     *
+     * @param webhookRef reference of the webhook
+     * @return the payload
+     * @throws IllegalArgumentException if {@code webhookRef} is missing or too long
+     */
     public static RoutingRulePayload notifyWebhook(String webhookRef) {
         return of(RoutingRuleActionKind.NOTIFY_WEBHOOK,
                 Map.of("webhook_ref", requireMax(webhookRef, "webhook_ref", 100)));
     }
 
+    /**
+     * Creates a webhook delivery payload.
+     *
+     * @param webhookRef reference of the webhook
+     * @return the payload
+     * @throws IllegalArgumentException if {@code webhookRef} is missing or too long
+     */
     public static RoutingRulePayload deliverWebhook(String webhookRef) {
         return of(RoutingRuleActionKind.DELIVER_WEBHOOK,
                 Map.of("webhook_ref", requireMax(webhookRef, "webhook_ref", 100)));
     }
 
+    /**
+     * Creates an SMTP forward payload.
+     *
+     * @param destinationRef reference of the destination
+     * @return the payload
+     * @throws IllegalArgumentException if {@code destinationRef} is missing or invalid
+     */
     public static RoutingRulePayload smtpForward(String destinationRef) {
         return of(RoutingRuleActionKind.SMTP_FORWARD,
                 Map.of("destination_ref", requireRef(destinationRef, "destination_ref", 100)));
     }
 
+    /**
+     * Creates a drop payload.
+     *
+     * @return the payload
+     */
     public static RoutingRulePayload drop() {
         return of(RoutingRuleActionKind.DROP, Map.of());
     }
 
+    /**
+     * Creates a drop payload with an audit reason.
+     *
+     * @param auditReason reason recorded for the drop
+     * @return the payload
+     * @throws IllegalArgumentException if {@code auditReason} is too long
+     */
     public static RoutingRulePayload drop(String auditReason) {
         String reason = optionalMax(auditReason, "audit_reason", 1024);
         return of(RoutingRuleActionKind.DROP, reason == null ? Map.of() : Map.of("audit_reason", reason));
     }
 
+    /**
+     * Creates a reject payload.
+     *
+     * @param smtpStatusCode     SMTP status code in the 5xx range
+     * @param enhancedStatusCode enhanced status code of the form {@code 5.subject.detail}
+     * @param message            rejection message
+     * @return the payload
+     * @throws IllegalArgumentException if the status codes or message are invalid
+     */
     public static RoutingRulePayload reject(int smtpStatusCode, String enhancedStatusCode, String message) {
         return reject(smtpStatusCode, enhancedStatusCode, message, null);
     }
 
+    /**
+     * Creates a reject payload with an audit reason.
+     *
+     * @param smtpStatusCode     SMTP status code in the 5xx range
+     * @param enhancedStatusCode enhanced status code of the form {@code 5.subject.detail}
+     * @param message            rejection message
+     * @param auditReason        reason recorded for the rejection
+     * @return the payload
+     * @throws IllegalArgumentException if the status codes, message, or reason are invalid
+     */
     public static RoutingRulePayload reject(int smtpStatusCode, String enhancedStatusCode, String message,
                                             String auditReason) {
         if (smtpStatusCode < 500 || smtpStatusCode > 599) {
@@ -175,6 +334,13 @@ public final class RoutingRulePayload {
         return of(RoutingRuleActionKind.REJECT, payload);
     }
 
+    /**
+     * Creates an add-recipient payload.
+     *
+     * @param recipients recipient mailbox addresses
+     * @return the payload
+     * @throws IllegalArgumentException if the recipients are empty, too many, or invalid
+     */
     public static RoutingRulePayload addRecipient(List<String> recipients) {
         if (recipients == null || recipients.isEmpty()) {
             throw new IllegalArgumentException("recipients must not be empty");
@@ -194,6 +360,13 @@ public final class RoutingRulePayload {
         return of(RoutingRuleActionKind.ADD_RECIPIENT, Map.of("recipients", normalized));
     }
 
+    /**
+     * Creates a header-modification payload.
+     *
+     * @param operations header operations to apply
+     * @return the payload
+     * @throws IllegalArgumentException if the operations are empty, too many, or invalid
+     */
     public static RoutingRulePayload modifyHeader(List<ModifyHeaderOperation> operations) {
         if (operations == null || operations.isEmpty()) {
             throw new IllegalArgumentException("operations must not be empty");
@@ -224,6 +397,15 @@ public final class RoutingRulePayload {
         return of(RoutingRuleActionKind.MODIFY_HEADER, Map.of("operations", serialized));
     }
 
+    /**
+     * Creates an S3 storage payload.
+     *
+     * @param storageRef        reference of the storage backend
+     * @param objectKeyPrefix   bucket-relative key prefix ending with {@code /}
+     * @param objectKeyTemplate object key template
+     * @return the payload
+     * @throws IllegalArgumentException if the storage reference or key configuration is invalid
+     */
     public static RoutingRulePayload s3Store(String storageRef, String objectKeyPrefix, String objectKeyTemplate) {
         String storage = requireMax(storageRef, "storage_ref", 100);
         String prefix = trimToNull(objectKeyPrefix);

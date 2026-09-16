@@ -6,17 +6,31 @@ import java.util.List;
 
 /**
  * Request body for the recipient-set member batch operations.
+ *
+ * @param emailAddresses member email addresses
  */
 public record RecipientSetMembersBatchRequest(
         List<String> emailAddresses) {
 
+    /**
+     * Creates a new builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds a {@link RecipientSetMembersBatchRequest}. */
     public static final class Builder {
         private List<String> emailAddresses;
 
+        /**
+         * Sets the member email addresses.
+         *
+         * @param emailAddresses member email addresses
+         * @return this builder
+         */
         public Builder emailAddresses(List<String> emailAddresses) {
             this.emailAddresses = emailAddresses;
             return this;
@@ -24,6 +38,12 @@ public record RecipientSetMembersBatchRequest(
 
         private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
+        /**
+         * Builds the request.
+         *
+         * @return a new request
+         * @throws IllegalArgumentException if the addresses are empty, too many, or invalid
+         */
         public RecipientSetMembersBatchRequest build() {
             if (emailAddresses == null || emailAddresses.isEmpty()) {
                 throw new IllegalArgumentException("email_addresses must not be empty");

@@ -32,15 +32,31 @@ import java.util.List;
  * }</pre>
  */
 public class ApiException extends MxRavenException {
+    /** HTTP status code of the response. */
     private final int status;
+    /** Stable machine-readable error code, or {@code null} when absent. */
     private final String code;
+    /** Short human-readable problem title, or {@code null} when absent. */
     private final String title;
+    /** Human-readable problem detail, or the raw response body as fallback. */
     private final String detail;
+    /** Support correlation identifier, or {@code null} when absent. */
     private final String traceId;
+    /** Actionable validation issues; empty when none were provided. */
     private final List<ProblemError> errors;
+    /** Full decoded problem, or {@code null} when the body could not be decoded. */
     private final Problem problem;
+    /** Server-requested retry delay, or {@code null} when unavailable. */
     private final Duration retryAfter;
 
+    /**
+     * Construct an exception from a raw response status and body. When the body
+     * carries a decodable problem its fields are used; otherwise the raw body is
+     * kept as the fallback detail.
+     *
+     * @param status HTTP status code
+     * @param body raw response body, or {@code null}
+     */
     public ApiException(int status, String body) {
         this(status, null, problemOrNull(status, body));
     }
@@ -61,10 +77,32 @@ public class ApiException extends MxRavenException {
         this.errors = problem == null || problem.errors() == null ? List.of() : List.copyOf(problem.errors());
     }
 
+    /**
+     * Decodes an exception from a response. The decoded body is treated as an
+     * RFC 9457 problem when it is an object with a {@code code} field, and a
+     * typed subclass is chosen from the status.
+     *
+     * @param status HTTP status code
+     * @param rawBody raw response body, or {@code null}
+     * @param body decoded response body, or {@code null}
+     * @param mapper mapper used to convert the body to a {@link Problem}
+     * @return an exception carrying the decoded problem details
+     */
     public static ApiException from(int status, String rawBody, JsonNode body, ObjectMapper mapper) {
         return from(status, rawBody, body, mapper, null);
     }
 
+    /**
+     * Decodes an exception from a response, including the server-requested retry
+     * delay.
+     *
+     * @param status HTTP status code
+     * @param rawBody raw response body, or {@code null}
+     * @param body decoded response body, or {@code null}
+     * @param mapper mapper used to convert the body to a {@link Problem}
+     * @param retryAfter server-requested retry delay, or {@code null}
+     * @return an exception carrying the decoded problem details
+     */
     public static ApiException from(int status, String rawBody, JsonNode body, ObjectMapper mapper,
                                     Duration retryAfter) {
         Problem problem = null;
@@ -120,30 +158,68 @@ public class ApiException extends MxRavenException {
         return sb.toString();
     }
 
+    /**
+     * Returns the HTTP status code.
+     *
+     * @return the status code
+     */
     public int status() {
         return status;
     }
 
+    /**
+     * Returns the stable machine-readable error code, or {@code null} when absent.
+     *
+     * @return the error code
+     */
     public String code() {
         return code;
     }
 
+    /**
+     * Returns the short human-readable problem title, or {@code null} when absent.
+     *
+     * @return the problem title
+     */
     public String title() {
         return title;
     }
 
+    /**
+     * Returns the human-readable problem detail, or the raw response body when
+     * no problem could be decoded.
+     *
+     * @return the problem detail
+     */
     public String detail() {
         return detail;
     }
 
+    /**
+     * Returns the identifier suitable for support correlation, or {@code null}
+     * when absent.
+     *
+     * @return the trace identifier
+     */
     public String traceId() {
         return traceId;
     }
 
+    /**
+     * Returns the actionable validation issues, empty when none were provided.
+     *
+     * @return the list of problem errors
+     */
     public List<ProblemError> errors() {
         return errors;
     }
 
+    /**
+     * Returns the full decoded problem, or {@code null} when the body could not
+     * be decoded as one.
+     *
+     * @return the decoded problem
+     */
     public Problem problem() {
         return problem;
     }
@@ -151,6 +227,8 @@ public class ApiException extends MxRavenException {
     /**
      * The server-requested delay before retrying, parsed from {@code Retry-After}
      * when present. {@code null} when the response carried no usable value.
+     *
+     * @return the retry delay, or {@code null} when unavailable
      */
     public Duration retryAfter() {
         return retryAfter;

@@ -5,8 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Operation performed by a {@link ModifyHeaderOperation}. */
 public enum ModifyHeaderOp {
+    /** Appends the value to the header. */
     APPEND("append"),
+    /** Replaces the header value. */
     SET("set"),
+    /** Removes the header. */
     REMOVE("remove");
 
     private final String wire;
@@ -15,12 +18,23 @@ public enum ModifyHeaderOp {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static ModifyHeaderOp fromWire(String value) {
         if (value == null) {

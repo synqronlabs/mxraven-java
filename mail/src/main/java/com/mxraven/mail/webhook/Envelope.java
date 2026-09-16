@@ -9,6 +9,9 @@ import java.util.List;
  * @param rcptTo   the envelope recipients
  */
 public record Envelope(String mailFrom, List<String> rcptTo) {
+    /**
+     * Creates an envelope, copying the recipient list.
+     */
     public Envelope {
         rcptTo = rcptTo == null ? List.of() : List.copyOf(rcptTo);
     }

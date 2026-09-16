@@ -20,6 +20,9 @@ public record MessageSummary(
         String messageId,
         String date) {
 
+    /**
+     * Creates a message summary, copying the mailbox lists.
+     */
     public MessageSummary {
         from = from == null ? List.of() : List.copyOf(from);
         to = to == null ? List.of() : List.copyOf(to);

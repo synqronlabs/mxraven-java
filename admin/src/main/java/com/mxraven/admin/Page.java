@@ -44,27 +44,57 @@ public final class Page<T> {
         return new Page<>(items, nextPageToken, previousPageToken, lastPageToken, fetchPage);
     }
 
-    /** Items on this page. */
+    /**
+     * Items on this page.
+     *
+     * @return an immutable list of the items on this page
+     */
     public List<T> items() {
         return items;
     }
 
+    /**
+     * Returns the opaque token for the next page, when one exists.
+     *
+     * @return the next page token, or {@code null} when there is no next page
+     */
     public String nextPageToken() {
         return nextPageToken;
     }
 
+    /**
+     * Returns the opaque token for the previous page, when one exists.
+     *
+     * @return the previous page token, or {@code null} when there is no
+     *         previous page
+     */
     public String previousPageToken() {
         return previousPageToken;
     }
 
+    /**
+     * Returns the opaque token for the last page, when known.
+     *
+     * @return the last page token, or {@code null} when unavailable
+     */
     public String lastPageToken() {
         return lastPageToken;
     }
 
+    /**
+     * Returns whether a next page is available.
+     *
+     * @return {@code true} if {@link #nextPageToken()} is present
+     */
     public boolean hasNext() {
         return nextPageToken != null && !nextPageToken.isBlank();
     }
 
+    /**
+     * Returns whether a previous page is available.
+     *
+     * @return {@code true} if {@link #previousPageToken()} is present
+     */
     public boolean hasPrevious() {
         return previousPageToken != null && !previousPageToken.isBlank();
     }
@@ -72,6 +102,7 @@ public final class Page<T> {
     /**
      * Fetch the next page.
      *
+     * @return the next page
      * @throws IllegalStateException if there is no next page, or this page came
      *                               from a source that cannot fetch pages
      */
@@ -85,6 +116,7 @@ public final class Page<T> {
     /**
      * Fetch the previous page.
      *
+     * @return the previous page
      * @throws IllegalStateException if there is no previous page, or this page
      *                               came from a source that cannot fetch pages
      */
@@ -102,7 +134,13 @@ public final class Page<T> {
         return fetchPage.apply(token);
     }
 
-    /** Transform every item on this page, preserving its pagination tokens. */
+    /**
+     * Transform every item on this page, preserving its pagination tokens.
+     *
+     * @param mapper function applied to each item
+     * @param <R> mapped element type
+     * @return a new page with mapped items and the same tokens, without a fetcher
+     */
     public <R> Page<R> map(Function<? super T, ? extends R> mapper) {
         List<R> mapped = items.stream().<R>map(mapper).toList();
         return new Page<>(mapped, nextPageToken, previousPageToken, lastPageToken, null);

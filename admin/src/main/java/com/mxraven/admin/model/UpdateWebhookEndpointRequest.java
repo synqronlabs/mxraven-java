@@ -10,24 +10,48 @@ public record UpdateWebhookEndpointRequest(
         String displayName,
         String targetUrl) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds {@link UpdateWebhookEndpointRequest} instances. */
     public static final class Builder {
         private String displayName;
         private String targetUrl;
 
+        /**
+         * Sets the human-readable endpoint name.
+         *
+         * @param displayName human-readable endpoint name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the HTTPS URL that deliveries are sent to.
+         *
+         * @param targetUrl HTTPS delivery target URL
+         * @return this builder
+         */
         public Builder targetUrl(String targetUrl) {
             this.targetUrl = targetUrl;
             return this;
         }
 
+        /**
+         * Builds the request.
+         *
+         * @return the update request
+         * @throws IllegalArgumentException if a field fails validation
+         */
         public UpdateWebhookEndpointRequest build() {
             if (displayName == null || displayName.isBlank()) {
                 throw new IllegalArgumentException("display_name is required");

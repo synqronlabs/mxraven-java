@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Verification method for an SMTP forward destination. */
 public enum SmtpForwardDestinationVerificationMethod {
+    /** Ownership is verified by email. */
     EMAIL("email"),
+    /** Ownership is verified by a platform override. */
     PLATFORM_OVERRIDE("platform_override");
 
     private final String wire;
@@ -14,12 +16,23 @@ public enum SmtpForwardDestinationVerificationMethod {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static SmtpForwardDestinationVerificationMethod fromWire(String value) {
         if (value == null) {

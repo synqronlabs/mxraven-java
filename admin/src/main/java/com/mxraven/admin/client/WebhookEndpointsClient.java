@@ -22,11 +22,23 @@ public final class WebhookEndpointsClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Creates a client bound to the given tenant.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug
+     */
     public WebhookEndpointsClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
+    /**
+     * Lists webhook endpoints for the tenant.
+     *
+     * @return a lazily paginated collection of webhook endpoints
+     * @throws IOException if the request fails or is interrupted
+     */
     public Paged<WebhookEndpoint> list() throws IOException {
         return list(null);
     }
@@ -36,13 +48,26 @@ public final class WebhookEndpointsClient {
                 .map(data -> new WebhookEndpoint(client, one(data.id()), data));
     }
 
-    /** Returns the endpoint together with its one-time signing secret. */
+    /**
+     * Returns the endpoint together with its one-time signing secret.
+     *
+     * @param configure consumer that populates the creation request builder
+     * @return the created endpoint and its one-time signing secret
+     * @throws IOException if the request fails or is interrupted
+     */
     public IssuedWebhookEndpoint create(Consumer<CreateWebhookEndpointRequest.Builder> configure) throws IOException {
         CreateWebhookEndpointRequest.Builder builder = CreateWebhookEndpointRequest.builder();
         configure.accept(builder);
         return create(builder.build());
     }
 
+    /**
+     * Creates an endpoint described by the given request.
+     *
+     * @param request webhook-endpoint creation request
+     * @return the created endpoint and its one-time signing secret
+     * @throws IOException if the request fails or is interrupted
+     */
     public IssuedWebhookEndpoint create(CreateWebhookEndpointRequest request) throws IOException {
         return client.post(base(), request).as(IssuedWebhookEndpoint.class);
     }
@@ -59,12 +84,25 @@ public final class WebhookEndpointsClient {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Gets a webhook endpoint by its identifier.
+     *
+     * @param endpointId webhook-endpoint identifier
+     * @return the webhook endpoint
+     * @throws IOException if the request fails or is interrupted
+     */
     public WebhookEndpoint get(String endpointId) throws IOException {
         String resourcePath = one(endpointId);
         return new WebhookEndpoint(client, resourcePath, client.get(resourcePath).as(WebhookEndpointData.class));
     }
 
-    /** Get a webhook endpoint by its immutable {@code webhook_ref}. */
+    /**
+     * Gets a webhook endpoint by its immutable {@code webhook_ref}.
+     *
+     * @param webhookRef immutable webhook-endpoint reference
+     * @return the webhook endpoint
+     * @throws IOException if the request fails or is interrupted
+     */
     public WebhookEndpoint getByRef(String webhookRef) throws IOException {
         String refPath = base() + "/ref/" + seg(webhookRef);
         WebhookEndpointData data = client.get(refPath).as(WebhookEndpointData.class);

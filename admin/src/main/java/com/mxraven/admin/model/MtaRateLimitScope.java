@@ -5,8 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Scope of an MTA rate-limit override. */
 public enum MtaRateLimitScope {
+    /** Global scope. */
     GLOBAL("global"),
+    /** Tenant scope. */
     TENANT("tenant"),
+    /** Listener scope. */
     LISTENER("listener");
 
     private final String wire;
@@ -15,12 +18,23 @@ public enum MtaRateLimitScope {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant for a wire value.
+     *
+     * @param value wire value, or {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if the value is unknown
+     */
     @JsonCreator
     public static MtaRateLimitScope fromWire(String value) {
         if (value == null) {

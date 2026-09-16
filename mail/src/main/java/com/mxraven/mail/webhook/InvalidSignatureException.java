@@ -8,10 +8,16 @@ package com.mxraven.mail.webhook;
  * signature was computed over, which helps diagnose proxy/host mismatches.
  */
 public final class InvalidSignatureException extends WebhookException {
+    /** Creates an exception with the default message. */
     public InvalidSignatureException() {
         this(null);
     }
 
+    /**
+     * Creates an exception that includes {@code detail} in the message.
+     *
+     * @param detail additional detail to append, or {@code null} to use the default message
+     */
     public InvalidSignatureException(String detail) {
         super(detail == null || detail.isBlank()
                 ? "webhook: invalid signature"

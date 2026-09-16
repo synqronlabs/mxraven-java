@@ -46,12 +46,18 @@ public final class Paged<T> implements Iterable<T> {
      * The eagerly fetched first page, including its items and opaque pagination
      * tokens. This is the escape hatch for callers that need page-level control;
      * prefer {@link #iterator()}, {@link #stream()}, or {@link #toList()}.
+     *
+     * @return the first page
      */
     public Page<T> firstPage() {
         return firstPage;
     }
 
-    /** Whether the collection is empty, without fetching further pages. */
+    /**
+     * Whether the collection is empty, without fetching further pages.
+     *
+     * @return {@code true} if the first page has no items and no next page
+     */
     public boolean isEmpty() {
         return firstPage.items().isEmpty() && !firstPage.hasNext();
     }
@@ -91,17 +97,31 @@ public final class Paged<T> implements Iterable<T> {
         };
     }
 
-    /** Lazy stream over every item across all pages. */
+    /**
+     * Returns a lazy stream over every item across all pages.
+     *
+     * @return a sequential stream of all items
+     */
     public Stream<T> stream() {
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator(), 0), false);
     }
 
-    /** Eagerly fetch every page and return all items. */
+    /**
+     * Eagerly fetch every page and return all items.
+     *
+     * @return an immutable list of all items
+     */
     public List<T> toList() {
         return stream().toList();
     }
 
-    /** Lazily transform every item across all pages. */
+    /**
+     * Lazily transform every item across all pages.
+     *
+     * @param mapper function applied to each item
+     * @param <R> mapped element type
+     * @return a lazily mapped collection
+     */
     public <R> Paged<R> map(Function<? super T, ? extends R> mapper) {
         return new Paged<>(firstPage.map(mapper), token -> fetchNext.apply(token).map(mapper));
     }

@@ -40,12 +40,23 @@ public enum TerminalAction {
         this.wire = wire;
     }
 
-    /** The mxRaven worker enum name used on the wire. */
+    /**
+     * Returns the mxRaven worker enum name used on the wire.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the action for its wire value.
+     *
+     * @param value the wire value
+     * @return the matching action, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException when no action matches the value
+     */
     @JsonCreator
     public static TerminalAction fromWire(String value) {
         if (value == null) {

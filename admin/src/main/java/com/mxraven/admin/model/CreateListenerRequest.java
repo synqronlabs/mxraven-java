@@ -19,15 +19,29 @@ public record CreateListenerRequest(
         TerminalActionPayload defaultTerminalActionPayload,
         Boolean rspamdScanningEnabled) {
 
+    /**
+     * Creates a request without a terminal-action payload or Rspamd override.
+     *
+     * @param displayName human-readable listener name
+     * @param listenerType {@code submission} or {@code mta}
+     * @param streamType {@code transactional} or {@code marketing}
+     * @param defaultTerminalActionType terminal action type valid for the listener type
+     */
     public CreateListenerRequest(String displayName, ListenerType listenerType, StreamType streamType,
                                  TerminalActionType defaultTerminalActionType) {
         this(displayName, listenerType, streamType, defaultTerminalActionType, null, null);
     }
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds a {@link CreateListenerRequest}. */
     public static final class Builder {
         private String displayName;
         private ListenerType listenerType;
@@ -36,34 +50,69 @@ public record CreateListenerRequest(
         private TerminalActionPayload defaultTerminalActionPayload;
         private Boolean rspamdScanningEnabled;
 
+        /**
+         * Sets the human-readable listener name.
+         *
+         * @param displayName listener name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the listener type.
+         *
+         * @param listenerType {@code submission} or {@code mta}
+         * @return this builder
+         */
         public Builder listenerType(ListenerType listenerType) {
             this.listenerType = listenerType;
             return this;
         }
 
+        /**
+         * Sets the stream type.
+         *
+         * @param streamType {@code transactional} or {@code marketing}
+         * @return this builder
+         */
         public Builder streamType(StreamType streamType) {
             this.streamType = streamType;
             return this;
         }
 
+        /**
+         * Sets the default terminal action type.
+         *
+         * @param defaultTerminalActionType terminal action type
+         * @return this builder
+         */
         public Builder defaultTerminalActionType(TerminalActionType defaultTerminalActionType) {
             this.defaultTerminalActionType = defaultTerminalActionType;
             return this;
         }
 
-        /** Set the terminal action and an empty payload, for actions that take none. */
+        /**
+         * Set the terminal action and an empty payload, for actions that take none.
+         *
+         * @param defaultTerminalActionType terminal action type
+         * @return this builder
+         */
         public Builder defaultTerminalAction(TerminalActionType defaultTerminalActionType) {
             this.defaultTerminalActionType = defaultTerminalActionType;
             this.defaultTerminalActionPayload = TerminalActionPayload.empty();
             return this;
         }
 
-        /** Set the terminal action and its action-specific payload together. */
+        /**
+         * Set the terminal action and its action-specific payload together.
+         *
+         * @param defaultTerminalActionType terminal action type
+         * @param defaultTerminalActionPayload action-specific payload
+         * @return this builder
+         */
         public Builder defaultTerminalAction(TerminalActionType defaultTerminalActionType,
                                              TerminalActionPayload defaultTerminalActionPayload) {
             this.defaultTerminalActionType = defaultTerminalActionType;
@@ -71,16 +120,34 @@ public record CreateListenerRequest(
             return this;
         }
 
+        /**
+         * Sets the terminal-action payload.
+         *
+         * @param defaultTerminalActionPayload action-specific payload
+         * @return this builder
+         */
         public Builder defaultTerminalActionPayload(TerminalActionPayload defaultTerminalActionPayload) {
             this.defaultTerminalActionPayload = defaultTerminalActionPayload;
             return this;
         }
 
+        /**
+         * Sets whether Rspamd scanning is enabled.
+         *
+         * @param rspamdScanningEnabled Rspamd scanning flag
+         * @return this builder
+         */
         public Builder rspamdScanningEnabled(Boolean rspamdScanningEnabled) {
             this.rspamdScanningEnabled = rspamdScanningEnabled;
             return this;
         }
 
+        /**
+         * Builds the request.
+         *
+         * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
+         */
         public CreateListenerRequest build() {
             validate();
             return new CreateListenerRequest(displayName, listenerType, streamType, defaultTerminalActionType, defaultTerminalActionPayload, rspamdScanningEnabled);

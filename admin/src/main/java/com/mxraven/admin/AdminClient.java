@@ -68,26 +68,55 @@ public final class AdminClient implements AutoCloseable {
     private final RateLimitConfig rateLimitConfig;
     private final String apiVersion;
 
-    /** Construct a client against {@link #DEFAULT_BASE_URL}. */
+    /**
+     * Construct a client against {@link #DEFAULT_BASE_URL}.
+     *
+     * @param token ZITADEL-issued bearer access token
+     */
     public AdminClient(String token) {
         this(DEFAULT_BASE_URL, token, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
     }
 
-    /** Construct a client against {@link #DEFAULT_BASE_URL} with explicit rate-limit behaviour. */
+    /**
+     * Construct a client against {@link #DEFAULT_BASE_URL} with explicit
+     * rate-limit behaviour.
+     *
+     * @param token ZITADEL-issued bearer access token
+     * @param rateLimitConfig client-wide rate-limit behaviour
+     */
     public AdminClient(String token, RateLimitConfig rateLimitConfig) {
         this(DEFAULT_BASE_URL, token, rateLimitConfig, DEFAULT_API_VERSION);
     }
 
-    /** Construct a client against {@link #DEFAULT_BASE_URL} with a custom HTTP client and mapper. */
+    /**
+     * Construct a client against {@link #DEFAULT_BASE_URL} with a custom HTTP
+     * client and mapper.
+     *
+     * @param token ZITADEL-issued bearer access token
+     * @param http HTTP client used to send requests
+     * @param json mapper used to encode and decode JSON
+     */
     public AdminClient(String token, HttpClient http, ObjectMapper json) {
         this(DEFAULT_BASE_URL, token, http, json, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
     }
 
+    /**
+     * Construct a client against an explicit control-plane base URL.
+     *
+     * @param baseUrl control-plane base URL; trailing slashes are stripped
+     * @param token ZITADEL-issued bearer access token
+     */
     public AdminClient(String baseUrl, String token) {
         this(baseUrl, token, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
     }
 
-    /** Construct a client with explicit rate-limit behaviour. */
+    /**
+     * Construct a client with explicit rate-limit behaviour.
+     *
+     * @param baseUrl control-plane base URL; trailing slashes are stripped
+     * @param token ZITADEL-issued bearer access token
+     * @param rateLimitConfig client-wide rate-limit behaviour
+     */
     public AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig) {
         this(baseUrl, token, rateLimitConfig, DEFAULT_API_VERSION);
     }
@@ -96,18 +125,38 @@ public final class AdminClient implements AutoCloseable {
      * Construct a client targeting a specific control-plane API version. The
      * version is prepended to every request path (for example {@code "v2"}
      * yields {@code /v2/...}). Pass {@link #DEFAULT_API_VERSION} for the default.
+     *
+     * @param baseUrl control-plane base URL; trailing slashes are stripped
+     * @param token ZITADEL-issued bearer access token
+     * @param apiVersion API version prefix applied to every request path
      */
     public AdminClient(String baseUrl, String token, String apiVersion) {
         this(baseUrl, token, RateLimitConfig.defaults(), apiVersion);
     }
 
-    /** Construct a client with explicit rate-limit behaviour and API version. */
+    /**
+     * Construct a client with explicit rate-limit behaviour and API version.
+     *
+     * @param baseUrl control-plane base URL; trailing slashes are stripped
+     * @param token ZITADEL-issued bearer access token
+     * @param rateLimitConfig client-wide rate-limit behaviour
+     * @param apiVersion API version prefix applied to every request path
+     */
     public AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig, String apiVersion) {
         this(baseUrl, token, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .build(), DEFAULT_MAPPER, rateLimitConfig, apiVersion);
     }
 
+    /**
+     * Construct a client with a custom HTTP client and mapper against an
+     * explicit base URL.
+     *
+     * @param baseUrl control-plane base URL; trailing slashes are stripped
+     * @param token ZITADEL-issued bearer access token
+     * @param http HTTP client used to send requests
+     * @param json mapper used to encode and decode JSON
+     */
     public AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json) {
         this(baseUrl, token, http, json, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
     }
@@ -122,20 +171,38 @@ public final class AdminClient implements AutoCloseable {
         this.apiVersion = normalizeApiVersion(apiVersion);
     }
 
+    /**
+     * Returns the control-plane base URL, without a trailing slash.
+     *
+     * @return the normalized base URL
+     */
     public String baseUrl() {
         return baseUrl;
     }
 
-    /** The control-plane API version prefix applied to every request path. */
+    /**
+     * The control-plane API version prefix applied to every request path.
+     *
+     * @return the API version prefix, for example {@code "v2"}
+     */
     public String apiVersion() {
         return apiVersion;
     }
 
+    /**
+     * Returns the mapper used to encode request bodies and decode response bodies.
+     *
+     * @return the JSON mapper
+     */
     public ObjectMapper json() {
         return json;
     }
 
-    /** The client-wide rate-limit behaviour. */
+    /**
+     * The client-wide rate-limit behaviour.
+     *
+     * @return the rate-limit configuration
+     */
     public RateLimitConfig rateLimitConfig() {
         return rateLimitConfig;
     }
@@ -145,6 +212,9 @@ public final class AdminClient implements AutoCloseable {
     /**
      * Bind a tenant. The returned {@link Workspace} exposes every tenant-scoped
      * resource family without repeating the slug.
+     *
+     * @param tenantSlug tenant slug to bind
+     * @return a workspace bound to the given tenant
      */
     public Workspace workspace(String tenantSlug) {
         return new Workspace(this, tenantSlug);
@@ -152,31 +222,82 @@ public final class AdminClient implements AutoCloseable {
 
     // --- Public (unauthenticated) families -----------------------------------
 
-    /** Public tenant login context; works with a blank token. */
+    /**
+     * Public tenant login context; works with a blank token.
+     *
+     * @return a client for the public authentication family
+     */
     public AuthClient auth() {
         return new AuthClient(this);
     }
 
+    /**
+     * Issues a GET request.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @return the decoded response
+     * @throws IOException if the request fails or is interrupted
+     */
     public Response get(String path) throws IOException {
         return get(path, null);
     }
 
+    /**
+     * Issues a GET request with query parameters.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @param query query parameters, or {@code null} for none
+     * @return the decoded response
+     * @throws IOException if the request fails or is interrupted
+     */
     public Response get(String path, Map<String, String> query) throws IOException {
         return request("GET", path, query, null);
     }
 
+    /**
+     * Issues a POST request with a JSON body.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @param body object serialized as the JSON request body
+     * @return the decoded response
+     * @throws IOException if the request fails or is interrupted
+     */
     public Response post(String path, Object body) throws IOException {
         return request("POST", path, null, body);
     }
 
+    /**
+     * Issues a POST request with query parameters and a JSON body.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @param query query parameters, or {@code null} for none
+     * @param body object serialized as the JSON request body
+     * @return the decoded response
+     * @throws IOException if the request fails or is interrupted
+     */
     public Response post(String path, Map<String, String> query, Object body) throws IOException {
         return request("POST", path, query, body);
     }
 
+    /**
+     * Issues a PUT request with a JSON body.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @param body object serialized as the JSON request body
+     * @return the decoded response
+     * @throws IOException if the request fails or is interrupted
+     */
     public Response put(String path, Object body) throws IOException {
         return request("PUT", path, null, body);
     }
 
+    /**
+     * Issues a DELETE request.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @return the decoded response
+     * @throws IOException if the request fails or is interrupted
+     */
     public Response delete(String path) throws IOException {
         return request("DELETE", path, null, null);
     }
@@ -185,6 +306,13 @@ public final class AdminClient implements AutoCloseable {
      * Issue a GET and wrap the response in a lazily auto-paginating {@link Paged}.
      * Subsequent pages are fetched by re-issuing the same request with the next
      * {@code page_token}, only as the returned iterator advances.
+     *
+     * @param path client-relative path; the configured API version is prepended
+     * @param query query parameters, or {@code null} for none
+     * @param elementType type of each item in the collection
+     * @param <T> element type
+     * @return a lazily paginating collection over the response items
+     * @throws IOException if the first page request fails or is interrupted
      */
     public <T> Paged<T> paged(String path, Map<String, String> query, Class<T> elementType) throws IOException {
         Function<String, Page<T>> fetchNext = pageFetcher(path, query, elementType);
@@ -210,6 +338,14 @@ public final class AdminClient implements AutoCloseable {
     /**
      * Send a request to the control plane. A non-success status is decoded as an
      * RFC 9457 problem and thrown as {@link ApiException}.
+     *
+     * @param method HTTP method to use
+     * @param path client-relative path; the configured API version is prepended
+     * @param query query parameters, or {@code null} for none
+     * @param body request body serialized as JSON, or {@code null} for no body
+     * @return the decoded successful response
+     * @throws IOException if the request fails or is interrupted
+     * @throws ApiException if the control plane returns a non-success status
      */
     public Response request(String method, String path, Map<String, String> query, Object body) throws IOException {
         String resolvedPath = resolvePath(path);

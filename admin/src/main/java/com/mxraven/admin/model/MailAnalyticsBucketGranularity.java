@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Bucket granularity for an analytics time series. */
 public enum MailAnalyticsBucketGranularity {
+    /** Hourly buckets. */
     HOUR("hour"),
+    /** Daily buckets. */
     DAY("day");
 
     private final String wire;
@@ -14,12 +16,23 @@ public enum MailAnalyticsBucketGranularity {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the constant matching a wire value.
+     *
+     * @param value the wire value; may be {@code null}
+     * @return the matching constant, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException if no constant matches
+     */
     @JsonCreator
     public static MailAnalyticsBucketGranularity fromWire(String value) {
         if (value == null) {

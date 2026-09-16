@@ -5,8 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Azure AD tenant type. */
 public enum AzureAdTenantType {
+    /** Work, school, and personal accounts. */
     COMMON("common"),
+    /** Work and school accounts only. */
     ORGANISATIONS("organisations"),
+    /** Personal Microsoft accounts only. */
     CONSUMERS("consumers");
 
     private final String wire;
@@ -15,12 +18,23 @@ public enum AzureAdTenantType {
         this.wire = wire;
     }
 
-    /** The wire value. */
+    /**
+     * The wire value.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the tenant type from its wire value.
+     *
+     * @param value wire value
+     * @return matching tenant type, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException when the value is unknown
+     */
     @JsonCreator
     public static AzureAdTenantType fromWire(String value) {
         if (value == null) {

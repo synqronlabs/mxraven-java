@@ -27,25 +27,50 @@ public final class Response {
         this.json = json;
     }
 
+    /**
+     * Returns the HTTP status code.
+     *
+     * @return the status code
+     */
     public int status() {
         return status;
     }
 
+    /**
+     * Returns the response headers.
+     *
+     * @return the response headers
+     */
     public HttpHeaders headers() {
         return headers;
     }
 
-    /** First value of a response header, case-insensitive. */
+    /**
+     * First value of a response header, case-insensitive.
+     *
+     * @param name header name
+     * @return the first header value, or empty when the header is absent
+     */
     public Optional<String> header(String name) {
         return headers.firstValue(name);
     }
 
-    /** Decoded JSON body, or {@code null} when the response had no body. */
+    /**
+     * Decoded JSON body, or {@code null} when the response had no body.
+     *
+     * @return the decoded body, or {@code null} when there was no body
+     */
     public JsonNode body() {
         return body;
     }
 
-    /** Convert this response body to a single object. */
+    /**
+     * Convert this response body to a single object.
+     *
+     * @param type target type
+     * @param <T> target type
+     * @return the converted object, or {@code null} when the body is absent
+     */
     public <T> T as(Class<T> type) {
         if (body == null || body.isNull()) {
             return null;
@@ -53,7 +78,13 @@ public final class Response {
         return json.convertValue(body, type);
     }
 
-    /** Convert this response body to a list of objects. */
+    /**
+     * Convert this response body to a list of objects.
+     *
+     * @param elementType type of each list element
+     * @param <T> element type
+     * @return the converted list, empty when the body is absent
+     */
     public <T> List<T> listOf(Class<T> elementType) {
         if (body == null || body.isNull()) {
             return List.of();
@@ -65,6 +96,10 @@ public final class Response {
     /**
      * Build a page from this response using the standard {@code X-Next-Page-Token},
      * {@code X-Previous-Page-Token}, and {@code X-Last-Page-Token} headers.
+     *
+     * @param elementType type of each page item
+     * @param <T> element type
+     * @return a page built from this response body and pagination headers
      */
     public <T> Page<T> pageOf(Class<T> elementType) {
         return new Page<>(

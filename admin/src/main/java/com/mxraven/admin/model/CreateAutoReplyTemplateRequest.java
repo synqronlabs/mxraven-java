@@ -6,6 +6,14 @@ import java.util.List;
 
 /**
  * Request body for {@code POST /v2/tenants/{slug}/auto-reply-templates}.
+ *
+ * @param templateRef immutable template reference
+ * @param displayName human-readable template name
+ * @param fromAddress sender address used for replies
+ * @param subject reply subject line
+ * @param textBody optional plain-text body
+ * @param htmlBody optional HTML body
+ * @param headers optional custom headers
  */
 public record CreateAutoReplyTemplateRequest(
         String templateRef,
@@ -16,10 +24,16 @@ public record CreateAutoReplyTemplateRequest(
         String htmlBody,
         List<AutoReplyTemplateHeader> headers) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds a {@link CreateAutoReplyTemplateRequest}. */
     public static final class Builder {
         private String templateRef;
         private String displayName;
@@ -29,36 +43,78 @@ public record CreateAutoReplyTemplateRequest(
         private String htmlBody;
         private List<AutoReplyTemplateHeader> headers;
 
+        /**
+         * Sets the immutable template reference.
+         *
+         * @param templateRef template reference
+         * @return this builder
+         */
         public Builder templateRef(String templateRef) {
             this.templateRef = templateRef;
             return this;
         }
 
+        /**
+         * Sets the human-readable template name.
+         *
+         * @param displayName template name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the sender address used for replies.
+         *
+         * @param fromAddress sender address
+         * @return this builder
+         */
         public Builder fromAddress(String fromAddress) {
             this.fromAddress = fromAddress;
             return this;
         }
 
+        /**
+         * Sets the reply subject line.
+         *
+         * @param subject subject line
+         * @return this builder
+         */
         public Builder subject(String subject) {
             this.subject = subject;
             return this;
         }
 
+        /**
+         * Sets the plain-text body.
+         *
+         * @param textBody plain-text body
+         * @return this builder
+         */
         public Builder textBody(String textBody) {
             this.textBody = textBody;
             return this;
         }
 
+        /**
+         * Sets the HTML body.
+         *
+         * @param htmlBody HTML body
+         * @return this builder
+         */
         public Builder htmlBody(String htmlBody) {
             this.htmlBody = htmlBody;
             return this;
         }
 
+        /**
+         * Sets the custom headers.
+         *
+         * @param headers custom headers
+         * @return this builder
+         */
         public Builder headers(List<AutoReplyTemplateHeader> headers) {
             this.headers = headers;
             return this;
@@ -66,6 +122,12 @@ public record CreateAutoReplyTemplateRequest(
 
         private static final Pattern REFERENCE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]*$");
 
+        /**
+         * Builds the request.
+         *
+         * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
+         */
         public CreateAutoReplyTemplateRequest build() {
             if (templateRef == null || templateRef.isBlank()) {
                 throw new IllegalArgumentException("template_ref is required");

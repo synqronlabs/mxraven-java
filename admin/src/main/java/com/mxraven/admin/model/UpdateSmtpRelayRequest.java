@@ -17,10 +17,16 @@ public record UpdateSmtpRelayRequest(
         String username,
         String password) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds {@link UpdateSmtpRelayRequest} instances. */
     public static final class Builder {
         private String displayName;
         private String host;
@@ -28,31 +34,67 @@ public record UpdateSmtpRelayRequest(
         private String username;
         private String password;
 
+        /**
+         * Sets the human-readable relay name.
+         *
+         * @param displayName human-readable relay name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the SMTP relay host.
+         *
+         * @param host SMTP relay host
+         * @return this builder
+         */
         public Builder host(String host) {
             this.host = host;
             return this;
         }
 
+        /**
+         * Sets the SMTP relay port.
+         *
+         * @param port SMTP relay port
+         * @return this builder
+         */
         public Builder port(int port) {
             this.port = port;
             return this;
         }
 
+        /**
+         * Sets the relay username.
+         *
+         * @param username relay username
+         * @return this builder
+         */
         public Builder username(String username) {
             this.username = username;
             return this;
         }
 
+        /**
+         * Sets the relay password.
+         *
+         * @param password relay password
+         * @return this builder
+         */
         public Builder password(String password) {
             this.password = password;
             return this;
         }
 
+        /**
+         * Builds the request.
+         *
+         * @return the update request
+         * @throws IllegalArgumentException if the connection details fail validation
+         */
         public UpdateSmtpRelayRequest build() {
             validateConnection(displayName, host, port, username, password);
             return new UpdateSmtpRelayRequest(displayName, host, port, username, password);

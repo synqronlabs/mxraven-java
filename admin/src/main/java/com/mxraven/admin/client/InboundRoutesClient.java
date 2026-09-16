@@ -20,16 +20,32 @@ public final class InboundRoutesClient {
     private final AdminClient client;
     private final String tenantSlug;
 
+    /**
+     * Create a client for the inbound-route collection of a tenant.
+     *
+     * @param client underlying admin client
+     * @param tenantSlug tenant slug whose inbound routes are accessed
+     */
     public InboundRoutesClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
     }
 
-    /** Start a typed, fluent list request. */
+    /**
+     * Start a typed, fluent list request.
+     *
+     * @return a new inbound-route query
+     */
     public InboundRouteQuery query() {
         return new InboundRouteQuery(this);
     }
 
+    /**
+     * List the inbound routes (first page fetched eagerly, remaining pages lazy).
+     *
+     * @return a lazily paginating collection of inbound routes
+     * @throws IOException if the first page request fails or is interrupted
+     */
     public Paged<InboundRoute> list() throws IOException {
         return list(null);
     }
@@ -39,12 +55,26 @@ public final class InboundRoutesClient {
                 .map(data -> new InboundRoute(client, one(data.id()), data));
     }
 
+    /**
+     * Create an inbound route from a configured builder.
+     *
+     * @param configure consumer that configures the request builder
+     * @return the created inbound route
+     * @throws IOException if the request fails or is interrupted
+     */
     public InboundRoute create(Consumer<CreateInboundRouteRequest.Builder> configure) throws IOException {
         CreateInboundRouteRequest.Builder builder = CreateInboundRouteRequest.builder();
         configure.accept(builder);
         return create(builder.build());
     }
 
+    /**
+     * Create an inbound route.
+     *
+     * @param request creation request
+     * @return the created inbound route
+     * @throws IOException if the request fails or is interrupted
+     */
     public InboundRoute create(CreateInboundRouteRequest request) throws IOException {
         InboundRouteData data = client.post(base(), request).as(InboundRouteData.class);
         return new InboundRoute(client, one(data.id()), data);
@@ -62,6 +92,13 @@ public final class InboundRoutesClient {
         return URLEncoder.encode(segment, StandardCharsets.UTF_8);
     }
 
+    /**
+     * Get an inbound route by its identifier.
+     *
+     * @param routeId inbound-route identifier
+     * @return the hydrated inbound route
+     * @throws IOException if the request fails or is interrupted
+     */
     public InboundRoute get(String routeId) throws IOException {
         String resourcePath = one(routeId);
         return new InboundRoute(client, resourcePath, client.get(resourcePath).as(InboundRouteData.class));

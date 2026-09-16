@@ -6,6 +6,9 @@ package com.mxraven.admin.model;
  * <p>{@code status} is one of {@code ready}, {@code invalid_from_address},
  * {@code domain_not_found}, {@code sending_not_enabled},
  * {@code domain_not_verified}, or {@code dkim_not_verified}.
+ *
+ * @param ready whether the sender can currently deliver
+ * @param status detailed sender-readiness status
  */
 public record AutoReplySenderReadiness(
         boolean ready,

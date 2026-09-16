@@ -16,10 +16,22 @@ public final class QueryParams {
     private QueryParams() {
     }
 
+    /**
+     * Creates an empty query-parameter builder.
+     *
+     * @return a new builder
+     */
     public static QueryParams create() {
         return new QueryParams();
     }
 
+    /**
+     * Adds a query parameter, ignoring {@code null} values.
+     *
+     * @param key parameter name
+     * @param value parameter value; ignored when {@code null}
+     * @return this builder
+     */
     public QueryParams put(String key, Object value) {
         if (value != null) {
             values.put(key, String.valueOf(value));
@@ -27,7 +39,13 @@ public final class QueryParams {
         return this;
     }
 
-    /** Sets {@code page_size}; the control plane accepts 1–500. */
+    /**
+     * Sets {@code page_size}; the control plane accepts 1–500.
+     *
+     * @param pageSize number of items to request per page, between 1 and 500
+     * @return this builder
+     * @throws IllegalArgumentException if {@code pageSize} is outside 1–500
+     */
     public QueryParams pageSize(int pageSize) {
         if (pageSize < 1 || pageSize > 500) {
             throw new IllegalArgumentException("page_size must be between 1 and 500");
@@ -35,6 +53,12 @@ public final class QueryParams {
         return put("page_size", pageSize);
     }
 
+    /**
+     * Sets {@code page_token} to continue from a previously returned page.
+     *
+     * @param pageToken opaque page token; {@code null} is ignored
+     * @return this builder
+     */
     public QueryParams pageToken(String pageToken) {
         return put("page_token", pageToken);
     }
@@ -44,6 +68,11 @@ public final class QueryParams {
      * {@value #MIN_SEARCH_LENGTH} characters and rejects shorter values with an
      * opaque {@code 400 invalid_request}. A {@code null} or blank value is
      * ignored; a shorter non-blank value is rejected locally.
+     *
+     * @param query search text; {@code null} or blank is ignored
+     * @return this builder
+     * @throws IllegalArgumentException if the trimmed query is shorter than
+     *                                  {@value #MIN_SEARCH_LENGTH} characters
      */
     public QueryParams q(String query) {
         if (query == null || query.isBlank()) {
@@ -57,6 +86,11 @@ public final class QueryParams {
         return put("q", value);
     }
 
+    /**
+     * Snapshots the accumulated parameters.
+     *
+     * @return the accumulated parameter names mapped to their string values
+     */
     public Map<String, String> toMap() {
         return values;
     }

@@ -40,7 +40,11 @@ public final class WebhookHandler {
         this.store = builder.store;
     }
 
-    /** Creates a handler builder. */
+    /**
+     * Creates a handler builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -87,7 +91,13 @@ public final class WebhookHandler {
         private Builder() {
         }
 
-        /** Sets the verifier used to authenticate requests. */
+        /**
+         * Sets the verifier used to authenticate requests.
+         *
+         * @param verifier the verifier
+         * @return this builder
+         * @throws IllegalArgumentException when {@code verifier} is {@code null}
+         */
         public Builder verifier(WebhookVerifier verifier) {
             if (verifier == null) {
                 throw new IllegalArgumentException("verifier must not be null");
@@ -96,7 +106,13 @@ public final class WebhookHandler {
             return this;
         }
 
-        /** Sets the callback invoked for each verified event. */
+        /**
+         * Sets the callback invoked for each verified event.
+         *
+         * @param listener the event listener
+         * @return this builder
+         * @throws IllegalArgumentException when {@code listener} is {@code null}
+         */
         public Builder listener(WebhookListener listener) {
             if (listener == null) {
                 throw new IllegalArgumentException("listener must not be null");
@@ -105,13 +121,23 @@ public final class WebhookHandler {
             return this;
         }
 
-        /** Sets an optional idempotency store. */
+        /**
+         * Sets an optional idempotency store.
+         *
+         * @param store the idempotency store, or {@code null} to disable deduplication
+         * @return this builder
+         */
         public Builder store(WebhookStore store) {
             this.store = store;
             return this;
         }
 
-        /** Builds the handler. A verifier and a listener are required. */
+        /**
+         * Builds the handler. A verifier and a listener are required.
+         *
+         * @return the configured handler
+         * @throws IllegalStateException when the verifier or listener has not been set
+         */
         public WebhookHandler build() {
             if (verifier == null) {
                 throw new IllegalStateException("verifier is required (call verifier(...))");

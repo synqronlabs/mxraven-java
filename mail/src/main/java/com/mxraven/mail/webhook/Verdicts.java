@@ -24,6 +24,9 @@ public record Verdicts(
         boolean isSkipped,
         String error) {
 
+    /**
+     * Creates verdicts, copying the malware name list.
+     */
     public Verdicts {
         malwareNames = malwareNames == null ? List.of() : List.copyOf(malwareNames);
     }

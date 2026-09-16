@@ -14,9 +14,18 @@ package com.mxraven.mail.webhook;
  * retained entries by age. Both methods may be called concurrently.
  */
 public interface WebhookStore {
-    /** Whether the task has already been processed. */
+    /**
+     * Whether the task has already been processed.
+     *
+     * @param taskId the delivery task ID
+     * @return {@code true} when the task was seen before
+     */
     boolean seen(String taskId);
 
-    /** Records a task as processed, after the listener returned normally. */
+    /**
+     * Records a task as processed, after the listener returned normally.
+     *
+     * @param taskId the delivery task ID
+     */
     void remember(String taskId);
 }

@@ -16,7 +16,12 @@ public final class DsnXText {
     private DsnXText() {
     }
 
-    /** Encodes a value for use in an xtext parameter. */
+    /**
+     * Encodes a value for use in an xtext parameter.
+     *
+     * @param decoded the value to encode; may be {@code null}
+     * @return the encoded value, or {@code null} when {@code decoded} is {@code null}
+     */
     public static String encode(String decoded) {
         if (decoded == null) {
             return null;
@@ -36,6 +41,8 @@ public final class DsnXText {
     /**
      * Decodes an xtext parameter.
      *
+     * @param wire the xtext-encoded value; may be {@code null}
+     * @return the decoded value, or {@code null} when {@code wire} is {@code null}
      * @throws IllegalArgumentException when a {@code +} escape is malformed
      */
     public static String decode(String wire) {

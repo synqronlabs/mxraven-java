@@ -5,31 +5,59 @@ import java.util.regex.Pattern;
 /**
  * Request body for
  * {@code POST /v2/tenants/{slug}/smtp-forward-destinations}.
+ *
+ * @param destinationRef immutable destination reference
+ * @param displayName human-readable destination name
+ * @param emailAddress destination email address
  */
 public record CreateSmtpForwardDestinationRequest(
         String destinationRef,
         String displayName,
         String emailAddress) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds a {@link CreateSmtpForwardDestinationRequest}. */
     public static final class Builder {
         private String destinationRef;
         private String displayName;
         private String emailAddress;
 
+        /**
+         * Sets the immutable destination reference.
+         *
+         * @param destinationRef destination reference
+         * @return this builder
+         */
         public Builder destinationRef(String destinationRef) {
             this.destinationRef = destinationRef;
             return this;
         }
 
+        /**
+         * Sets the human-readable destination name.
+         *
+         * @param displayName destination name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the destination email address.
+         *
+         * @param emailAddress destination email address
+         * @return this builder
+         */
         public Builder emailAddress(String emailAddress) {
             this.emailAddress = emailAddress;
             return this;
@@ -37,6 +65,12 @@ public record CreateSmtpForwardDestinationRequest(
 
         private static final Pattern REFERENCE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]*$");
 
+        /**
+         * Builds the request.
+         *
+         * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
+         */
         public CreateSmtpForwardDestinationRequest build() {
             if (destinationRef == null || destinationRef.isBlank()) {
                 throw new IllegalArgumentException("destination_ref is required");

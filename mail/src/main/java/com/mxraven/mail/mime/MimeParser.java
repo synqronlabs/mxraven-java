@@ -17,7 +17,13 @@ public final class MimeParser {
     private MimeParser() {
     }
 
-    /** Parses a complete raw message (headers and body). */
+    /**
+     * Parses a complete raw message (headers and body).
+     *
+     * @param raw the raw message bytes, or {@code null}
+     * @return the root part, a default empty {@code text/plain} part when
+     *         {@code raw} is {@code null} or empty
+     */
     public static MimePart parse(byte[] raw) {
         if (raw == null || raw.length == 0) {
             return new MimePart(new Headers(), "text/plain", "us-ascii",

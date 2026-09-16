@@ -14,25 +14,49 @@ public record CreateWebhookEndpointRequest(
         String displayName,
         String targetUrl) {
 
+    /**
+     * Creates a new request builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builds a {@link CreateWebhookEndpointRequest}. */
     public static final class Builder {
         private String webhookRef;
         private String displayName;
         private String targetUrl;
 
+        /**
+         * Sets the immutable webhook reference.
+         *
+         * @param webhookRef webhook reference
+         * @return this builder
+         */
         public Builder webhookRef(String webhookRef) {
             this.webhookRef = webhookRef;
             return this;
         }
 
+        /**
+         * Sets the human-readable endpoint name.
+         *
+         * @param displayName endpoint name
+         * @return this builder
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets the HTTPS URL that deliveries are sent to.
+         *
+         * @param targetUrl target URL
+         * @return this builder
+         */
         public Builder targetUrl(String targetUrl) {
             this.targetUrl = targetUrl;
             return this;
@@ -40,6 +64,12 @@ public record CreateWebhookEndpointRequest(
 
         private static final Pattern REFERENCE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]*$");
 
+        /**
+         * Builds the request.
+         *
+         * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
+         */
         public CreateWebhookEndpointRequest build() {
             if (webhookRef == null || webhookRef.isBlank()) {
                 throw new IllegalArgumentException("webhook_ref is required");

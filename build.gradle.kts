@@ -37,7 +37,11 @@ subprojects {
     }
 
     tasks.withType<Javadoc>().configureEach {
-        (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+        // Fail on broken references and malformed HTML. The `missing` group is
+        // excluded because JDK doclint reports record compact constructors and
+        // explicitly declared record accessors even when the record documents
+        // its components via @param.
+        (options as StandardJavadocDocletOptions).addBooleanOption("Xdoclint:all,-missing", true)
     }
 
     tasks.register<Jar>("sourcesJar") {

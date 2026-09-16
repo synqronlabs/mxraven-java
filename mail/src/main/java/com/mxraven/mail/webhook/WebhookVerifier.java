@@ -65,7 +65,11 @@ public final class WebhookVerifier {
         this.clock = builder.clock;
     }
 
-    /** Creates a verifier builder. */
+    /**
+     * Creates a verifier builder.
+     *
+     * @return a new builder
+     */
     public static Builder builder() {
         return new Builder();
     }
@@ -145,6 +149,14 @@ public final class WebhookVerifier {
     /**
      * Verifies the request signature and decodes its payload in one step.
      *
+     * @param method  the HTTP method, for example {@code "POST"}
+     * @param uri     the full request URI, including scheme, host, path, and query
+     * @param headers the request headers; looked up case-insensitively
+     * @param body    the exact raw request body bytes
+     * @return the decoded event
+     * @throws InvalidSignatureException when the signature does not match
+     * @throws WebhookException          when the request is unusable or the body is
+     *                                   not a recognized payload
      * @see #verify(String, URI, Map, byte[])
      */
     public WebhookEvent verifyAndDecode(String method, URI uri, Map<String, String> headers, byte[] body) {
@@ -245,6 +257,10 @@ public final class WebhookVerifier {
          * Sets the signing secret used to verify requests. The secret is used as
          * literal key bytes; do not decode it. It is used when no key-specific
          * secret matches.
+         *
+         * @param secret the signing secret
+         * @return this builder
+         * @throws IllegalArgumentException when {@code secret} is {@code null} or empty
          */
         public Builder secret(String secret) {
             if (secret == null || secret.isEmpty()) {
@@ -257,6 +273,11 @@ public final class WebhookVerifier {
         /**
          * Registers a signing secret for a specific signature key ID. Use it to
          * accept deliveries from more than one key, for example during rotation.
+         *
+         * @param kid    the signature key ID
+         * @param secret the signing secret for the key
+         * @return this builder
+         * @throws IllegalArgumentException when {@code kid} is blank or {@code secret} is empty
          */
         public Builder key(String kid, String secret) {
             if (kid == null || kid.isBlank()) {
@@ -273,6 +294,10 @@ public final class WebhookVerifier {
          * Sets the maximum accepted difference between the request timestamp and
          * the current time. {@link Duration#ZERO} disables timestamp checking.
          * Defaults to 5 minutes.
+         *
+         * @param tolerance the accepted clock skew
+         * @return this builder
+         * @throws IllegalArgumentException when {@code tolerance} is {@code null} or negative
          */
         public Builder tolerance(Duration tolerance) {
             if (tolerance == null) {
@@ -287,6 +312,10 @@ public final class WebhookVerifier {
 
         /**
          * Sets the maximum body size accepted by verification. Defaults to 1 MiB.
+         *
+         * @param maxBodyBytes the maximum accepted body size in bytes
+         * @return this builder
+         * @throws IllegalArgumentException when {@code maxBodyBytes} is not positive
          */
         public Builder maxBodyBytes(long maxBodyBytes) {
             if (maxBodyBytes <= 0) {
@@ -296,7 +325,13 @@ public final class WebhookVerifier {
             return this;
         }
 
-        /** Sets the clock used for timestamp checking. Defaults to UTC. */
+        /**
+         * Sets the clock used for timestamp checking. Defaults to UTC.
+         *
+         * @param clock the clock
+         * @return this builder
+         * @throws IllegalArgumentException when {@code clock} is {@code null}
+         */
         public Builder clock(Clock clock) {
             if (clock == null) {
                 throw new IllegalArgumentException("clock must not be null");
@@ -305,7 +340,12 @@ public final class WebhookVerifier {
             return this;
         }
 
-        /** Builds the verifier. At least one secret is required. */
+        /**
+         * Builds the verifier. At least one secret is required.
+         *
+         * @return the configured verifier
+         * @throws IllegalStateException when neither a secret nor a key has been set
+         */
         public WebhookVerifier build() {
             if ((secret == null || secret.isEmpty()) && keys.isEmpty()) {
                 throw new IllegalStateException("a signing secret is required (call secret(...) or key(...))");

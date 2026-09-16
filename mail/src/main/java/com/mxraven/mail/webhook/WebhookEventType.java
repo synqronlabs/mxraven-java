@@ -24,12 +24,23 @@ public enum WebhookEventType {
         this.wire = wire;
     }
 
-    /** The value used on the wire. */
+    /**
+     * Returns the value used on the wire.
+     *
+     * @return the wire value
+     */
     @JsonValue
     public String wire() {
         return wire;
     }
 
+    /**
+     * Resolves the event type for its wire value.
+     *
+     * @param value the wire value
+     * @return the matching event type, or {@code null} when {@code value} is {@code null}
+     * @throws IllegalArgumentException when no event type matches the value
+     */
     @JsonCreator
     public static WebhookEventType fromWire(String value) {
         if (value == null) {

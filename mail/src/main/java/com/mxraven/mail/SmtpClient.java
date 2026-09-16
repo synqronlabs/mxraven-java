@@ -30,6 +30,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * A synchronous SMTP submission client.
+ *
+ * <p>Connect with {@link #connect(SmtpConfig)} and send a built
+ * {@link Mail} with {@link #send(Mail)} or a prebuilt RFC 5322 message with
+ * {@link #sendRaw(Envelope, byte[])}. A client holds an open socket, so close
+ * it when finished, for example in a try-with-resources block.
+ */
 public final class SmtpClient implements AutoCloseable {
     private final SmtpConfig config;
     private Socket socket;
@@ -47,6 +55,16 @@ public final class SmtpClient implements AutoCloseable {
         this.config = config;
     }
 
+    /**
+     * Opens a connection to the configured server, reads the greeting, performs
+     * the ESMTP handshake, upgrades to TLS when required, and authenticates
+     * when credentials are configured.
+     *
+     * @param config the connection configuration
+     * @return a connected client
+     * @throws IOException when the connection or SMTP exchange fails
+     * @throws SmtpException when the server rejects a required capability
+     */
     public static SmtpClient connect(SmtpConfig config) throws IOException {
         SmtpClient client = new SmtpClient(config);
         client.openSocket();
@@ -65,44 +83,100 @@ public final class SmtpClient implements AutoCloseable {
         return client;
     }
 
+    /**
+     * Returns the server greeting read when the connection opened.
+     *
+     * @return the greeting text
+     */
     public String greeting() {
         return greeting;
     }
 
+    /**
+     * Reports whether the session is protected by TLS.
+     *
+     * @return {@code true} when TLS is active
+     */
     public boolean isTls() {
         return tls;
     }
 
+    /**
+     * Reports whether the server accepted the EHLO command.
+     *
+     * @return {@code true} when ESMTP extensions are available
+     */
     public boolean isEsmtp() {
         return esmtp;
     }
 
+    /**
+     * Reports whether the client authenticated successfully.
+     *
+     * @return {@code true} when authentication succeeded
+     */
     public boolean isAuthenticated() {
         return authenticated;
     }
 
+    /**
+     * Reports whether the server advertised an ESMTP extension.
+     *
+     * @param name the extension name, matched case-insensitively
+     * @return {@code true} when the extension is advertised
+     */
     public boolean hasExtension(String name) {
         return extensions.containsKey(name.toUpperCase(Locale.ROOT));
     }
 
+    /**
+     * Returns the parameter line the server advertised for an ESMTP extension.
+     *
+     * @param name the extension name, matched case-insensitively
+     * @return the extension parameter, or {@code null} when not advertised
+     */
     public String extensionParam(String name) {
         return extensions.get(name.toUpperCase(Locale.ROOT));
     }
 
+    /**
+     * Returns the advertised ESMTP extensions.
+     *
+     * @return an immutable map of extension name to parameter line
+     */
     public Map<String, String> extensions() {
         return Map.copyOf(extensions);
     }
 
+    /**
+     * Returns the most recent server reply.
+     *
+     * @return the last response, or {@code null} before any reply was read
+     */
     public SmtpResponse lastResponse() {
         return lastResponse;
     }
 
+    /**
+     * Sends a built message using its envelope and serialized content.
+     *
+     * @param mail the message to send
+     * @return the send result
+     * @throws IOException when the SMTP exchange fails
+     */
     public SendResult send(Mail mail) throws IOException {
         ensureOpen();
         return deliver(mail.envelope(), serialize(mail.content()));
     }
 
-    /** Sends a prebuilt RFC 5322 message with the given SMTP envelope. */
+    /**
+     * Sends a prebuilt RFC 5322 message with the given SMTP envelope.
+     *
+     * @param envelope the SMTP envelope for the message
+     * @param rawMessage the raw RFC 5322 message bytes
+     * @return the send result
+     * @throws IOException when the SMTP exchange fails
+     */
     public SendResult sendRaw(Envelope envelope, byte[] rawMessage) throws IOException {
         ensureOpen();
         return deliver(envelope, rawMessage);
@@ -121,14 +195,38 @@ public final class SmtpClient implements AutoCloseable {
         return new SendResult(success, results, dataResponse.message());
     }
 
+    /**
+     * Issues a {@code MAIL FROM} command with the given reverse path.
+     *
+     * @param address the sender address, without angle brackets
+     * @return the server response
+     * @throws IOException when the SMTP exchange fails
+     */
     public SmtpResponse mail(String address) throws IOException {
         return cmd("MAIL FROM:<" + address + ">");
     }
 
+    /**
+     * Issues a {@code RCPT TO} command with the given forward path.
+     *
+     * @param address the recipient address, without angle brackets
+     * @return the server response
+     * @throws IOException when the SMTP exchange fails
+     */
     public SmtpResponse rcpt(String address) throws IOException {
         return cmd("RCPT TO:<" + address + ">");
     }
 
+    /**
+     * Issues a {@code DATA} command and writes the message content, stuffing
+     * leading dots and terminating the payload with a CRLF-dot-CRLF sequence.
+     * When the server does not reply with code {@code 354}, the content is not
+     * transmitted.
+     *
+     * @param content the raw message content
+     * @return the response to the data command
+     * @throws IOException when the SMTP exchange fails
+     */
     public SmtpResponse data(byte[] content) throws IOException {
         SmtpResponse response = cmd("DATA");
         if (response.code() != 354) {
@@ -143,14 +241,35 @@ public final class SmtpClient implements AutoCloseable {
         return readResponse();
     }
 
+    /**
+     * Issues a {@code NOOP} command.
+     *
+     * @return the server response
+     * @throws IOException when the SMTP exchange fails
+     */
     public SmtpResponse noop() throws IOException {
         return cmd("NOOP");
     }
 
+    /**
+     * Issues a {@code RSET} command to reset the current transaction.
+     *
+     * @return the server response
+     * @throws IOException when the SMTP exchange fails
+     */
     public SmtpResponse reset() throws IOException {
         return cmd("RSET");
     }
 
+    /**
+     * Issues a {@code QUIT} command and closes the connection.
+     *
+     * <p>When the client is already closed, a synthetic code {@code 221}
+     * response is returned without contacting the server.
+     *
+     * @return the server's farewell response
+     * @throws IOException when the SMTP exchange fails
+     */
     public SmtpResponse quit() throws IOException {
         if (closed) {
             return new SmtpResponse(221, "Bye");

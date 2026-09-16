@@ -15,10 +15,12 @@ messages, verifies and receives webhooks, and submits recipient feedback.
 
 What it covers:
 
-- **SMTP submission** — STARTTLS / implicit TLS, AUTH PLAIN and LOGIN, the SMTP
-  extension parameters (SIZE, 8BITMIME/BINARYMIME, SMTPUTF8, REQUIRETLS,
-  DELIVERBY, DSN, AUTH), automatic CHUNKING/`BDAT` and PIPELINING, and a
-  thread-safe connection pool (`SmtpPool`) for high-throughput sending.
+- **SMTP submission** — STARTTLS / implicit TLS, AUTH (PLAIN, LOGIN, OAuth 2.0
+  `XOAUTH2`), proxy support, the SMTP extension parameters (SIZE,
+  8BITMIME/BINARYMIME, SMTPUTF8, REQUIRETLS, DELIVERBY, DSN, AUTH), automatic
+  CHUNKING/`BDAT` and PIPELINING, per-send deadlines/cancellation, streaming of
+  raw messages, and a thread-safe connection pool (`SmtpPool`) that health-checks,
+  evicts, and drains connections.
 - **Message building** — a fluent builder producing `multipart/alternative` and
   `multipart/mixed`, transfer encodings, and RFC 2047 header encoding.
 - **MIME parsing** — a part tree plus a convenience `ParsedEmail` view.
@@ -155,8 +157,22 @@ The high-throughput path is automatic when the server supports it:
   the server can accept or reject before the body is transferred.
 
 No opt-in is required; each is used only when the server advertises the
-extension. To abort an in-flight send, call `SmtpClient.cancel()` from another
-thread (use a per-connection client for that, not a shared pool).
+extension. Per-send deadlines and cancellation work here too:
+`pool.send(mail, SendOptions.builder().timeout(Duration.ofSeconds(30)).build())`.
+
+The pool manages connection lifetime so a server-closed idle socket does not fail
+your next send:
+
+- **Health check** — an idle connection is probed with a short `NOOP` before
+  reuse; a dead one is discarded and replaced.
+- **Idle eviction / max lifetime** — connections are closed after 5 minutes idle
+  and retired after 30 minutes regardless of use. Tune both with
+  `new SmtpPool(config, maxSize, maxIdle, maxLifetime)`; zero disables that limit.
+- **Graceful drain** — `close()` closes idle connections immediately, while
+  `close(Duration gracePeriod)` waits up to the grace period for in-flight sends.
+  `activeCount()` reports how many sends are borrowed.
+- Sends are **not** retried: a failed transaction may already be partially
+  delivered, so resending is the caller's decision.
 
 Receive and parse an inbound webhook:
 
@@ -203,6 +219,32 @@ try (WebhookServer server = WebhookServer.builder()
 
 ## SMTP client
 
+### Choosing how to send
+
+| You need to… | Use | Buffers the whole message? |
+| --- | --- | --- |
+| send one built `Mail` from one thread | `SmtpClient.send(Mail)` | yes |
+| send many messages, or from several threads | `SmtpPool.send(...)` / `sendRaw(...)` | depends on the overload |
+| send prebuilt RFC 5322 bytes already in memory | `sendRaw(Envelope, byte[])` | yes (you already hold them) |
+| send a large or pre-rendered message without loading it all | `sendRaw(Envelope, InputStream)` | no — streams in 64 KiB chunks |
+| drive the protocol yourself | `mail`, `rcpt`, `data`, `bdat`, `reset`, `lastResponse` | you own it |
+| bound one transaction | `SendOptions.builder().timeout(Duration)` | — |
+| abort one transaction from another thread | `SendOptions.builder().cancellation(Cancellation)` | — |
+
+Rules of thumb:
+
+- **Pool whenever it's concurrent or bulk; a bare `SmtpClient` for a single or
+  long-lived single-threaded session.**
+- **`send(Mail)` buffers**: it serializes the built content to a `byte[]` first
+  (and makes a couple of copies), so it is fine for normal mail but wrong for
+  very large bodies. Pre-render those to a file and use
+  `sendRaw(envelope, Files.newInputStream(path))`.
+- **Streaming only saves memory when the bytes were not already in heap.** A
+  `ByteArrayInputStream` over an existing array gains nothing.
+- **`BDAT`/`PIPELINING`/`SIZE`/`BODY`/`SMTPUTF8` are automatic** when the server
+  advertises them, for every send method. Streaming and BDAT are independent:
+  buffered sends also use a single `BDAT … LAST` when `CHUNKING` is available.
+
 ### Configuration
 
 `SmtpConfig` is built with a fluent builder.
@@ -215,12 +257,14 @@ try (WebhookServer server = WebhookServer.builder()
 | `implicitTls()` | | Implicit TLS (typically 465). |
 | `noTls()` | | No TLS (testing only). |
 | `security(SecurityMode)` | `STARTTLS` | Explicit security mode. |
-| `credentials(username, password)` | | Enables SMTP AUTH. |
+| `credentials(username, password)` | | Enables SMTP AUTH (`PLAIN` / `LOGIN`). |
+| `oauthToken(String)` | | Enables OAuth 2.0 `XOAUTH2`; the username from `credentials(...)` is the identity. |
+| `proxy(Proxy)` | direct | Route the connection through an HTTP or SOCKS proxy. |
 | `sslContext(SSLContext)` | JDK default | Custom TLS context. |
 | `localName(String)` | `localhost` | EHLO name. |
 | `connectTimeout(Duration)` | 30s | Socket connect timeout. |
 | `readTimeout(Duration)` | 2m | Socket read timeout. |
-| `writeTimeout(Duration)` | 2m | Socket write timeout. |
+| `writeTimeout(Duration)` | 2m | Write-stall timeout: the connection is closed if a write makes no progress for this long. |
 
 ```java
 SmtpConfig startTls = SmtpConfig.builder()
@@ -231,12 +275,27 @@ SmtpConfig implicit = SmtpConfig.builder()
         .host("smtp.mxraven.email").port(465).implicitTls()
         .credentials("user", "pass").build();
 
+SmtpConfig oauth = SmtpConfig.builder()
+        .host("smtp.gmail.com").port(587).startTls()
+        .credentials("me@example.com", "")     // identity; password ignored
+        .oauthToken(bearerToken)               // XOAUTH2
+        .build();
+
+SmtpConfig proxied = SmtpConfig.builder()
+        .host("smtp.mxraven.email").port(587).startTls()
+        .credentials("user", "pass")
+        .proxy(new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 1080)))
+        .build();
+
 SmtpConfig none = SmtpConfig.builder()
         .host("smtp.mxraven.email").port(25).noTls().build();
 ```
 
 The host defaults to `SmtpConfig.DEFAULT_HOST` (`smtp.mxraven.email`); pass an explicit host to target
 another environment.
+
+AUTH mechanisms are chosen from what the server advertises. With `oauthToken(...)`
+the client requires `XOAUTH2`; otherwise it uses `PLAIN` or `LOGIN`.
 
 ### The client
 
@@ -255,12 +314,41 @@ try (SmtpClient client = SmtpClient.connect(config)) {
 
 Low-level commands are available for manual transactions: `mail(String)`,
 `rcpt(String)`, `data(byte[])`, `bdat(byte[], boolean)`, `noop()`, `reset()`,
-`quit()`, and `lastResponse()`. `cancel()` aborts a blocked exchange from another
-thread.
+`quit()`, and `lastResponse()`. `cancel()` tears down the connection from another
+thread; see below for per-send cancellation.
 
 > **Concurrency:** a single `SmtpClient` owns one socket and is **not** safe for
 > concurrent use. For concurrent submissions use `SmtpPool` (see
 > [High-throughput sending](#high-throughput-sending-pool--bdat)).
+
+### Per-send deadline and cancellation
+
+Pass `SendOptions` to bound a single transaction with a deadline and/or a
+cooperative `Cancellation`. The deadline covers the exchange and the message
+body; the monitor closes the connection if it passes or if a write stalls, so a
+stuck transfer cannot run forever.
+
+```java
+import com.mxraven.mail.Cancellation;
+import com.mxraven.mail.SendOptions;
+import java.time.Duration;
+
+SendResult result = client.send(mail, SendOptions.builder()
+        .timeout(Duration.ofSeconds(30))
+        .build());
+
+// Abort one send from another thread without touching the connection otherwise:
+Cancellation cancellation = Cancellation.create();
+SendResult bounded = client.send(mail, SendOptions.builder()
+        .cancellation(cancellation)
+        .build());
+cancellation.cancel();
+```
+
+If cancellation arrives while the client is between commands, the connection
+stays usable; if it is blocked in a read or write, the connection is closed to
+unblock it and the client is not reusable. A deadline that expires raises
+`java.net.SocketTimeoutException`; cancellation raises `SmtpException`.
 
 ### Send result
 
@@ -294,10 +382,19 @@ Envelope envelope = Envelope.builder()
         .build();
 
 client.sendRaw(envelope, rawMessageBytes);
+
+// Stream from a file or socket instead of buffering the whole message:
+try (InputStream message = Files.newInputStream(Path.of("big-message.eml"))) {
+    client.sendRaw(envelope, message);
+}
 ```
 
 Unlike `send(Mail)`, `sendRaw` does **not** add `Date`, `Message-ID`, or `MIME-Version`; the bytes must
-already be a valid RFC 5322 message (at minimum `From`, `To`, and `Date`).
+already be a valid RFC 5322 message (at minimum `From`, `To`, and `Date`), and
+they are not CRLF-normalized. The `InputStream` overload streams the body
+(`BDAT` chunks when `CHUNKING` is advertised, otherwise `DATA` with dot-stuffing),
+does not close the stream, and derives no `SIZE` parameter — set
+`Envelope.size()` if the server requires one.
 
 ### SMTP extension parameters
 
@@ -644,6 +741,7 @@ feedback.unsubscribe(token);   // unauthenticated RFC 8058 one-click
 | `.credentials(username, secret)` | Submission API key used by the learning methods. |
 | `.httpClient(HttpClient)` | Custom client. |
 | `.requestTimeout(Duration)` | Per-request timeout. Default 30s. |
+| `.maxRequestBytes(long)` | Cap on bytes read from a raw-message `InputStream`. Default 64 MiB. |
 | `learnSpam(byte[])` / `learnSpam(InputStream)` | Teach that the message is spam. |
 | `learnHam(byte[])` / `learnHam(InputStream)` | Teach that the message is not spam. |
 | `learn(Disposition, byte[])` | Explicit disposition (`SPAM` / `HAM`). |
@@ -677,8 +775,9 @@ Transport failures (SMTP I/O, raw message download, feedback HTTP) surface as
 
 ## Packages and models
 
-- `com.mxraven.mail` — `SmtpClient`, `SmtpPool`, `SmtpConfig`, `SendResult`,
-  `RecipientResult`, `SmtpResponse`, `EnhancedStatus`, `SmtpException`, `DsnXText`.
+- `com.mxraven.mail` — `SmtpClient`, `SmtpPool`, `SmtpConfig`, `SendOptions`,
+  `Cancellation`, `SendResult`, `RecipientResult`, `SmtpResponse`, `EnhancedStatus`,
+  `SmtpException`, `DsnXText`.
 - `com.mxraven.mail.model` — `Mail`, `MailBuilder`, `Envelope`, `Path`,
   `Recipient`, `MailboxAddress`, `Headers`, `Header`, `Content`, `BodyType`,
   `DeliveryBy`, `DeliveryByMode`, `DSNEnvelopeParams`, `DSNRecipientParams`,
@@ -697,17 +796,40 @@ Contract enums expose `wire()` and `fromWire(String)` (`MimeType.fromWire` retur
 
 ---
 
+## Runnable examples
+
+The `mail/src/examples/java` source set contains small, runnable programs. Compile
+them with `./gradlew :mail:compileExamplesJava` and run one with
+`./gradlew :mail:runExample -Pexample=<fully.qualified.Class>`.
+
+| Example | Shows |
+| --- | --- |
+| `SendEmailExample` | Basic send: `connect` + `send(Mail)` with plain-text and HTML bodies. |
+| `PoolSendingExample` | Reusing a small `SmtpPool` for several sends. |
+| `SendWithAttachmentsExample` | File and inline attachments. |
+| `SendRawMessageExample` | Prebuilt RFC 5322 bytes with an explicit envelope. |
+| `StreamLargeMessageExample` | Streaming a large message from disk (`BDAT`/`DATA`). |
+| `SendWithDeadlineExample` | Per-send deadline and cancellation. |
+| `HighThroughputPoolExample` | Concurrent batch send through a bounded pool. |
+| `SessionCapabilitiesExample` | Inspecting TLS, AUTH, and EHLO extensions. |
+| `LowLevelTransactionExample` | Manual `MAIL`/`RCPT`/`DATA`/`BDAT`. |
+| `EnvelopeParametersExample` | DSN, ORCPT, DELIVERBY, BODY. |
+| `OAuthAndProxyExample` | `XOAUTH2` and SOCKS proxy configuration. |
+| `ParseMimeExample` | Parsing a raw MIME message. |
+| `ReceiveWebhookExample` | Verifying and serving webhooks. |
+| `FeedbackExample` / `FeedbackAsyncExample` | Feedback learning, sync and async. |
+
+The `Driver` class under `mail/src/test/java/com/mxraven/mail` is a larger
+scratchpad that runs all of these sections against a live server.
+
 ## Building and testing
 
 ```sh
 ./gradlew :mail:test      # unit tests
+./gradlew :mail:compileExamplesJava
 ./gradlew :mail:build     # compile, test and package
 ./gradlew build           # all modules
 ```
-
-The `Driver` class under `mail/src/test/java/com/mxraven/mail` is a runnable
-scratchpad with end-to-end examples (SMTP send, webhook server, MIME parse,
-feedback).
 
 ## License
 

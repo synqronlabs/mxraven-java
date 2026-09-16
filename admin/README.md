@@ -13,7 +13,9 @@ request/response models and a small dependency footprint (Jackson only).
 - Group / artifact: `com.mxraven` / `admin`
 - Current version: `2.0.2`
 - JavaDoc: https://java.mxraven.com/admin/
-- Requirements: **Java 17+** (the build toolchain targets Java 17)
+- Requirements: **Java 17+** (this `main` branch). For Java 8+, use the
+  [`jdk8` branch](https://github.com/synqronlabs/mxraven-java/tree/jdk8) and the
+  `com.mxraven:admin-jdk8` artifact.
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind`
 
 ---

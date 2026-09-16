@@ -26,8 +26,13 @@ It has two modules:
 | `mail` guide | [`mail/README.md`](mail/README.md) |
 | `admin` guide | [`admin/README.md`](admin/README.md) |
 
-Both modules target **Java 17+**. The only runtime dependency they bring in is
-Jackson (webhook/feedback and REST JSON); SMTP and MIME use just the JDK.
+Both modules on this `main` branch target **Java 17+**. The only runtime
+dependency they bring in is Jackson (webhook/feedback and REST JSON); SMTP and
+MIME use just the JDK.
+
+> **Java 8+?** Use the [`jdk8` branch](https://github.com/synqronlabs/mxraven-java/tree/jdk8).
+> It builds on a JDK 8 toolchain and publishes the `-jdk8` artifacts
+> (`com.mxraven:mail-jdk8` and `com.mxraven:admin-jdk8`).
 
 ## Modules
 

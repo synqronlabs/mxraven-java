@@ -7,7 +7,9 @@ messages, verifies and receives webhooks, and submits recipient feedback.
 - Group / artifact: `com.mxraven` / `mail`
 - Current version: `2.0.2`
 - JavaDoc: https://java.mxraven.com/mail/
-- Requirements: **Java 17+** (the build toolchain targets Java 17)
+- Requirements: **Java 17+** (this `main` branch). For Java 8+, use the
+  [`jdk8` branch](https://github.com/synqronlabs/mxraven-java/tree/jdk8) and the
+  `com.mxraven:mail-jdk8` artifact.
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind` (webhook and
   feedback JSON only; SMTP and MIME are pure JDK)
 

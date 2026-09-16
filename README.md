@@ -66,3 +66,7 @@ List all available tasks:
 ```bash
 ./gradlew tasks
 ```
+
+## License
+
+Apache License 2.0. See [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE).

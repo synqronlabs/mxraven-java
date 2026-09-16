@@ -75,7 +75,6 @@ subprojects {
     extensions.configure<PublishingExtension> {
         publications {
             create<MavenPublication>("maven") {
-                artifactId = "mxraven-${project.name}"
                 from(components["java"])
                 artifact(project.tasks.named("sourcesJar"))
                 artifact(project.tasks.named("javadocJar"))

@@ -1,7 +1,7 @@
 # mxraven-java
 
-Java SDK for the mxRaven email service: `mxraven-mail` for SMTP submission,
-MIME, webhooks, and feedback, and `mxraven-admin` for the control-plane REST API.
+Java SDK for the mxRaven email service: `mail` for SMTP submission,
+MIME, webhooks, and feedback, and `admin` for the control-plane REST API.
 
 API documentation: https://synqronlabs.github.io/mxraven-java/
 
@@ -18,8 +18,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mxraven-mail:2.0.1")
-    implementation("com.mxraven:mxraven-admin:2.0.1")
+    implementation("com.mxraven:mail:2.0.1")
+    implementation("com.mxraven:admin:2.0.1")
 }
 ```
 
@@ -32,12 +32,12 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mxraven-mail:2.0.1")
-    implementation("com.github.synqronlabs.mxraven-java:mxraven-admin:2.0.1")
+    implementation("com.github.synqronlabs.mxraven-java:mail:2.0.1")
+    implementation("com.github.synqronlabs.mxraven-java:admin:2.0.1")
     // Latest `main` build:
-    // implementation("com.github.synqronlabs.mxraven-java:mxraven-mail:main-SNAPSHOT")
+    // implementation("com.github.synqronlabs.mxraven-java:mail:main-SNAPSHOT")
     // Or pin a commit:
-    // implementation("com.github.synqronlabs.mxraven-java:mxraven-mail:<commit-sha>")
+    // implementation("com.github.synqronlabs.mxraven-java:mail:<commit-sha>")
 }
 ```
 

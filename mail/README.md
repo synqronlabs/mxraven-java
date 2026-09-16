@@ -4,7 +4,7 @@ The `mail` module is the Java client for the mxRaven email service. It sends mai
 over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
 messages, verifies and receives webhooks, and submits recipient feedback.
 
-- Group / artifact: `com.mxraven` / `mxraven-mail`
+- Group / artifact: `com.mxraven` / `mail`
 - Current version: `2.0.1`
 - Requirements: **Java 17+** (the build toolchain targets Java 17)
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind` (webhook and
@@ -41,7 +41,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mxraven-mail:2.0.1")
+    implementation("com.mxraven:mail:2.0.1")
 }
 ```
 
@@ -50,7 +50,7 @@ dependencies {
 ```xml
 <dependency>
     <groupId>com.mxraven</groupId>
-    <artifactId>mxraven-mail</artifactId>
+    <artifactId>mail</artifactId>
     <version>2.0.1</version>
 </dependency>
 ```
@@ -66,9 +66,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mxraven-mail:2.0.1")
-    // Latest main build:  ...:mxraven-mail:main-SNAPSHOT
-    // Or pin a commit:    ...:mxraven-mail:<commit-sha>
+    implementation("com.github.synqronlabs.mxraven-java:mail:2.0.1")
+    // Latest main build:  ...:mail:main-SNAPSHOT
+    // Or pin a commit:    ...:mail:<commit-sha>
 }
 ```
 

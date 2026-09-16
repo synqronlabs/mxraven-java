@@ -201,6 +201,18 @@ class FeedbackClientTest {
     }
 
     @Test
+    void rejectsOversizedRequestStreams() {
+        FeedbackClient client = FeedbackClient.builder()
+                .baseUrl("https://feedback.example.com")
+                .credentials(USERNAME, SECRET)
+                .maxRequestBytes(16)
+                .build();
+
+        assertThrows(IOException.class, () ->
+                client.learnSpam(new java.io.ByteArrayInputStream(new byte[64])));
+    }
+
+    @Test
     void asyncLearningCanBeCancelledPerCall() throws Exception {
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);

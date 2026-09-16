@@ -45,6 +45,9 @@ public final class FeedbackClient {
     /** Default request timeout for non-streaming calls. */
     public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
 
+    /** Default maximum number of request bytes read from an input stream. */
+    public static final long DEFAULT_MAX_REQUEST_BYTES = 64L * 1024 * 1024;
+
     /** Maximum number of response bytes accepted from the service. */
     private static final int MAX_RESPONSE_BYTES = 64 * 1024;
 
@@ -56,6 +59,7 @@ public final class FeedbackClient {
     private final String secret;
     private final HttpClient http;
     private final Duration requestTimeout;
+    private final long maxRequestBytes;
 
     private FeedbackClient(Builder builder) {
         this.baseUrl = builder.baseUrl.replaceAll("/+$", "");
@@ -63,6 +67,7 @@ public final class FeedbackClient {
         this.secret = builder.secret;
         this.http = builder.httpClient;
         this.requestTimeout = builder.requestTimeout;
+        this.maxRequestBytes = builder.maxRequestBytes;
     }
 
     /**
@@ -167,7 +172,7 @@ public final class FeedbackClient {
         if (rawMime == null) {
             throw new IllegalArgumentException("rawMime is required");
         }
-        return learn(disposition, rawMime.readAllBytes());
+        return learn(disposition, readCapped(rawMime, maxRequestBytes));
     }
 
     /**
@@ -329,15 +334,15 @@ public final class FeedbackClient {
         }
     }
 
-    private static byte[] readCapped(InputStream stream, int maxBytes) throws IOException {
+    private static byte[] readCapped(InputStream stream, long maxBytes) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
-        int total = 0;
+        long total = 0;
         int read;
         while ((read = stream.read(buffer)) != -1) {
             total += read;
             if (total > maxBytes) {
-                throw new IOException("response exceeds the " + maxBytes + "-byte limit");
+                throw new IOException("body exceeds the " + maxBytes + "-byte limit");
             }
             out.write(buffer, 0, read);
         }
@@ -397,6 +402,7 @@ public final class FeedbackClient {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         private Duration requestTimeout = DEFAULT_TIMEOUT;
+        private long maxRequestBytes = DEFAULT_MAX_REQUEST_BYTES;
 
         private Builder() {
         }
@@ -465,6 +471,22 @@ public final class FeedbackClient {
                 throw new IllegalArgumentException("request timeout must be positive");
             }
             this.requestTimeout = requestTimeout;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of bytes read from a raw-message input stream.
+         * Defaults to {@link FeedbackClient#DEFAULT_MAX_REQUEST_BYTES}.
+         *
+         * @param maxRequestBytes the limit in bytes; must be positive
+         * @return this builder
+         * @throws IllegalArgumentException when {@code maxRequestBytes} is not positive
+         */
+        public Builder maxRequestBytes(long maxRequestBytes) {
+            if (maxRequestBytes <= 0) {
+                throw new IllegalArgumentException("maxRequestBytes must be positive");
+            }
+            this.maxRequestBytes = maxRequestBytes;
             return this;
         }
 

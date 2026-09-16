@@ -45,6 +45,9 @@ final class FakeSmtpServer implements Closeable {
     volatile String authUser;
     volatile String authPassword;
     volatile IOException failure;
+    volatile boolean stallOnMail;
+    volatile int mailFromCode = 250;
+    private final CountDownLatch stall = new CountDownLatch(1);
 
     FakeSmtpServer() {
         this(false, false, false, 250);
@@ -90,7 +93,14 @@ final class FakeSmtpServer implements Closeable {
                     writeCapabilities(out);
                 } else if (upper.startsWith("MAIL FROM:")) {
                     mailFrom = line.substring("MAIL FROM:".length()).trim();
-                    writeLine(out, "250 OK");
+                    if (stallOnMail) {
+                        try {
+                            stall.await(30, TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                    writeLine(out, mailFromCode == 250 ? "250 OK" : mailFromCode + " rejected");
                 } else if (upper.startsWith("RCPT TO:")) {
                     recipients.add(line.substring("RCPT TO:".length()).trim());
                     writeLine(out, rcptCode == 250 ? "250 OK" : rcptCode + " rejected");
@@ -108,6 +118,9 @@ final class FakeSmtpServer implements Closeable {
                     dataPayload = (dataPayload == null ? "" : dataPayload)
                             + new String(chunk, StandardCharsets.UTF_8);
                     writeLine(out, "250 Chunk received");
+                } else if (upper.startsWith("AUTH XOAUTH2")) {
+                    decodeXoauth2(line.substring("AUTH XOAUTH2".length()).trim());
+                    writeLine(out, "235 Authenticated");
                 } else if (upper.startsWith("AUTH PLAIN")) {
                     decodePlain(line.substring("AUTH PLAIN".length()).trim());
                     writeLine(out, "235 Authenticated");
@@ -154,6 +167,17 @@ final class FakeSmtpServer implements Closeable {
         for (int i = 0; i < caps.size(); i++) {
             writeLine(out, "250" + (i == caps.size() - 1 ? " " : "-") + caps.get(i));
         }
+    }
+
+    private void decodeXoauth2(String token) {
+        String decoded = new String(Base64.getDecoder().decode(token), StandardCharsets.UTF_8);
+        int start = decoded.indexOf("user=");
+        if (start < 0) {
+            return;
+        }
+        start += "user=".length();
+        int end = decoded.indexOf('\u0001', start);
+        authUser = end < 0 ? decoded.substring(start) : decoded.substring(start, end);
     }
 
     private void decodePlain(String token) {
@@ -225,8 +249,13 @@ final class FakeSmtpServer implements Closeable {
         return true;
     }
 
+    void releaseStall() {
+        stall.countDown();
+    }
+
     @Override
     public void close() throws IOException {
+        stall.countDown();
         serverSocket.close();
         Socket open = connection;
         if (open != null) {

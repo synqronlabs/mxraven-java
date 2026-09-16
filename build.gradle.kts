@@ -3,6 +3,7 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -36,6 +37,12 @@ subprojects {
 
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
+    }
+
+    // Compile every source set as UTF-8 so non-ASCII string literals (subjects,
+    // bodies, display names) are read correctly regardless of the build host.
+    tasks.withType<JavaCompile>().configureEach {
+        options.encoding = "UTF-8"
     }
 
     tasks.withType<Javadoc>().configureEach {

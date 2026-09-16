@@ -15,12 +15,14 @@ import javax.net.ssl.SSLSocket;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -33,34 +35,37 @@ import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A synchronous SMTP submission client.
  *
  * <p>Connect with {@link #connect(SmtpConfig)} and send a built
  * {@link Mail} with {@link #send(Mail)} or a prebuilt RFC 5322 message with
- * {@link #sendRaw(Envelope, byte[])}. A client holds an open socket, so close
- * it when finished, for example in a try-with-resources block.
+ * {@link #sendRaw(Envelope, byte[])} / {@link #sendRaw(Envelope, InputStream)}.
+ * A client holds an open socket, so close it when finished, for example in a
+ * try-with-resources block.
  *
  * <p>A client is <strong>not</strong> safe for concurrent use. To reuse
  * connections across threads, use {@link SmtpPool}.
  *
  * <p>A blocked exchange can be aborted from another thread with {@link #cancel()},
  * which closes the socket and maps the resulting failure to an
- * {@link SmtpException}. A blocked caller can also be interrupted.
+ * {@link SmtpException}. A single send can instead be bounded with
+ * {@link SendOptions} (a deadline and/or a {@link Cancellation}).
  */
 public final class SmtpClient implements AutoCloseable {
-    private static final ScheduledThreadPoolExecutor WRITE_WATCHDOG = createWriteWatchdog();
+    private static final ScheduledThreadPoolExecutor MONITOR = createMonitor();
+    private static final long MONITOR_TICK_NANOS = 250_000_000L;
+    private static final byte[] CRLF = {'\r', '\n'};
+    private static final byte[] DOT_TERMINATOR = {'.', '\r', '\n'};
+    private static final int STREAM_CHUNK = 65536;
 
-    private static ScheduledThreadPoolExecutor createWriteWatchdog() {
+    private static ScheduledThreadPoolExecutor createMonitor() {
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, runnable -> {
-            Thread thread = new Thread(runnable, "mxraven-smtp-write-timeout");
+            Thread thread = new Thread(runnable, "mxraven-smtp-monitor");
             thread.setDaemon(true);
             return thread;
         });
-        // Completed writes cancel their watchdog; drop cancelled tasks immediately
-        // instead of retaining them until the (possibly long) write timeout.
         executor.setRemoveOnCancelPolicy(true);
         return executor;
     }
@@ -77,6 +82,14 @@ public final class SmtpClient implements AutoCloseable {
     private volatile boolean cancelled;
     private Map<String, String> extensions = Map.of();
     private SmtpResponse lastResponse;
+
+    private volatile boolean operationActive;
+    private volatile boolean writing;
+    private volatile boolean watchdogClosed;
+    private volatile long operationDeadlineNanos = Long.MAX_VALUE;
+    private volatile long lastProgressNanos;
+    private volatile Cancellation activeCancellation;
+    private ScheduledFuture<?> monitorFuture;
 
     private SmtpClient(SmtpConfig config) {
         this.config = config;
@@ -192,12 +205,33 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SendResult send(Mail mail) throws IOException {
-        ensureActive();
-        return deliver(mail.envelope(), serialize(mail.content()));
+        return send(mail, SendOptions.defaults());
+    }
+
+    /**
+     * Sends a built message with per-send options.
+     *
+     * @param mail    the message to send
+     * @param options the deadline and/or cancellation, or {@code null} for none
+     * @return the send result
+     * @throws IOException when the SMTP exchange fails or the deadline passes
+     */
+    public SendResult send(Mail mail, SendOptions options) throws IOException {
+        ensureOpen();
+        startOperation(options);
+        try {
+            byte[] message = serialize(mail.content());
+            return deliver(mail.envelope(), () -> transferBytes(message));
+        } finally {
+            endOperation();
+        }
     }
 
     /**
      * Sends a prebuilt RFC 5322 message with the given SMTP envelope.
+     *
+     * <p>The bytes are written as-is; unlike {@link #send(Mail)} they are not
+     * CRLF-normalized.
      *
      * @param envelope the SMTP envelope for the message
      * @param rawMessage the raw RFC 5322 message bytes
@@ -205,11 +239,71 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SendResult sendRaw(Envelope envelope, byte[] rawMessage) throws IOException {
-        ensureActive();
-        return deliver(envelope, rawMessage);
+        return sendRaw(envelope, rawMessage, SendOptions.defaults());
     }
 
-    private SendResult deliver(Envelope envelope, byte[] message) throws IOException {
+    /**
+     * Sends a prebuilt message with per-send options.
+     *
+     * @param envelope   the SMTP envelope
+     * @param rawMessage the raw RFC 5322 message bytes
+     * @param options    the deadline and/or cancellation, or {@code null} for none
+     * @return the send result
+     * @throws IOException when the SMTP exchange fails or the deadline passes
+     */
+    public SendResult sendRaw(Envelope envelope, byte[] rawMessage, SendOptions options) throws IOException {
+        ensureOpen();
+        startOperation(options);
+        try {
+            return deliver(envelope, () -> transferBytes(rawMessage));
+        } finally {
+            endOperation();
+        }
+    }
+
+    /**
+     * Streams a prebuilt RFC 5322 message from {@code rawMessage} with the given
+     * SMTP envelope.
+     *
+     * <p>The stream is consumed as the message is transferred and is
+     * <strong>not closed</strong> by this method. The bytes are written as-is;
+     * they are not CRLF-normalized. Because the length is unknown up front, no
+     * {@code SIZE} parameter is derived; set {@link Envelope#size()} if the
+     * server requires one.
+     *
+     * @param envelope   the SMTP envelope for the message
+     * @param rawMessage the raw RFC 5322 message stream
+     * @return the send result
+     * @throws IOException when the SMTP exchange or the stream read fails
+     */
+    public SendResult sendRaw(Envelope envelope, InputStream rawMessage) throws IOException {
+        return sendRaw(envelope, rawMessage, SendOptions.defaults());
+    }
+
+    /**
+     * Streams a prebuilt message with per-send options.
+     *
+     * @param envelope   the SMTP envelope
+     * @param rawMessage the raw RFC 5322 message stream, not closed
+     * @param options    the deadline and/or cancellation, or {@code null} for none
+     * @return the send result
+     * @throws IOException when the SMTP exchange or the stream read fails
+     */
+    public SendResult sendRaw(Envelope envelope, InputStream rawMessage, SendOptions options)
+            throws IOException {
+        ensureOpen();
+        if (rawMessage == null) {
+            throw new IllegalArgumentException("rawMessage is required");
+        }
+        startOperation(options);
+        try {
+            return deliver(envelope, () -> transferStream(envelope, rawMessage));
+        } finally {
+            endOperation();
+        }
+    }
+
+    private SendResult deliver(Envelope envelope, MessageTransfer transfer) throws IOException {
         ensureActive();
         String mailCommand = mailFromCommand(envelope);
         List<Recipient> recipients = envelope.to();
@@ -219,8 +313,6 @@ public final class SmtpClient implements AutoCloseable {
         boolean pipelining = hasExtension("PIPELINING") && recipients.size() > 1;
         SmtpResponse fromResponse;
         if (pipelining) {
-            // Batch MAIL FROM and every RCPT TO, then drain the replies. This is
-            // the higher-latency benefit RFC 2920 provides.
             writeCommand(mailCommand);
             for (Recipient recipient : recipients) {
                 writeCommand(rcptToCommand(recipient));
@@ -231,9 +323,18 @@ public final class SmtpClient implements AutoCloseable {
             }
         } else {
             fromResponse = cmd(mailCommand);
-            for (Recipient recipient : recipients) {
-                rcptResponses.add(rcptTo(recipient));
+            // Do not issue RCPT TO after a rejected MAIL FROM: the transaction is
+            // not open, and the server answers with a bad-sequence error.
+            if (fromResponse.isSuccess()) {
+                for (Recipient recipient : recipients) {
+                    rcptResponses.add(rcptTo(recipient));
+                }
             }
+        }
+
+        if (!fromResponse.isSuccess()) {
+            safeRset();
+            return new SendResult(false, List.of(), fromResponse.message());
         }
 
         boolean anyAccepted = false;
@@ -244,33 +345,45 @@ public final class SmtpClient implements AutoCloseable {
             results.add(new RecipientResult(recipients.get(i), accepted, response.message()));
         }
 
-        if (!fromResponse.isSuccess()) {
-            safeRset();
-            return new SendResult(false, results, fromResponse.message());
-        }
         if (!anyAccepted) {
             safeRset();
             return new SendResult(false, results, "all recipients were rejected");
         }
 
-        SmtpResponse transactionResponse;
-        if (hasExtension("CHUNKING")) {
-            transactionResponse = bdat(message, true);
-        } else {
-            SmtpResponse dataResponse = cmd("DATA");
-            if (dataResponse.code() != 354) {
-                safeRset();
-                return new SendResult(false, results, dataResponse.message());
-            }
-            writeMessageBody(message);
-            transactionResponse = readResponse();
-        }
-
+        SmtpResponse transactionResponse = transfer.send();
         boolean success = transactionResponse.isSuccess();
         if (!success) {
             safeRset();
         }
         return new SendResult(success, results, transactionResponse.message());
+    }
+
+    private SmtpResponse transferBytes(byte[] message) throws IOException {
+        if (hasExtension("CHUNKING")) {
+            return bdatChunk(message, true);
+        }
+        SmtpResponse dataResponse = cmd("DATA");
+        if (dataResponse.code() != 354) {
+            return dataResponse;
+        }
+        writeMessageBody(message);
+        return readResponse();
+    }
+
+    private SmtpResponse transferStream(Envelope envelope, InputStream message) throws IOException {
+        long size = envelope.size();
+        if (hasExtension("CHUNKING") && size > 0) {
+            // A single BDAT ... LAST is the form the buffered path uses and the
+            // most widely supported; the body is still read and written in
+            // chunks, so nothing is buffered.
+            return bdatStreamKnownSize(message, size);
+        }
+        SmtpResponse dataResponse = cmd("DATA");
+        if (dataResponse.code() != 354) {
+            return dataResponse;
+        }
+        writeDotStuffedStream(message);
+        return readResponse();
     }
 
     /**
@@ -282,7 +395,12 @@ public final class SmtpClient implements AutoCloseable {
      */
     public SmtpResponse mail(String address) throws IOException {
         rejectCommandInjection(address, "address");
-        return cmd("MAIL FROM:<" + address + ">");
+        startOperation(null);
+        try {
+            return cmd("MAIL FROM:<" + address + ">");
+        } finally {
+            endOperation();
+        }
     }
 
     /**
@@ -294,7 +412,12 @@ public final class SmtpClient implements AutoCloseable {
      */
     public SmtpResponse rcpt(String address) throws IOException {
         rejectCommandInjection(address, "address");
-        return cmd("RCPT TO:<" + address + ">");
+        startOperation(null);
+        try {
+            return cmd("RCPT TO:<" + address + ">");
+        } finally {
+            endOperation();
+        }
     }
 
     /**
@@ -308,13 +431,17 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse data(byte[] content) throws IOException {
-        ensureActive();
-        SmtpResponse response = cmd("DATA");
-        if (response.code() != 354) {
-            return response;
+        startOperation(null);
+        try {
+            SmtpResponse response = cmd("DATA");
+            if (response.code() != 354) {
+                return response;
+            }
+            writeMessageBody(content);
+            return readResponse();
+        } finally {
+            endOperation();
         }
-        writeMessageBody(content);
-        return readResponse();
     }
 
     /**
@@ -328,10 +455,38 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse bdat(byte[] chunk, boolean last) throws IOException {
-        ensureActive();
+        startOperation(null);
+        try {
+            return bdatChunk(chunk, last);
+        } finally {
+            endOperation();
+        }
+    }
+
+    private SmtpResponse bdatChunk(byte[] chunk, boolean last) throws IOException {
         byte[] payload = chunk == null ? new byte[0] : chunk;
         writeCommand("BDAT " + payload.length + (last ? " LAST" : ""));
         writeBytes(payload);
+        return readResponse();
+    }
+
+    private SmtpResponse bdatStreamKnownSize(InputStream source, long size) throws IOException {
+        writeCommand("BDAT " + size + " LAST");
+        byte[] buffer = new byte[STREAM_CHUNK];
+        long remaining = size;
+        while (remaining > 0) {
+            int toRead = (int) Math.min(buffer.length, remaining);
+            int read = source.read(buffer, 0, toRead);
+            if (read == -1) {
+                throw new IOException("message stream ended after " + (size - remaining)
+                        + " of " + size + " declared bytes");
+            }
+            if (read == 0) {
+                continue;
+            }
+            writeBytes(buffer, 0, read);
+            remaining -= read;
+        }
         return readResponse();
     }
 
@@ -342,7 +497,12 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse noop() throws IOException {
-        return cmd("NOOP");
+        startOperation(null);
+        try {
+            return cmd("NOOP");
+        } finally {
+            endOperation();
+        }
     }
 
     /**
@@ -352,7 +512,12 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse reset() throws IOException {
-        return cmd("RSET");
+        startOperation(null);
+        try {
+            return cmd("RSET");
+        } finally {
+            endOperation();
+        }
     }
 
     /**
@@ -381,14 +546,7 @@ public final class SmtpClient implements AutoCloseable {
      */
     public void cancel() {
         cancelled = true;
-        Socket current = socket;
-        if (current != null) {
-            try {
-                current.close();
-            } catch (IOException ignored) {
-                // The socket is being cancelled; closing is best effort.
-            }
-        }
+        closeQuietly();
     }
 
     @Override
@@ -414,10 +572,129 @@ public final class SmtpClient implements AutoCloseable {
             cancelled = true;
             throw new SmtpException("operation interrupted");
         }
+        Cancellation cancellation = activeCancellation;
+        if (cancellation != null && cancellation.isCancelled()) {
+            throw new SmtpException("operation cancelled");
+        }
+        if (operationDeadlineNanos != Long.MAX_VALUE && System.nanoTime() >= operationDeadlineNanos) {
+            throw new SocketTimeoutException("operation timed out");
+        }
+    }
+
+    private void startOperation(SendOptions options) {
+        SendOptions opts = options == null ? SendOptions.defaults() : options;
+        this.activeCancellation = opts.cancellation().orElse(null);
+        Duration timeout = opts.timeout().orElse(null);
+        this.operationDeadlineNanos = timeout == null ? Long.MAX_VALUE
+                : System.nanoTime() + timeout.toNanos();
+        this.lastProgressNanos = System.nanoTime();
+        this.watchdogClosed = false;
+        this.operationActive = true;
+        armMonitor();
+    }
+
+    private void endOperation() {
+        this.operationActive = false;
+        this.activeCancellation = null;
+        this.operationDeadlineNanos = Long.MAX_VALUE;
+        ScheduledFuture<?> future = monitorFuture;
+        monitorFuture = null;
+        if (future != null) {
+            future.cancel(false);
+        }
+    }
+
+    private void armMonitor() {
+        if (!monitorNeeded()) {
+            return;
+        }
+        monitorFuture = MONITOR.schedule(this::monitorTick, MONITOR_TICK_NANOS, TimeUnit.NANOSECONDS);
+    }
+
+    private boolean monitorNeeded() {
+        Duration writeTimeout = config.writeTimeout();
+        return activeCancellation != null
+                || (writeTimeout != null && !writeTimeout.isZero() && !writeTimeout.isNegative())
+                || operationDeadlineNanos != Long.MAX_VALUE;
+    }
+
+    private void monitorTick() {
+        if (!operationActive) {
+            return;
+        }
+        Cancellation cancellation = activeCancellation;
+        if (cancellation != null && cancellation.isCancelled()) {
+            cancelled = true;
+            closed = true;
+            closeQuietly();
+            return;
+        }
+        long now = System.nanoTime();
+        boolean timedOut = operationDeadlineNanos != Long.MAX_VALUE && now >= operationDeadlineNanos;
+        Duration writeTimeout = config.writeTimeout();
+        boolean stalled = writing && writeTimeout != null
+                && !writeTimeout.isZero() && !writeTimeout.isNegative()
+                && now - lastProgressNanos > writeTimeout.toNanos();
+        if (timedOut || stalled) {
+            watchdogClosed = true;
+            closed = true;
+            closeQuietly();
+            return;
+        }
+        if (operationActive && !closed) {
+            monitorFuture = MONITOR.schedule(this::monitorTick, MONITOR_TICK_NANOS, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    private void closeQuietly() {
+        Socket current = socket;
+        if (current != null) {
+            try {
+                current.close();
+            } catch (IOException ignored) {
+                // Closing is best effort.
+            }
+        }
+    }
+
+    /**
+     * Checks that an idle pooled connection is still usable by issuing a
+     * {@code NOOP} with a short timeout. A failed probe closes the client.
+     *
+     * @param timeoutMillis the probe timeout in milliseconds
+     * @return {@code true} when the server answered with a 2xx reply
+     */
+    boolean probe(long timeoutMillis) {
+        if (closed || cancelled || socket == null || in == null || out == null) {
+            return false;
+        }
+        try {
+            int previous = socket.getSoTimeout();
+            socket.setSoTimeout((int) Math.max(1L, Math.min(timeoutMillis, Integer.MAX_VALUE)));
+            try {
+                out.write("NOOP\r\n".getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                String line = in.readLine();
+                if (line == null) {
+                    closed = true;
+                    closeQuietly();
+                    return false;
+                }
+                return line.length() >= 1 && line.charAt(0) == '2';
+            } finally {
+                if (!closed) {
+                    socket.setSoTimeout(previous);
+                }
+            }
+        } catch (IOException e) {
+            closed = true;
+            closeQuietly();
+            return false;
+        }
     }
 
     private void openSocket() throws IOException {
-        Socket s = new Socket();
+        Socket s = config.proxy() == null ? new Socket() : new Socket(config.proxy());
         try {
             s.connect(new InetSocketAddress(config.host(), config.port()),
                     (int) config.connectTimeout().toMillis());
@@ -486,6 +763,10 @@ public final class SmtpClient implements AutoCloseable {
     }
 
     private void auth() throws IOException {
+        if (config.oauthToken() != null) {
+            authXoauth2();
+            return;
+        }
         String advertised = extensionParam("AUTH");
         if (advertised == null || advertised.isBlank()) {
             throw new SmtpException("server does not advertise AUTH");
@@ -524,6 +805,30 @@ public final class SmtpClient implements AutoCloseable {
             throw new SmtpException("AUTH failed: " + response.message());
         }
         authenticated = true;
+    }
+
+    private void authXoauth2() throws IOException {
+        String advertised = extensionParam("AUTH");
+        if (advertised == null || advertised.isBlank()) {
+            throw new SmtpException("server does not advertise AUTH");
+        }
+        Set<String> mechanisms = new HashSet<>(Arrays.asList(advertised.toUpperCase(Locale.ROOT).split(" ")));
+        if (!mechanisms.contains("XOAUTH2")) {
+            throw new SmtpException("server does not advertise XOAUTH2");
+        }
+        String token = "user=" + config.username()
+                + "\u0001auth=Bearer " + config.oauthToken() + "\u0001\u0001";
+        String encoded = Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
+        SmtpResponse response = cmd("AUTH XOAUTH2 " + encoded);
+        if (response.code() == 235) {
+            authenticated = true;
+            return;
+        }
+        if (response.code() == 334) {
+            // The server sent a base64 error challenge; an empty line yields the final reply.
+            response = cmd("");
+        }
+        throw new SmtpException("AUTH failed: " + response.message());
     }
 
     private String mailFromCommand(Envelope envelope) {
@@ -734,44 +1039,62 @@ public final class SmtpClient implements AutoCloseable {
         return buffer.toByteArray();
     }
 
-    private void writeBytes(byte[] data) throws IOException {
-        ensureActive();
-        long timeoutMillis = config.writeTimeout() == null ? 0 : config.writeTimeout().toMillis();
-        if (timeoutMillis <= 0) {
-            out.write(data);
-            out.flush();
-            return;
-        }
-        AtomicBoolean finished = new AtomicBoolean(false);
-        Socket current = socket;
-        ScheduledFuture<?> watchdog = WRITE_WATCHDOG.schedule(() -> {
-            if (finished.compareAndSet(false, true) && current != null) {
-                try {
-                    current.close();
-                } catch (IOException ignored) {
-                    // Closing the socket is the timeout action; failure is ignored.
-                }
+    private void writeDotStuffedStream(InputStream source) throws IOException {
+        byte[] buffer = new byte[STREAM_CHUNK];
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream(STREAM_CHUNK + 16);
+        boolean atLineStart = true;
+        boolean sawAny = false;
+        int read;
+        while ((read = source.read(buffer)) != -1) {
+            if (read == 0) {
+                continue;
             }
-        }, timeoutMillis, TimeUnit.MILLISECONDS);
+            encoded.reset();
+            for (int i = 0; i < read; i++) {
+                byte b = buffer[i];
+                if (atLineStart && b == '.') {
+                    encoded.write('.');
+                }
+                encoded.write(b);
+                atLineStart = b == '\n';
+            }
+            sawAny = true;
+            writeBytes(encoded.toByteArray());
+        }
+        if (!sawAny || !atLineStart) {
+            writeBytes(CRLF);
+        }
+        writeBytes(DOT_TERMINATOR);
+    }
+
+    private void writeBytes(byte[] data) throws IOException {
+        writeBytes(data, 0, data.length);
+    }
+
+    private void writeBytes(byte[] data, int offset, int length) throws IOException {
+        ensureActive();
+        writing = true;
         try {
-            out.write(data);
+            out.write(data, offset, length);
             out.flush();
+            lastProgressNanos = System.nanoTime();
         } catch (IOException e) {
-            if (finished.get() && !closed && !cancelled) {
-                throw new SocketTimeoutException("write timed out after " + timeoutMillis + "ms");
+            if (watchdogClosed && !cancelled) {
+                throw new SocketTimeoutException("write stalled beyond the configured timeout");
             }
             throw e;
         } finally {
-            if (!finished.getAndSet(true)) {
-                watchdog.cancel(false);
-            }
+            writing = false;
         }
     }
 
     private String readLine() throws IOException {
+        ensureActive();
+        applyReadTimeout();
         try {
             String line = in.readLine();
-            if (line == null && cancelled) {
+            lastProgressNanos = System.nanoTime();
+            if (line == null && (cancelled || watchdogClosed)) {
                 throw new SmtpException("operation cancelled");
             }
             return line;
@@ -779,7 +1102,23 @@ public final class SmtpClient implements AutoCloseable {
             if (cancelled) {
                 throw new SmtpException("operation cancelled");
             }
+            if (watchdogClosed) {
+                throw new SocketTimeoutException("operation timed out");
+            }
             throw e;
+        }
+    }
+
+    private void applyReadTimeout() throws IOException {
+        long readMillis = config.readTimeout() == null ? 0 : config.readTimeout().toMillis();
+        long millis = readMillis;
+        if (operationDeadlineNanos != Long.MAX_VALUE) {
+            long remainingNanos = operationDeadlineNanos - System.nanoTime();
+            long remainingMillis = Math.max(1L, remainingNanos / 1_000_000L);
+            millis = millis <= 0 ? remainingMillis : Math.min(millis, remainingMillis);
+        }
+        if (millis > 0) {
+            socket.setSoTimeout((int) Math.min(millis, Integer.MAX_VALUE));
         }
     }
 
@@ -896,5 +1235,10 @@ public final class SmtpClient implements AutoCloseable {
             }
         }
         return buffer.toByteArray();
+    }
+
+    @FunctionalInterface
+    private interface MessageTransfer {
+        SmtpResponse send() throws IOException;
     }
 }

@@ -57,10 +57,25 @@ public final class MailboxAddress {
 
         localPart = localPart == null ? "" : localPart;
         domain = domain == null ? "" : domain;
+        rejectInjection(localPart, "local part");
+        rejectInjection(domain, "domain");
+        rejectInjection(displayName, "display name");
     
         this.localPart = localPart;
         this.domain = domain;
         this.displayName = displayName;
+    }
+
+    private static void rejectInjection(String text, String what) {
+        if (text == null) {
+            return;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\r' || c == '\n' || c == '\0') {
+                throw new IllegalArgumentException(what + " must not contain CR, LF, or NUL characters");
+            }
+        }
     }
 
     /**
@@ -101,9 +116,15 @@ public final class MailboxAddress {
      * Parses an address string, extracting an optional display name and the
      * address inside angle brackets when present.
      *
+     * <p>A non-blank address must contain a non-empty local part and domain
+     * separated by {@code @}. An address such as {@code "not an address"} is
+     * rejected rather than silently parsed into an empty domain.
+     *
      * @param address the address string, or {@code null}
      * @return the parsed address, with empty parts when {@code address} is
      *         {@code null} or blank
+     * @throws IllegalArgumentException when {@code address} is non-blank but not a
+     *                                  valid {@code local@domain} mailbox
      */
     public static MailboxAddress of(String address) {
         if (address == null || Java8.isBlank(address)) {
@@ -124,8 +145,8 @@ public final class MailboxAddress {
         String displayName = display == null || display.isEmpty() ? null : display;
 
         int at = value.lastIndexOf('@');
-        if (at < 0) {
-            return new MailboxAddress(value, "", displayName);
+        if (at <= 0 || at == value.length() - 1) {
+            throw new IllegalArgumentException("invalid email address: " + address);
         }
         return new MailboxAddress(value.substring(0, at), value.substring(at + 1), displayName);
     }

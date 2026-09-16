@@ -20,11 +20,7 @@ class MailboxAddressTest {
     }
 
     @Test
-    void toleratesMissingDomainAndBlankInput() {
-        MailboxAddress localOnly = MailboxAddress.of("postmaster");
-        assertEquals("postmaster", localOnly.localPart());
-        assertEquals("", localOnly.domain());
-
+    void acceptsBlankInputButRejectsAnAddressWithoutADomain() {
         MailboxAddress blank = MailboxAddress.of("  ");
         assertEquals("", blank.localPart());
         assertEquals("", blank.domain());
@@ -32,6 +28,19 @@ class MailboxAddressTest {
 
         MailboxAddress missing = MailboxAddress.of((String) null);
         assertEquals("", missing.toString());
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> MailboxAddress.of("postmaster"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> MailboxAddress.of("not an address"));
+    }
+
+    @Test
+    void rejectsHeaderInjection() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> MailboxAddress.of("a@b.com\r\nBcc: evil@example.com"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> new MailboxAddress("a", "b.com", "Name\r\nBcc: evil@example.com"));
     }
 
     @Test

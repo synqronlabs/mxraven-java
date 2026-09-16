@@ -11,6 +11,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -178,6 +181,51 @@ class FeedbackClientTest {
             assertEquals("/v1/feedback/unsubscribe/header.payload.signature", path.get());
             assertEquals("application/x-www-form-urlencoded", contentType.get());
             assertEquals("List-Unsubscribe=One-Click", new String(submitted.get(), StandardCharsets.UTF_8));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void rejectsOversizedResponses() throws Exception {
+        String huge = "{\"status\":\"learned\",\"padding\":\"" + Java8.repeat("x", 70 * 1024) + "\"}";
+        HttpServer server = server(exchange -> respond(exchange, 200, huge));
+        try {
+            FeedbackClient client = FeedbackClient.builder()
+                    .baseUrl(baseUrl(server))
+                    .credentials(USERNAME, SECRET)
+                    .build();
+
+            assertThrows(IOException.class, () -> client.learnSpam(RAW_MIME));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void asyncLearningCanBeCancelledPerCall() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        HttpServer server = server(exchange -> {
+            started.countDown();
+            try {
+                release.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            respond(exchange, 200, "{\"status\":\"learned\",\"disposition\":\"spam\"}");
+        });
+        try {
+            FeedbackClient client = FeedbackClient.builder()
+                    .baseUrl(baseUrl(server))
+                    .credentials(USERNAME, SECRET)
+                    .build();
+
+            CompletableFuture<LearningResult> future = client.learnSpamAsync(RAW_MIME);
+            assertTrue(started.await(5, TimeUnit.SECONDS));
+            assertTrue(future.cancel(true), "cancelling the returned future should abort the request");
+            assertTrue(future.isDone());
+            release.countDown();
         } finally {
             server.stop(0);
         }

@@ -21,6 +21,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,6 +32,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A synchronous SMTP submission client.
@@ -39,8 +44,29 @@ import java.util.Set;
  * {@link Mail} with {@link #send(Mail)} or a prebuilt RFC 5322 message with
  * {@link #sendRaw(Envelope, byte[])}. A client holds an open socket, so close
  * it when finished, for example in a try-with-resources block.
+ *
+ * <p>A client is <strong>not</strong> safe for concurrent use. To reuse
+ * connections across threads, use {@link SmtpPool}.
+ *
+ * <p>A blocked exchange can be aborted from another thread with {@link #cancel()},
+ * which closes the socket and maps the resulting failure to an
+ * {@link SmtpException}. A blocked caller can also be interrupted.
  */
 public final class SmtpClient implements AutoCloseable {
+    private static final ScheduledThreadPoolExecutor WRITE_WATCHDOG = createWriteWatchdog();
+
+    private static ScheduledThreadPoolExecutor createWriteWatchdog() {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, runnable -> {
+            Thread thread = new Thread(runnable, "mxraven-smtp-write-timeout");
+            thread.setDaemon(true);
+            return thread;
+        });
+        // Completed writes cancel their watchdog; drop cancelled tasks immediately
+        // instead of retaining them until the (possibly long) write timeout.
+        executor.setRemoveOnCancelPolicy(true);
+        return executor;
+    }
+
     private final SmtpConfig config;
     private Socket socket;
     private BufferedReader in;
@@ -50,6 +76,7 @@ public final class SmtpClient implements AutoCloseable {
     private boolean tls;
     private boolean authenticated;
     private boolean closed;
+    private volatile boolean cancelled;
     private Map<String, String> extensions = Java8.map();
     private SmtpResponse lastResponse;
 
@@ -167,7 +194,7 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SendResult send(Mail mail) throws IOException {
-        ensureOpen();
+        ensureActive();
         return deliver(mail.envelope(), serialize(mail.content()));
     }
 
@@ -180,21 +207,72 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SendResult sendRaw(Envelope envelope, byte[] rawMessage) throws IOException {
-        ensureOpen();
+        ensureActive();
         return deliver(envelope, rawMessage);
     }
 
     private SendResult deliver(Envelope envelope, byte[] message) throws IOException {
-        SmtpResponse fromResponse = mailFrom(envelope);
+        ensureActive();
+        String mailCommand = mailFromCommand(envelope);
+        List<Recipient> recipients = envelope.to();
         List<RecipientResult> results = new ArrayList<>();
-        for (Recipient recipient : envelope.to()) {
-            SmtpResponse rcptResponse = rcptTo(recipient);
-            results.add(new RecipientResult(recipient, rcptResponse.isSuccess(), rcptResponse.message()));
+        List<SmtpResponse> rcptResponses = new ArrayList<>(recipients.size());
+
+        boolean pipelining = hasExtension("PIPELINING") && recipients.size() > 1;
+        SmtpResponse fromResponse;
+        if (pipelining) {
+            // Batch MAIL FROM and every RCPT TO, then drain the replies. This is
+            // the higher-latency benefit RFC 2920 provides.
+            writeCommand(mailCommand);
+            for (Recipient recipient : recipients) {
+                writeCommand(rcptToCommand(recipient));
+            }
+            fromResponse = readResponse();
+            for (int i = 0; i < recipients.size(); i++) {
+                rcptResponses.add(readResponse());
+            }
+        } else {
+            fromResponse = cmd(mailCommand);
+            for (Recipient recipient : recipients) {
+                rcptResponses.add(rcptTo(recipient));
+            }
         }
 
-        SmtpResponse dataResponse = data(message);
-        boolean success = fromResponse.isSuccess() && dataResponse.isSuccess();
-        return new SendResult(success, results, dataResponse.message());
+        boolean anyAccepted = false;
+        for (int i = 0; i < recipients.size(); i++) {
+            SmtpResponse response = rcptResponses.get(i);
+            boolean accepted = response.isSuccess();
+            anyAccepted |= accepted;
+            results.add(new RecipientResult(recipients.get(i), accepted, response.message()));
+        }
+
+        if (!fromResponse.isSuccess()) {
+            safeRset();
+            return new SendResult(false, results, fromResponse.message());
+        }
+        if (!anyAccepted) {
+            safeRset();
+            return new SendResult(false, results, "all recipients were rejected");
+        }
+
+        SmtpResponse transactionResponse;
+        if (hasExtension("CHUNKING")) {
+            transactionResponse = bdat(message, true);
+        } else {
+            SmtpResponse dataResponse = cmd("DATA");
+            if (dataResponse.code() != 354) {
+                safeRset();
+                return new SendResult(false, results, dataResponse.message());
+            }
+            writeMessageBody(message);
+            transactionResponse = readResponse();
+        }
+
+        boolean success = transactionResponse.isSuccess();
+        if (!success) {
+            safeRset();
+        }
+        return new SendResult(success, results, transactionResponse.message());
     }
 
     /**
@@ -205,6 +283,7 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse mail(String address) throws IOException {
+        rejectCommandInjection(address, "address");
         return cmd("MAIL FROM:<" + address + ">");
     }
 
@@ -216,6 +295,7 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse rcpt(String address) throws IOException {
+        rejectCommandInjection(address, "address");
         return cmd("RCPT TO:<" + address + ">");
     }
 
@@ -230,16 +310,30 @@ public final class SmtpClient implements AutoCloseable {
      * @throws IOException when the SMTP exchange fails
      */
     public SmtpResponse data(byte[] content) throws IOException {
+        ensureActive();
         SmtpResponse response = cmd("DATA");
         if (response.code() != 354) {
             return response;
         }
-        writeDotStuffed(content);
-        if (content.length == 0 || content[content.length - 1] != '\n') {
-            out.write("\r\n".getBytes(StandardCharsets.UTF_8));
-        }
-        out.write(".\r\n".getBytes(StandardCharsets.UTF_8));
-        out.flush();
+        writeMessageBody(content);
+        return readResponse();
+    }
+
+    /**
+     * Transfers message content with the RFC 3030 {@code BDAT} command, used
+     * instead of {@code DATA} when the server advertises {@code CHUNKING}. The
+     * payload is written verbatim with no dot-stuffing.
+     *
+     * @param chunk the content chunk
+     * @param last  whether this is the final chunk of the message
+     * @return the server response
+     * @throws IOException when the SMTP exchange fails
+     */
+    public SmtpResponse bdat(byte[] chunk, boolean last) throws IOException {
+        ensureActive();
+        byte[] payload = chunk == null ? new byte[0] : chunk;
+        writeCommand("BDAT " + payload.length + (last ? " LAST" : ""));
+        writeBytes(payload);
         return readResponse();
     }
 
@@ -281,6 +375,24 @@ public final class SmtpClient implements AutoCloseable {
         return response;
     }
 
+    /**
+     * Aborts the current or next exchange. The connection is closed and any
+     * blocked operation fails with an {@link SmtpException}. This is a best-effort
+     * cancellation intended to be called from another thread. The client is not
+     * reusable afterwards.
+     */
+    public void cancel() {
+        cancelled = true;
+        Socket current = socket;
+        if (current != null) {
+            try {
+                current.close();
+            } catch (IOException ignored) {
+                // The socket is being cancelled; closing is best effort.
+            }
+        }
+    }
+
     @Override
     public void close() throws IOException {
         if (!closed) {
@@ -292,6 +404,17 @@ public final class SmtpClient implements AutoCloseable {
     private void ensureOpen() throws IOException {
         if (closed) {
             throw new SmtpException("client is closed");
+        }
+    }
+
+    private void ensureActive() throws IOException {
+        ensureOpen();
+        if (cancelled) {
+            throw new SmtpException("operation cancelled");
+        }
+        if (Thread.currentThread().isInterrupted()) {
+            cancelled = true;
+            throw new SmtpException("operation interrupted");
         }
     }
 
@@ -405,7 +528,7 @@ public final class SmtpClient implements AutoCloseable {
         authenticated = true;
     }
 
-    private SmtpResponse mailFrom(Envelope envelope) throws IOException {
+    private String mailFromCommand(Envelope envelope) {
         Path from = envelope.from() == null ? Path.nullPath() : envelope.from();
         List<String> params = new ArrayList<>();
 
@@ -436,6 +559,7 @@ public final class SmtpClient implements AutoCloseable {
             params.add("BY=" + formatDeliveryBy(envelope.deliveryBy()));
         }
         if (envelope.auth() != null && !Java8.isBlank(envelope.auth())) {
+            rejectCommandInjection(envelope.auth(), "AUTH identity");
             params.add("AUTH=<" + envelope.auth() + ">");
         }
         if (envelope.dsnParams() != null
@@ -445,12 +569,18 @@ public final class SmtpClient implements AutoCloseable {
             params.add("RET=" + normalizeRet(envelope.dsnParams().ret()));
         }
         if (envelope.envId() != null && !Java8.isBlank(envelope.envId()) && hasExtension("DSN")) {
-            params.add("ENVID=" + DsnXText.encode(envelope.envId()));
+            String envId = DsnXText.encode(envelope.envId());
+            if (envId.length() > 100) {
+                throw new SmtpException("DSN ENVID must not exceed 100 characters when encoded");
+            }
+            params.add("ENVID=" + envId);
         }
         for (Map.Entry<String, String> entry : envelope.extensionParams().entrySet()) {
             if (entry.getKey().equalsIgnoreCase("BY") && envelope.deliveryBy() != null) {
                 continue;
             }
+            rejectCommandInjection(entry.getKey(), "extension parameter name");
+            rejectCommandInjection(entry.getValue(), "extension parameter value");
             params.add(entry.getValue() == null || entry.getValue().isEmpty()
                     ? entry.getKey()
                     : entry.getKey() + "=" + entry.getValue());
@@ -460,10 +590,14 @@ public final class SmtpClient implements AutoCloseable {
         if (!params.isEmpty()) {
             command += " " + String.join(" ", params);
         }
-        return cmd(command);
+        return command;
     }
 
     private SmtpResponse rcptTo(Recipient recipient) throws IOException {
+        return cmd(rcptToCommand(recipient));
+    }
+
+    private String rcptToCommand(Recipient recipient) {
         List<String> params = new ArrayList<>();
         DSNRecipientParams dsn = recipient.dsnParams();
         if (dsn != null && hasExtension("DSN")) {
@@ -480,7 +614,7 @@ public final class SmtpClient implements AutoCloseable {
         if (!params.isEmpty()) {
             command += " " + String.join(" ", params);
         }
-        return cmd(command);
+        return command;
     }
 
     private static String formatDeliveryBy(DeliveryBy deliveryBy) {
@@ -503,35 +637,156 @@ public final class SmtpClient implements AutoCloseable {
             return out;
         }
         for (String flag : flags) {
-            if (flag == null) {
+            if (flag == null || Java8.isBlank(flag)) {
                 continue;
             }
             String token = flag.trim().toUpperCase(Locale.ROOT);
             boolean valid = token.equals("NEVER") || token.equals("SUCCESS")
                     || token.equals("FAILURE") || token.equals("DELAY");
-            if (valid && !out.contains(token)) {
+            if (!valid) {
+                throw new SmtpException("invalid DSN NOTIFY flag: " + flag);
+            }
+            if (!out.contains(token)) {
                 out.add(token);
             }
+        }
+        if (out.contains("NEVER") && out.size() > 1) {
+            throw new SmtpException("DSN NOTIFY=NEVER must not be combined with other flags");
         }
         return out;
     }
 
+    /**
+     * Formats an ORCPT value as {@code addr-type;xtext} (RFC 3461). When the input
+     * does not carry an address type, {@code rfc822} is assumed.
+     */
     private static String formatOrcpt(String orcpt) {
         int semicolon = orcpt.indexOf(';');
-        if (semicolon < 0) {
-            return DsnXText.encode(orcpt);
+        if (semicolon <= 0) {
+            return "rfc822;" + DsnXText.encode(orcpt);
         }
-        return orcpt.substring(0, semicolon) + ";" + DsnXText.encode(orcpt.substring(semicolon + 1));
+        String addressType = orcpt.substring(0, semicolon);
+        if (!isAddressType(addressType)) {
+            throw new SmtpException("invalid ORCPT address type: " + addressType);
+        }
+        return addressType + ";" + DsnXText.encode(orcpt.substring(semicolon + 1));
+    }
+
+    private static boolean isAddressType(String value) {
+        if (value.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            boolean valid = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')
+                    || (c >= '0' && c <= '9') || c == '-';
+            if (!valid) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private SmtpResponse cmd(String command) throws IOException {
-        out.write((command + "\r\n").getBytes(StandardCharsets.UTF_8));
-        out.flush();
+        ensureActive();
+        writeCommand(command);
         return readResponse();
     }
 
+    private void writeCommand(String command) throws IOException {
+        if (command.indexOf('\r') >= 0 || command.indexOf('\n') >= 0) {
+            throw new SmtpException("SMTP command must not contain CR or LF");
+        }
+        writeBytes((command + "\r\n").getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void rejectCommandInjection(String text, String what) {
+        if (text == null) {
+            return;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\r' || c == '\n' || c == '\0') {
+                throw new SmtpException(what + " must not contain CR, LF, or NUL characters");
+            }
+        }
+    }
+
+    private void writeMessageBody(byte[] content) throws IOException {
+        writeBytes(dotStuff(content));
+    }
+
+    private static byte[] dotStuff(byte[] content) {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream(content.length + 16);
+        boolean atLineStart = true;
+        for (byte b : content) {
+            if (atLineStart && b == '.') {
+                buffer.write('.');
+            }
+            buffer.write(b);
+            atLineStart = b == '\n';
+        }
+        if (content.length == 0 || content[content.length - 1] != '\n') {
+            buffer.write('\r');
+            buffer.write('\n');
+        }
+        buffer.write('.');
+        buffer.write('\r');
+        buffer.write('\n');
+        return buffer.toByteArray();
+    }
+
+    private void writeBytes(byte[] data) throws IOException {
+        ensureActive();
+        long timeoutMillis = config.writeTimeout() == null ? 0 : config.writeTimeout().toMillis();
+        if (timeoutMillis <= 0) {
+            out.write(data);
+            out.flush();
+            return;
+        }
+        AtomicBoolean finished = new AtomicBoolean(false);
+        Socket current = socket;
+        ScheduledFuture<?> watchdog = WRITE_WATCHDOG.schedule(() -> {
+            if (finished.compareAndSet(false, true) && current != null) {
+                try {
+                    current.close();
+                } catch (IOException ignored) {
+                    // Closing the socket is the timeout action; failure is ignored.
+                }
+            }
+        }, timeoutMillis, TimeUnit.MILLISECONDS);
+        try {
+            out.write(data);
+            out.flush();
+        } catch (IOException e) {
+            if (finished.get() && !closed && !cancelled) {
+                throw new SocketTimeoutException("write timed out after " + timeoutMillis + "ms");
+            }
+            throw e;
+        } finally {
+            if (!finished.getAndSet(true)) {
+                watchdog.cancel(false);
+            }
+        }
+    }
+
+    private String readLine() throws IOException {
+        try {
+            String line = in.readLine();
+            if (line == null && cancelled) {
+                throw new SmtpException("operation cancelled");
+            }
+            return line;
+        } catch (IOException e) {
+            if (cancelled) {
+                throw new SmtpException("operation cancelled");
+            }
+            throw e;
+        }
+    }
+
     private SmtpResponse readResponse() throws IOException {
-        String first = in.readLine();
+        String first = readLine();
         if (first == null) {
             throw new IOException("connection closed by server");
         }
@@ -550,10 +805,12 @@ public final class SmtpClient implements AutoCloseable {
         appendLine(message, first.substring(3));
         if (multiline) {
             String terminator = first.substring(0, 3) + " ";
+            boolean terminated = false;
             String line;
-            while ((line = in.readLine()) != null) {
+            while ((line = readLine()) != null) {
                 if (line.startsWith(terminator)) {
                     appendLine(message, line.substring(4));
+                    terminated = true;
                     break;
                 }
                 if (line.length() > 4 && line.startsWith(first.substring(0, 3) + "-")) {
@@ -561,6 +818,9 @@ public final class SmtpClient implements AutoCloseable {
                 } else {
                     appendLine(message, line);
                 }
+            }
+            if (!terminated) {
+                throw new IOException("connection closed before end of SMTP response");
             }
         }
         SmtpResponse response = new SmtpResponse(code, message.toString().trim());
@@ -580,19 +840,37 @@ public final class SmtpClient implements AutoCloseable {
 
     private static Map<String, String> parseExtensions(String message) {
         Map<String, String> result = new LinkedHashMap<>();
-        for (String line : message.split("\n")) {
-            String value = line.trim();
+        String[] lines = message.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            // The first line of an EHLO reply is the server greeting, not an
+            // extension. readResponse already stripped the reply code.
+            if (i == 0) {
+                continue;
+            }
+            String value = lines[i].trim();
             if (Java8.isBlank(value)) {
                 continue;
             }
             int space = value.indexOf(' ');
             String name = (space < 0 ? value : value.substring(0, space)).toUpperCase(Locale.ROOT);
             String param = space < 0 ? "" : value.substring(space + 1).trim();
-            if (!name.isEmpty() && !name.equals("250")) {
+            if (!name.isEmpty()) {
                 result.put(name, param);
             }
         }
         return result;
+    }
+
+    private void safeRset() {
+        if (closed || cancelled) {
+            return;
+        }
+        try {
+            writeCommand("RSET");
+            readResponse();
+        } catch (IOException e) {
+            cancelled = true;
+        }
     }
 
     private static byte[] serialize(Content content) throws IOException {
@@ -620,16 +898,5 @@ public final class SmtpClient implements AutoCloseable {
             }
         }
         return buffer.toByteArray();
-    }
-
-    private void writeDotStuffed(byte[] content) throws IOException {
-        boolean atLineStart = true;
-        for (byte b : content) {
-            if (atLineStart && b == '.') {
-                out.write('.');
-            }
-            out.write(b);
-            atLineStart = b == '\n';
-        }
     }
 }

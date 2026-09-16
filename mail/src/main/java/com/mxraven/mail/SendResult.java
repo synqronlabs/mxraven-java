@@ -84,7 +84,17 @@ public final class SendResult {
             return null;
         }
         String value = message.substring(index + "message_ref=".length()).trim();
-        int end = value.indexOf(' ');
-        return end < 0 ? value : value.substring(0, end);
+        while (value.startsWith("<")) {
+            value = value.substring(1);
+        }
+        int end = value.length();
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '>' || c == ';' || c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+                end = i;
+                break;
+            }
+        }
+        return value.substring(0, end);
     }
 }

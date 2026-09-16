@@ -1,5 +1,6 @@
 package com.mxraven.mail.model;
 
+import com.mxraven.mail.internal.Java8;
 import com.mxraven.mail.mime.Attachment;
 import com.mxraven.mail.mime.ContentTransferEncoding;
 import com.mxraven.mail.mime.MimeType;
@@ -104,6 +105,23 @@ class MailBuilderMimeTest {
         assertEquals("notes.txt", attachment.filename());
         assertEquals("text/plain", attachment.contentType());
         assertEquals("from disk", new String(attachment.data(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void foldsLongHeadersWithinTheLineLimit() {
+        String longValue = Java8.repeat("word ", 60).trim();
+        Mail mail = MailBuilder.create()
+                .from("a@example.com")
+                .to("b@example.com")
+                .header("X-Long", longValue)
+                .build();
+
+        String raw = new String(mail.content().toRaw(), StandardCharsets.UTF_8);
+        assertTrue(raw.contains("X-Long: "));
+        assertTrue(raw.contains("\r\n "), "the long header should be folded");
+        for (String line : raw.split("\r\n")) {
+            assertTrue(line.length() <= 998, "header lines must not exceed 998 octets");
+        }
     }
 
     @Test

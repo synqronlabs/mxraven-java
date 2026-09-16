@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.Objects;
 
 import com.mxraven.mail.mime.ContentTransferEncoding;
+import com.mxraven.mail.mime.MimeWriter;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -94,7 +95,8 @@ public final class Content {
     public byte[] toRaw() {
         ByteArrayOutputStream out = new ByteArrayOutputStream(body.length + 256);
         for (Header header : headers.fields()) {
-            Java8.writeBytes(out, (header.name() + ": " + header.value() + "\r\n")
+            String value = MimeWriter.encodeWord(header.value());
+            Java8.writeBytes(out, (MimeWriter.foldHeader(header.name(), value) + "\r\n")
                     .getBytes(StandardCharsets.ISO_8859_1));
         }
         Java8.writeBytes(out, "\r\n".getBytes(StandardCharsets.ISO_8859_1));

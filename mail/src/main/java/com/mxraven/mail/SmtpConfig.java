@@ -294,6 +294,13 @@ public final class SmtpConfig {
             if (host == null || Java8.isBlank(host)) {
                 throw new IllegalStateException("host must not be blank");
             }
+            if (localName == null || Java8.isBlank(localName)) {
+                throw new IllegalStateException("localName must not be blank");
+            }
+            if (localName.indexOf('\r') >= 0 || localName.indexOf('\n') >= 0
+                    || localName.indexOf('\0') >= 0) {
+                throw new IllegalStateException("localName must not contain CR, LF, or NUL characters");
+            }
             return new SmtpConfig(this);
         }
     }

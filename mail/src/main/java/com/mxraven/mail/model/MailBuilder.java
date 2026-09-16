@@ -572,9 +572,47 @@ public final class MailBuilder {
         Envelope envelope = Envelope.builder()
                 .from(from)
                 .to(all)
+                .bodyType(bodyTypeFor(entity.encoding()))
+                .size(content.toRaw().length)
+                .smtpUtf8(requiresSmtpUtf8(all))
                 .build();
 
         return new Mail(envelope, content, Java8.list(), Instant.now());
+    }
+
+    /**
+     * Maps the transfer encoding of the outermost entity to the SMTP {@code BODY}
+     * type. Seven-bit and encoded (quoted-printable, base64) bodies stay 7-bit.
+     */
+    private static BodyType bodyTypeFor(ContentTransferEncoding encoding) {
+        if (encoding == ContentTransferEncoding.EIGHT_BIT) {
+            return BodyType.EIGHT_BIT_MIME;
+        }
+        if (encoding == ContentTransferEncoding.BINARY) {
+            return BodyType.BINARY_MIME;
+        }
+        return BodyType.SEVEN_BIT;
+    }
+
+    /**
+     * Whether any envelope address contains a non-ASCII byte in its local part or
+     * domain, which requires the {@code SMTPUTF8} extension (RFC 6531).
+     */
+    private boolean requiresSmtpUtf8(List<Recipient> recipients) {
+        if (!from.isNull() && needsUtf8(from.mailbox())) {
+            return true;
+        }
+        for (Recipient recipient : recipients) {
+            if (needsUtf8(recipient.address().mailbox())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean needsUtf8(MailboxAddress mailbox) {
+        return !MimeWriter.isAscii(mailbox.localPart().getBytes(StandardCharsets.UTF_8))
+                || !MimeWriter.isAscii(mailbox.domain().getBytes(StandardCharsets.UTF_8));
     }
 
     private Entity topEntity() {
@@ -711,7 +749,35 @@ public final class MailBuilder {
         if (displayName == null || Java8.isBlank(displayName)) {
             return email;
         }
-        return MimeWriter.encodeWord(displayName) + " <" + email + ">";
+        return formatDisplayName(displayName) + " <" + email + ">";
+    }
+
+    /**
+     * Renders a display name as an RFC 2047 encoded phrase when non-ASCII, as a
+     * quoted-string when it contains RFC 5322 specials, or verbatim otherwise.
+     */
+    private static String formatDisplayName(String displayName) {
+        if (!MimeWriter.isAscii(displayName.getBytes(StandardCharsets.UTF_8))) {
+            return MimeWriter.encodeWord(displayName);
+        }
+        if (needsQuoting(displayName)) {
+            return "\"" + displayName.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+        }
+        return displayName;
+    }
+
+    private static boolean needsQuoting(String value) {
+        if (!value.equals(value.trim())) {
+            return true;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '(' || c == ')' || c == '<' || c == '>' || c == '[' || c == ']'
+                    || c == ':' || c == ';' || c == '@' || c == '\\' || c == ',' || c == '"') {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String generateMessageId() {

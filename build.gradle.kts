@@ -12,7 +12,7 @@ import org.gradle.plugins.signing.SigningExtension
 
 allprojects {
     group = "com.mxraven"
-    version = providers.gradleProperty("releaseVersion").getOrElse("2.0.1")
+    version = providers.gradleProperty("releaseVersion").getOrElse("2.0.2")
 
     repositories {
         mavenCentral()

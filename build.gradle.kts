@@ -1,6 +1,8 @@
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -42,6 +44,33 @@ subprojects {
         // explicitly declared record accessors even when the record documents
         // its components via @param.
         (options as StandardJavadocDocletOptions).addBooleanOption("Xdoclint:all,-missing", true)
+    }
+
+    // --- Examples -------------------------------------------------------------
+    // A separate `examples` source set, kept out of `main`: never published,
+    // never bundled in the jars or fatJar, and not compiled by `build`. Compile
+    // with `./gradlew :<module>:compileExamplesJava` and run a single example
+    // with `./gradlew :<module>:runExample -Pexample=<fully.qualified.Main>`.
+    val sourceSets = extensions.getByType<SourceSetContainer>()
+    val mainSourceSet = sourceSets.getByName("main")
+    val examplesSourceSet = sourceSets.create("examples") {
+        java.srcDir("src/examples/java")
+        compileClasspath += mainSourceSet.output
+        runtimeClasspath += mainSourceSet.output
+    }
+    configurations.named(examplesSourceSet.implementationConfigurationName) {
+        extendsFrom(configurations.getByName("implementation"))
+    }
+    configurations.named(examplesSourceSet.runtimeOnlyConfigurationName) {
+        extendsFrom(configurations.getByName("runtimeOnly"))
+    }
+
+    tasks.register<JavaExec>("runExample") {
+        group = "application"
+        description = "Runs one example. Usage: ./gradlew :<module>:runExample -Pexample=<fqcn>"
+        dependsOn(examplesSourceSet.classesTaskName)
+        classpath = examplesSourceSet.runtimeClasspath
+        mainClass.set(providers.gradleProperty("example"))
     }
 
     tasks.register<Jar>("sourcesJar") {

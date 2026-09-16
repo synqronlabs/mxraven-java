@@ -12,6 +12,7 @@ request/response models and a small dependency footprint (Jackson only).
 
 - Group / artifact: `com.mxraven` / `admin`
 - Current version: `2.0.1`
+- JavaDoc: https://java.mxraven.com/admin/
 - Requirements: **Java 17+** (the build toolchain targets Java 17)
 - Runtime dependency: `com.fasterxml.jackson.core:jackson-databind`
 
@@ -1139,4 +1140,5 @@ Timestamps are ISO-8601 strings. Contract enums expose `wire()` and
 
 ## License
 
-See the repository root for license information.
+See the repository root for license information. Contributions are welcome: see
+[`CONTRIBUTING.md`](../CONTRIBUTING.md).

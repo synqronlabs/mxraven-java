@@ -1,15 +1,55 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * Request body for {@code PUT /v2/tenants/{slug}/suppressions/{email_address}}.
- *
- * @param reason replacement suppression reason; null clears it
+ * Request body for <code>PUT /v2/tenants/{slug}/suppressions/{email_address}</code>.
  */
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 @JsonInclude(JsonInclude.Include.ALWAYS)
-public record UpdateTenantSuppressionRequest(
-        SuppressionReason reason) {
+public final class UpdateTenantSuppressionRequest {
+    private final SuppressionReason reason;
+
+    /** replacement suppression reason; null clears it */
+    public SuppressionReason reason() {
+        return reason;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UpdateTenantSuppressionRequest that = (UpdateTenantSuppressionRequest) o;
+        return Objects.equals(this.reason, that.reason);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.reason);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateTenantSuppressionRequest[" + "reason=" + this.reason + "]";
+    }
+
+    /**
+     * Creates a new UpdateTenantSuppressionRequest.
+     *
+     * @param reason replacement suppression reason; null clears it
+     */
+    @JsonCreator
+    public UpdateTenantSuppressionRequest(SuppressionReason reason) {
+        this.reason = reason;
+    }
 
     /**
      * Creates a new request builder.

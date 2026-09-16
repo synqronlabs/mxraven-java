@@ -1,33 +1,143 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers/oauth}.
- *
- * @param idpRef immutable identity-provider reference
- * @param name human-readable provider name
- * @param clientId OAuth client identifier
- * @param clientSecret OAuth client secret
- * @param authorizationEndpoint OAuth authorization endpoint
- * @param tokenEndpoint OAuth token endpoint
- * @param userEndpoint user-info endpoint
- * @param scopes optional OAuth scopes
- * @param idAttribute optional claim used as the user identifier
- * @param usePkce optional flag to use PKCE
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers/oauth</code>.
  */
-public record CreateTenantOAuthIdentityProviderRequest(
-        String idpRef,
-        String name,
-        String clientId,
-        String clientSecret,
-        String authorizationEndpoint,
-        String tokenEndpoint,
-        String userEndpoint,
-        List<String> scopes,
-        String idAttribute,
-        Boolean usePkce,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantOAuthIdentityProviderRequest {
+    private final String idpRef;
+    private final String name;
+    private final String clientId;
+    private final String clientSecret;
+    private final String authorizationEndpoint;
+    private final String tokenEndpoint;
+    private final String userEndpoint;
+    private final List<String> scopes;
+    private final String idAttribute;
+    private final Boolean usePkce;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String name() {
+        return name;
+    }
+
+    /** OAuth client identifier */
+    public String clientId() {
+        return clientId;
+    }
+
+    /** OAuth client secret */
+    public String clientSecret() {
+        return clientSecret;
+    }
+
+    /** OAuth authorization endpoint */
+    public String authorizationEndpoint() {
+        return authorizationEndpoint;
+    }
+
+    /** OAuth token endpoint */
+    public String tokenEndpoint() {
+        return tokenEndpoint;
+    }
+
+    /** user-info endpoint */
+    public String userEndpoint() {
+        return userEndpoint;
+    }
+
+    /** optional OAuth scopes */
+    public List<String> scopes() {
+        return scopes;
+    }
+
+    /** optional claim used as the user identifier */
+    public String idAttribute() {
+        return idAttribute;
+    }
+
+    /** optional flag to use PKCE */
+    public Boolean usePkce() {
+        return usePkce;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantOAuthIdentityProviderRequest that = (CreateTenantOAuthIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.clientId, that.clientId)
+                && Objects.equals(this.clientSecret, that.clientSecret)
+                && Objects.equals(this.authorizationEndpoint, that.authorizationEndpoint)
+                && Objects.equals(this.tokenEndpoint, that.tokenEndpoint)
+                && Objects.equals(this.userEndpoint, that.userEndpoint)
+                && Objects.equals(this.scopes, that.scopes)
+                && Objects.equals(this.idAttribute, that.idAttribute)
+                && Objects.equals(this.usePkce, that.usePkce)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.name, this.clientId, this.clientSecret, this.authorizationEndpoint, this.tokenEndpoint, this.userEndpoint, this.scopes, this.idAttribute, this.usePkce, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantOAuthIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "name=" + this.name + ", " + "clientId=" + this.clientId + ", " + "clientSecret=" + this.clientSecret + ", " + "authorizationEndpoint=" + this.authorizationEndpoint + ", " + "tokenEndpoint=" + this.tokenEndpoint + ", " + "userEndpoint=" + this.userEndpoint + ", " + "scopes=" + this.scopes + ", " + "idAttribute=" + this.idAttribute + ", " + "usePkce=" + this.usePkce + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantOAuthIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param name human-readable provider name
+     * @param clientId OAuth client identifier
+     * @param clientSecret OAuth client secret
+     * @param authorizationEndpoint OAuth authorization endpoint
+     * @param tokenEndpoint OAuth token endpoint
+     * @param userEndpoint user-info endpoint
+     * @param scopes optional OAuth scopes
+     * @param idAttribute optional claim used as the user identifier
+     * @param usePkce optional flag to use PKCE
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantOAuthIdentityProviderRequest(String idpRef, String name, String clientId, String clientSecret, String authorizationEndpoint, String tokenEndpoint, String userEndpoint, List<String> scopes, String idAttribute, Boolean usePkce, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.name = name;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.authorizationEndpoint = authorizationEndpoint;
+        this.tokenEndpoint = tokenEndpoint;
+        this.userEndpoint = userEndpoint;
+        this.scopes = scopes;
+        this.idAttribute = idAttribute;
+        this.usePkce = usePkce;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

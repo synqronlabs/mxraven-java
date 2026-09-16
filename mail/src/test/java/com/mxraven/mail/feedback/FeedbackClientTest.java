@@ -1,5 +1,7 @@
 package com.mxraven.mail.feedback;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -43,7 +45,7 @@ class FeedbackClientTest {
     }
 
     private static byte[] body(HttpExchange exchange) throws IOException {
-        return exchange.getRequestBody().readAllBytes();
+        return Java8.readAllBytes(exchange.getRequestBody());
     }
 
     @Test

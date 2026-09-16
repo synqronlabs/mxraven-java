@@ -1,24 +1,101 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 /**
- * Request body for {@code POST /v2/tenants/{slug}/smtp-relays}.
- *
- * @param relayRef    immutable human-readable relay reference
- * @param displayName human-readable relay name
- * @param host        SMTP relay host
- * @param port        SMTP relay port
- * @param username    relay username
- * @param password    relay password
+ * Request body for <code>POST /v2/tenants/{slug}/smtp-relays</code>.
  */
-public record CreateSmtpRelayRequest(
-        String relayRef,
-        String displayName,
-        String host,
-        int port,
-        String username,
-        String password) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateSmtpRelayRequest {
+    private final String relayRef;
+    private final String displayName;
+    private final String host;
+    private final int port;
+    private final String username;
+    private final String password;
+
+    /** immutable human-readable relay reference */
+    public String relayRef() {
+        return relayRef;
+    }
+
+    /** human-readable relay name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** SMTP relay host */
+    public String host() {
+        return host;
+    }
+
+    /** SMTP relay port */
+    public int port() {
+        return port;
+    }
+
+    /** relay username */
+    public String username() {
+        return username;
+    }
+
+    /** relay password */
+    public String password() {
+        return password;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateSmtpRelayRequest that = (CreateSmtpRelayRequest) o;
+        return Objects.equals(this.relayRef, that.relayRef)
+                && Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.host, that.host)
+                && this.port == that.port
+                && Objects.equals(this.username, that.username)
+                && Objects.equals(this.password, that.password);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.relayRef, this.displayName, this.host, this.port, this.username, this.password);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateSmtpRelayRequest[" + "relayRef=" + this.relayRef + ", " + "displayName=" + this.displayName + ", " + "host=" + this.host + ", " + "port=" + this.port + ", " + "username=" + this.username + ", " + "password=" + this.password + "]";
+    }
+
+    /**
+     * Creates a new CreateSmtpRelayRequest.
+     *
+     * @param relayRef immutable human-readable relay reference
+     * @param displayName human-readable relay name
+     * @param host SMTP relay host
+     * @param port SMTP relay port
+     * @param username relay username
+     * @param password relay password
+     */
+    @JsonCreator
+    public CreateSmtpRelayRequest(String relayRef, String displayName, String host, int port, String username, String password) {
+        this.relayRef = relayRef;
+        this.displayName = displayName;
+        this.host = host;
+        this.port = port;
+        this.username = username;
+        this.password = password;
+    }
 
     /**
      * Creates a new request builder.
@@ -113,7 +190,7 @@ public record CreateSmtpRelayRequest(
          * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateSmtpRelayRequest build() {
-            if (relayRef == null || relayRef.isBlank()) {
+            if (relayRef == null || Java8.isBlank(relayRef)) {
                 throw new IllegalArgumentException("relay_ref is required");
             }
             if (relayRef.codePointCount(0, relayRef.length()) > 100) {
@@ -129,13 +206,13 @@ public record CreateSmtpRelayRequest(
 
         private static void validateConnection(String displayName, String host, int port,
                                               String username, String password) {
-            if (displayName == null || displayName.isBlank()) {
+            if (displayName == null || Java8.isBlank(displayName)) {
                 throw new IllegalArgumentException("display_name is required");
             }
             if (displayName.codePointCount(0, displayName.length()) > 255) {
                 throw new IllegalArgumentException("display_name must be 255 characters or fewer");
             }
-            if (host == null || host.isBlank()) {
+            if (host == null || Java8.isBlank(host)) {
                 throw new IllegalArgumentException("host is required");
             }
             if (host.codePointCount(0, host.length()) > 253) {
@@ -144,13 +221,13 @@ public record CreateSmtpRelayRequest(
             if (port < 1 || port > 65535) {
                 throw new IllegalArgumentException("port must be between 1 and 65535");
             }
-            if (username == null || username.isBlank()) {
+            if (username == null || Java8.isBlank(username)) {
                 throw new IllegalArgumentException("username is required");
             }
             if (username.codePointCount(0, username.length()) > 4096) {
                 throw new IllegalArgumentException("username must be 4096 characters or fewer");
             }
-            if (password == null || password.isBlank()) {
+            if (password == null || Java8.isBlank(password)) {
                 throw new IllegalArgumentException("password is required");
             }
             if (password.codePointCount(0, password.length()) > 4096) {

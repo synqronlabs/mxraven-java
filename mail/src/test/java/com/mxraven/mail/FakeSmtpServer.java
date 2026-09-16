@@ -1,5 +1,7 @@
 package com.mxraven.mail;
 
+import com.mxraven.mail.internal.Java8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -51,7 +53,7 @@ final class FakeSmtpServer implements Closeable {
     }
 
     FakeSmtpServer(boolean advertiseStartTls, boolean advertiseAuthPlain, boolean advertiseAuthLogin, int rcptCode) {
-        this(advertiseStartTls, advertiseAuthPlain, advertiseAuthLogin, rcptCode, List.of());
+        this(advertiseStartTls, advertiseAuthPlain, advertiseAuthLogin, rcptCode, Java8.list());
     }
 
     FakeSmtpServer(boolean advertiseStartTls, boolean advertiseAuthPlain, boolean advertiseAuthLogin,
@@ -60,7 +62,7 @@ final class FakeSmtpServer implements Closeable {
         this.advertiseAuthPlain = advertiseAuthPlain;
         this.advertiseAuthLogin = advertiseAuthLogin;
         this.rcptCode = rcptCode;
-        this.extraCapabilities = List.copyOf(extraCapabilities);
+        this.extraCapabilities = Java8.copyList(extraCapabilities);
         try {
             this.serverSocket = new ServerSocket();
             this.serverSocket.bind(new InetSocketAddress("127.0.0.1", 0));
@@ -172,7 +174,7 @@ final class FakeSmtpServer implements Closeable {
         if (b == -1 && buffer.size() == 0) {
             return null;
         }
-        return buffer.toString(StandardCharsets.UTF_8);
+        return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private static byte[] readData(InputStream in) throws IOException {

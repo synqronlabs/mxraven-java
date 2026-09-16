@@ -1,12 +1,53 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * Request body for
- * {@code PUT /v2/tenants/{slug}/listeners/{listener_id}/rspamd-scanning}.
- *
- * @param enabled whether inbound Rspamd scanning is enabled
+ * <code>PUT /v2/tenants/{slug}/listeners/{listener_id}/rspamd-scanning</code>.
  */
-public record UpdateListenerRspamdScanningRequest(boolean enabled) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class UpdateListenerRspamdScanningRequest {
+    private final boolean enabled;
+
+    /** whether inbound Rspamd scanning is enabled */
+    public boolean enabled() {
+        return enabled;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UpdateListenerRspamdScanningRequest that = (UpdateListenerRspamdScanningRequest) o;
+        return this.enabled == that.enabled;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.enabled);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateListenerRspamdScanningRequest[" + "enabled=" + this.enabled + "]";
+    }
+
+    /**
+     * Creates a new UpdateListenerRspamdScanningRequest.
+     *
+     * @param enabled whether inbound Rspamd scanning is enabled
+     */
+    @JsonCreator
+    public UpdateListenerRspamdScanningRequest(boolean enabled) {
+        this.enabled = enabled;
+    }
 
     /**
      * Creates a new request builder.

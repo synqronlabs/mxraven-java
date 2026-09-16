@@ -1,27 +1,116 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers/apple}.
- *
- * @param idpRef immutable identity-provider reference
- * @param name human-readable provider name
- * @param clientId Apple service client identifier
- * @param teamId Apple developer team identifier
- * @param keyId Apple signing key identifier
- * @param privateKey Apple signing private key
- * @param scopes optional OAuth scopes
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers/apple</code>.
  */
-public record CreateTenantAppleIdentityProviderRequest(
-        String idpRef,
-        String name,
-        String clientId,
-        String teamId,
-        String keyId,
-        String privateKey,
-        List<String> scopes,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantAppleIdentityProviderRequest {
+    private final String idpRef;
+    private final String name;
+    private final String clientId;
+    private final String teamId;
+    private final String keyId;
+    private final String privateKey;
+    private final List<String> scopes;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String name() {
+        return name;
+    }
+
+    /** Apple service client identifier */
+    public String clientId() {
+        return clientId;
+    }
+
+    /** Apple developer team identifier */
+    public String teamId() {
+        return teamId;
+    }
+
+    /** Apple signing key identifier */
+    public String keyId() {
+        return keyId;
+    }
+
+    /** Apple signing private key */
+    public String privateKey() {
+        return privateKey;
+    }
+
+    /** optional OAuth scopes */
+    public List<String> scopes() {
+        return scopes;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantAppleIdentityProviderRequest that = (CreateTenantAppleIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.clientId, that.clientId)
+                && Objects.equals(this.teamId, that.teamId)
+                && Objects.equals(this.keyId, that.keyId)
+                && Objects.equals(this.privateKey, that.privateKey)
+                && Objects.equals(this.scopes, that.scopes)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.name, this.clientId, this.teamId, this.keyId, this.privateKey, this.scopes, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantAppleIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "name=" + this.name + ", " + "clientId=" + this.clientId + ", " + "teamId=" + this.teamId + ", " + "keyId=" + this.keyId + ", " + "privateKey=" + this.privateKey + ", " + "scopes=" + this.scopes + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantAppleIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param name human-readable provider name
+     * @param clientId Apple service client identifier
+     * @param teamId Apple developer team identifier
+     * @param keyId Apple signing key identifier
+     * @param privateKey Apple signing private key
+     * @param scopes optional OAuth scopes
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantAppleIdentityProviderRequest(String idpRef, String name, String clientId, String teamId, String keyId, String privateKey, List<String> scopes, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.name = name;
+        this.clientId = clientId;
+        this.teamId = teamId;
+        this.keyId = keyId;
+        this.privateKey = privateKey;
+        this.scopes = scopes;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

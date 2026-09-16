@@ -1,5 +1,7 @@
 package com.mxraven.mail;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.mxraven.mail.model.BodyType;
 import com.mxraven.mail.model.Content;
 import com.mxraven.mail.model.DSNRecipientParams;
@@ -48,7 +50,7 @@ public final class SmtpClient implements AutoCloseable {
     private boolean tls;
     private boolean authenticated;
     private boolean closed;
-    private Map<String, String> extensions = Map.of();
+    private Map<String, String> extensions = Java8.map();
     private SmtpResponse lastResponse;
 
     private SmtpClient(SmtpConfig config) {
@@ -77,7 +79,7 @@ public final class SmtpClient implements AutoCloseable {
             client.startTls();
             client.ehlo();
         }
-        if (config.username() != null && !config.username().isBlank()) {
+        if (config.username() != null && !Java8.isBlank(config.username())) {
             client.auth();
         }
         return client;
@@ -145,7 +147,7 @@ public final class SmtpClient implements AutoCloseable {
      * @return an immutable map of extension name to parameter line
      */
     public Map<String, String> extensions() {
-        return Map.copyOf(extensions);
+        return Java8.copyMap(extensions);
     }
 
     /**
@@ -332,7 +334,7 @@ public final class SmtpClient implements AutoCloseable {
         tls = true;
         esmtp = false;
         authenticated = false;
-        extensions = Map.of();
+        extensions = Java8.map();
     }
 
     private SSLContext sslContext() {
@@ -355,7 +357,7 @@ public final class SmtpClient implements AutoCloseable {
             response = cmd("HELO " + config.localName());
             if (response.isSuccess()) {
                 esmtp = false;
-                extensions = Map.of();
+                extensions = Java8.map();
             } else {
                 throw new SmtpException("EHLO/HELO rejected: " + response.message());
             }
@@ -364,7 +366,7 @@ public final class SmtpClient implements AutoCloseable {
 
     private void auth() throws IOException {
         String advertised = extensionParam("AUTH");
-        if (advertised == null || advertised.isBlank()) {
+        if (advertised == null || Java8.isBlank(advertised)) {
             throw new SmtpException("server does not advertise AUTH");
         }
         Set<String> mechanisms = new HashSet<>(Arrays.asList(advertised.toUpperCase(Locale.ROOT).split(" ")));
@@ -433,16 +435,16 @@ public final class SmtpClient implements AutoCloseable {
             }
             params.add("BY=" + formatDeliveryBy(envelope.deliveryBy()));
         }
-        if (envelope.auth() != null && !envelope.auth().isBlank()) {
+        if (envelope.auth() != null && !Java8.isBlank(envelope.auth())) {
             params.add("AUTH=<" + envelope.auth() + ">");
         }
         if (envelope.dsnParams() != null
                 && envelope.dsnParams().ret() != null
-                && !envelope.dsnParams().ret().isBlank()
+                && !Java8.isBlank(envelope.dsnParams().ret())
                 && hasExtension("DSN")) {
             params.add("RET=" + normalizeRet(envelope.dsnParams().ret()));
         }
-        if (envelope.envId() != null && !envelope.envId().isBlank() && hasExtension("DSN")) {
+        if (envelope.envId() != null && !Java8.isBlank(envelope.envId()) && hasExtension("DSN")) {
             params.add("ENVID=" + DsnXText.encode(envelope.envId()));
         }
         for (Map.Entry<String, String> entry : envelope.extensionParams().entrySet()) {
@@ -469,7 +471,7 @@ public final class SmtpClient implements AutoCloseable {
             if (!notify.isEmpty()) {
                 params.add("NOTIFY=" + String.join(",", notify));
             }
-            if (dsn.orcpt() != null && !dsn.orcpt().isBlank()) {
+            if (dsn.orcpt() != null && !Java8.isBlank(dsn.orcpt())) {
                 params.add("ORCPT=" + formatOrcpt(dsn.orcpt()));
             }
         }
@@ -567,10 +569,10 @@ public final class SmtpClient implements AutoCloseable {
     }
 
     private static void appendLine(StringBuilder message, String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null || Java8.isBlank(value)) {
             return;
         }
-        if (!message.isEmpty()) {
+        if (message.length() != 0) {
             message.append('\n');
         }
         message.append(value.trim());
@@ -580,7 +582,7 @@ public final class SmtpClient implements AutoCloseable {
         Map<String, String> result = new LinkedHashMap<>();
         for (String line : message.split("\n")) {
             String value = line.trim();
-            if (value.isBlank()) {
+            if (Java8.isBlank(value)) {
                 continue;
             }
             int space = value.indexOf(' ');

@@ -1,15 +1,72 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * One header operation in a {@code MODIFY_HEADER} routing-rule action.
  *
  * <p>{@code value} is {@code null} for {@link ModifyHeaderOp#REMOVE}.
- *
- * @param op     operation to perform
- * @param header name of the affected header
- * @param value  header value, or {@code null} for {@link ModifyHeaderOp#REMOVE}
  */
-public record ModifyHeaderOperation(ModifyHeaderOp op, String header, String value) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class ModifyHeaderOperation {
+    private final ModifyHeaderOp op;
+    private final String header;
+    private final String value;
+
+    /** operation to perform */
+    public ModifyHeaderOp op() {
+        return op;
+    }
+
+    /** name of the affected header */
+    public String header() {
+        return header;
+    }
+
+    /** header value, or {@code null} for {@link ModifyHeaderOp#REMOVE} */
+    public String value() {
+        return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ModifyHeaderOperation that = (ModifyHeaderOperation) o;
+        return Objects.equals(this.op, that.op)
+                && Objects.equals(this.header, that.header)
+                && Objects.equals(this.value, that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.op, this.header, this.value);
+    }
+
+    @Override
+    public String toString() {
+        return "ModifyHeaderOperation[" + "op=" + this.op + ", " + "header=" + this.header + ", " + "value=" + this.value + "]";
+    }
+
+    /**
+     * Creates a new ModifyHeaderOperation.
+     *
+     * @param op operation to perform
+     * @param header name of the affected header
+     * @param value header value, or {@code null} for {@link ModifyHeaderOp#REMOVE}
+     */
+    @JsonCreator
+    public ModifyHeaderOperation(ModifyHeaderOp op, String header, String value) {
+        this.op = op;
+        this.header = header;
+        this.value = value;
+    }
 
     /**
      * Creates an append operation.

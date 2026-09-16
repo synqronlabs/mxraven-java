@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -24,7 +26,7 @@ class RoutingRuleActionTest {
         assertEquals("RELAY", relay.get("action_type").asText());
         assertEquals("primary", relay.get("action_payload").get("relay_ref").asText());
 
-        JsonNode headers = mapper.readTree(mapper.writeValueAsString(RoutingRuleAction.modifyHeader(List.of(
+        JsonNode headers = mapper.readTree(mapper.writeValueAsString(RoutingRuleAction.modifyHeader(Java8.list(
                 ModifyHeaderOperation.append("X-Tag", "v1"),
                 ModifyHeaderOperation.remove("X-Old")))));
         assertEquals("MODIFY_HEADER", headers.get("action_type").asText());
@@ -60,7 +62,7 @@ class RoutingRuleActionTest {
     void validatesPayloads() {
         assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.relay(" "));
         assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.smtpForward("bad ref"));
-        assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.addRecipient(List.of("not-an-email")));
+        assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.addRecipient(Java8.list("not-an-email")));
         assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.s3Store("dest", "/leading/", null));
         assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.s3Store("dest", null, null));
         assertThrows(IllegalArgumentException.class, () -> RoutingRuleAction.reject(450, "5.0.0", "nope"));

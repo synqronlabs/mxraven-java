@@ -1,15 +1,61 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
- * Request body for {@code POST /v2/tenants/{slug}/suppressions}.
- *
- * @param emailAddress email address to suppress
- * @param reason optional suppression reason; one of {@code unsubscribe} or
- *               {@code bounce}
+ * Request body for <code>POST /v2/tenants/{slug}/suppressions</code>.
  */
-public record CreateTenantSuppressionRequest(
-        String emailAddress,
-        SuppressionReason reason) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantSuppressionRequest {
+    private final String emailAddress;
+    private final SuppressionReason reason;
+
+    /** email address to suppress */
+    public String emailAddress() {
+        return emailAddress;
+    }
+
+    /** optional suppression reason; one of {@code unsubscribe} or {@code bounce} */
+    public SuppressionReason reason() {
+        return reason;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantSuppressionRequest that = (CreateTenantSuppressionRequest) o;
+        return Objects.equals(this.emailAddress, that.emailAddress)
+                && Objects.equals(this.reason, that.reason);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.emailAddress, this.reason);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantSuppressionRequest[" + "emailAddress=" + this.emailAddress + ", " + "reason=" + this.reason + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantSuppressionRequest.
+     *
+     * @param emailAddress email address to suppress
+     * @param reason optional suppression reason; one of {@code unsubscribe} or {@code bounce}
+     */
+    @JsonCreator
+    public CreateTenantSuppressionRequest(String emailAddress, SuppressionReason reason) {
+        this.emailAddress = emailAddress;
+        this.reason = reason;
+    }
 
     /**
      * Creates a new request builder.

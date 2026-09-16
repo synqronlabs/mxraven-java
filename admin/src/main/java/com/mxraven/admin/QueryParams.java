@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -75,7 +77,7 @@ public final class QueryParams {
      *                                  {@value #MIN_SEARCH_LENGTH} characters
      */
     public QueryParams q(String query) {
-        if (query == null || query.isBlank()) {
+        if (query == null || Java8.isBlank(query)) {
             return this;
         }
         String value = query.trim();

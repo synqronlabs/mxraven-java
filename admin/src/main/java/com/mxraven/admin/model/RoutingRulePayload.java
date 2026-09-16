@@ -1,5 +1,7 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -41,7 +43,7 @@ public final class RoutingRulePayload {
      */
     @JsonCreator
     public static RoutingRulePayload of(Map<String, Object> values) {
-        return new RoutingRulePayload(null, values == null ? Map.of() : values);
+        return new RoutingRulePayload(null, values == null ? Java8.map() : values);
     }
 
     /**
@@ -171,7 +173,10 @@ public final class RoutingRulePayload {
      */
     public Integer smtpStatusCode() {
         Object value = values.get("smtp_status_code");
-        return value instanceof Number number ? number.intValue() : null;
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return null;
     }
 
     // --- factories -----------------------------------------------------------
@@ -188,7 +193,7 @@ public final class RoutingRulePayload {
         if (!UUID.matcher(value).matches()) {
             throw new IllegalArgumentException("pool_id must be a valid UUID");
         }
-        return of(RoutingRuleActionKind.DELIVER_DEDICATED, Map.of("pool_id", value));
+        return of(RoutingRuleActionKind.DELIVER_DEDICATED, Java8.map("pool_id", value));
     }
 
     /**
@@ -197,7 +202,7 @@ public final class RoutingRulePayload {
      * @return the payload
      */
     public static RoutingRulePayload deliver() {
-        return of(RoutingRuleActionKind.DELIVER, Map.of());
+        return of(RoutingRuleActionKind.DELIVER, Java8.map());
     }
 
     /**
@@ -208,7 +213,7 @@ public final class RoutingRulePayload {
      * @throws IllegalArgumentException if {@code relayRef} is missing or too long
      */
     public static RoutingRulePayload smartHostRelay(String relayRef) {
-        return of(RoutingRuleActionKind.SMARTHOST_RELAY, Map.of("relay_ref", requireMax(relayRef, "relay_ref", 100)));
+        return of(RoutingRuleActionKind.SMARTHOST_RELAY, Java8.map("relay_ref", requireMax(relayRef, "relay_ref", 100)));
     }
 
     /**
@@ -219,7 +224,7 @@ public final class RoutingRulePayload {
      * @throws IllegalArgumentException if {@code relayRef} is missing or too long
      */
     public static RoutingRulePayload relay(String relayRef) {
-        return of(RoutingRuleActionKind.RELAY, Map.of("relay_ref", requireMax(relayRef, "relay_ref", 100)));
+        return of(RoutingRuleActionKind.RELAY, Java8.map("relay_ref", requireMax(relayRef, "relay_ref", 100)));
     }
 
     /**
@@ -231,7 +236,7 @@ public final class RoutingRulePayload {
      */
     public static RoutingRulePayload autoReply(String templateRef) {
         return of(RoutingRuleActionKind.AUTO_REPLY,
-                Map.of("template_ref", requireMax(templateRef, "template_ref", 100)));
+                Java8.map("template_ref", requireMax(templateRef, "template_ref", 100)));
     }
 
     /**
@@ -243,7 +248,7 @@ public final class RoutingRulePayload {
      */
     public static RoutingRulePayload notifyWebhook(String webhookRef) {
         return of(RoutingRuleActionKind.NOTIFY_WEBHOOK,
-                Map.of("webhook_ref", requireMax(webhookRef, "webhook_ref", 100)));
+                Java8.map("webhook_ref", requireMax(webhookRef, "webhook_ref", 100)));
     }
 
     /**
@@ -255,7 +260,7 @@ public final class RoutingRulePayload {
      */
     public static RoutingRulePayload deliverWebhook(String webhookRef) {
         return of(RoutingRuleActionKind.DELIVER_WEBHOOK,
-                Map.of("webhook_ref", requireMax(webhookRef, "webhook_ref", 100)));
+                Java8.map("webhook_ref", requireMax(webhookRef, "webhook_ref", 100)));
     }
 
     /**
@@ -267,7 +272,7 @@ public final class RoutingRulePayload {
      */
     public static RoutingRulePayload smtpForward(String destinationRef) {
         return of(RoutingRuleActionKind.SMTP_FORWARD,
-                Map.of("destination_ref", requireRef(destinationRef, "destination_ref", 100)));
+                Java8.map("destination_ref", requireRef(destinationRef, "destination_ref", 100)));
     }
 
     /**
@@ -276,7 +281,7 @@ public final class RoutingRulePayload {
      * @return the payload
      */
     public static RoutingRulePayload drop() {
-        return of(RoutingRuleActionKind.DROP, Map.of());
+        return of(RoutingRuleActionKind.DROP, Java8.map());
     }
 
     /**
@@ -288,7 +293,7 @@ public final class RoutingRulePayload {
      */
     public static RoutingRulePayload drop(String auditReason) {
         String reason = optionalMax(auditReason, "audit_reason", 1024);
-        return of(RoutingRuleActionKind.DROP, reason == null ? Map.of() : Map.of("audit_reason", reason));
+        return of(RoutingRuleActionKind.DROP, reason == null ? Java8.map() : Java8.map("audit_reason", reason));
     }
 
     /**
@@ -357,7 +362,7 @@ public final class RoutingRulePayload {
             }
             normalized.add(recipient);
         }
-        return of(RoutingRuleActionKind.ADD_RECIPIENT, Map.of("recipients", normalized));
+        return of(RoutingRuleActionKind.ADD_RECIPIENT, Java8.map("recipients", normalized));
     }
 
     /**
@@ -394,7 +399,7 @@ public final class RoutingRulePayload {
             }
             serialized.add(entry);
         }
-        return of(RoutingRuleActionKind.MODIFY_HEADER, Map.of("operations", serialized));
+        return of(RoutingRuleActionKind.MODIFY_HEADER, Java8.map("operations", serialized));
     }
 
     /**
@@ -440,7 +445,10 @@ public final class RoutingRulePayload {
 
     private String stringValue(String key) {
         Object value = values.get(key);
-        return value instanceof String text ? text : null;
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return null;
     }
 
     private static void validateHeaderName(String header, int index) {

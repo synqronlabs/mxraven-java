@@ -1,18 +1,74 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 /**
- * Request body for {@code POST /v2/tenants/{slug}/webhook-endpoints}.
- *
- * @param webhookRef  immutable human-readable webhook reference
- * @param displayName human-readable endpoint name
- * @param targetUrl   HTTPS URL that deliveries are sent to
+ * Request body for <code>POST /v2/tenants/{slug}/webhook-endpoints</code>.
  */
-public record CreateWebhookEndpointRequest(
-        String webhookRef,
-        String displayName,
-        String targetUrl) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateWebhookEndpointRequest {
+    private final String webhookRef;
+    private final String displayName;
+    private final String targetUrl;
+
+    /** immutable human-readable webhook reference */
+    public String webhookRef() {
+        return webhookRef;
+    }
+
+    /** human-readable endpoint name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** HTTPS URL that deliveries are sent to */
+    public String targetUrl() {
+        return targetUrl;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateWebhookEndpointRequest that = (CreateWebhookEndpointRequest) o;
+        return Objects.equals(this.webhookRef, that.webhookRef)
+                && Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.targetUrl, that.targetUrl);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.webhookRef, this.displayName, this.targetUrl);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateWebhookEndpointRequest[" + "webhookRef=" + this.webhookRef + ", " + "displayName=" + this.displayName + ", " + "targetUrl=" + this.targetUrl + "]";
+    }
+
+    /**
+     * Creates a new CreateWebhookEndpointRequest.
+     *
+     * @param webhookRef immutable human-readable webhook reference
+     * @param displayName human-readable endpoint name
+     * @param targetUrl HTTPS URL that deliveries are sent to
+     */
+    @JsonCreator
+    public CreateWebhookEndpointRequest(String webhookRef, String displayName, String targetUrl) {
+        this.webhookRef = webhookRef;
+        this.displayName = displayName;
+        this.targetUrl = targetUrl;
+    }
 
     /**
      * Creates a new request builder.
@@ -71,7 +127,7 @@ public record CreateWebhookEndpointRequest(
          * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateWebhookEndpointRequest build() {
-            if (webhookRef == null || webhookRef.isBlank()) {
+            if (webhookRef == null || Java8.isBlank(webhookRef)) {
                 throw new IllegalArgumentException("webhook_ref is required");
             }
             if (webhookRef.codePointCount(0, webhookRef.length()) > 100) {
@@ -81,7 +137,7 @@ public record CreateWebhookEndpointRequest(
                 throw new IllegalArgumentException("webhook_ref must start with a letter or digit and may contain "
                         + "letters, digits, dots, underscores, or hyphens");
             }
-            if (displayName == null || displayName.isBlank()) {
+            if (displayName == null || Java8.isBlank(displayName)) {
                 throw new IllegalArgumentException("display_name is required");
             }
             if (displayName.codePointCount(0, displayName.length()) > 255) {
@@ -92,7 +148,7 @@ public record CreateWebhookEndpointRequest(
         }
 
         private static void validateTargetUrl(String targetUrl) {
-            if (targetUrl == null || targetUrl.isBlank()) {
+            if (targetUrl == null || Java8.isBlank(targetUrl)) {
                 throw new IllegalArgumentException("target_url is required");
             }
             String trimmed = targetUrl.trim();
@@ -107,7 +163,7 @@ public record CreateWebhookEndpointRequest(
             if (slash >= 0) {
                 host = host.substring(0, slash);
             }
-            if (host.isBlank() || host.indexOf(' ') >= 0) {
+            if (Java8.isBlank(host) || host.indexOf(' ') >= 0) {
                 throw new IllegalArgumentException("target_url host is required");
             }
         }

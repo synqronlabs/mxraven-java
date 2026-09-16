@@ -14,14 +14,14 @@ import java.io.IOException;
  * {@link Domain} entity whose operations ({@code replace}, {@code delete},
  * {@code listenerGrants}) act on that domain.
  *
- * <pre>{@code
+ * <pre>
  * for (Domain d : ws.domains().list()) {
  *     System.out.println(d.domainName() + " " + d.status());
  * }
  *
  * Domain d = ws.domains().create("example.com");
  * d.replace("dmarc@example.com");
- * }</pre>
+ * </pre>
  */
 public final class DomainsClient {
     private final AdminClient client;

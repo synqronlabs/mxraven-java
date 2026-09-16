@@ -1,5 +1,7 @@
 package com.mxraven.mail.webhook;
 
+import com.mxraven.mail.internal.Java8;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.net.URI;
@@ -10,7 +12,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -22,13 +23,13 @@ import java.util.Map;
  * signature in the {@code X-MxRaven-*} headers. Configure a verifier with the
  * signing secret, then verify each request:
  *
- * <pre>{@code
+ * <pre>
  * WebhookVerifier verifier = WebhookVerifier.builder()
  *         .secret(signingSecret)
  *         .build();
  *
  * WebhookEvent event = verifier.verifyAndDecode(method, requestUri, headers, body);
- * }</pre>
+ * </pre>
  *
  * <p>The signing secret is shown only once, when the webhook endpoint is created
  * or its secret is rotated. It is used as literal key bytes; do not base64-decode
@@ -59,7 +60,7 @@ public final class WebhookVerifier {
 
     private WebhookVerifier(Builder builder) {
         this.secret = builder.secret;
-        this.keys = Map.copyOf(builder.keys);
+        this.keys = Java8.copyMap(builder.keys);
         this.tolerance = builder.tolerance;
         this.maxBodyBytes = builder.maxBodyBytes;
         this.clock = builder.clock;
@@ -134,7 +135,7 @@ public final class WebhookVerifier {
         }
         byte[] provided;
         try {
-            provided = HexFormat.of().parseHex(signature.substring(SIGNATURE_SCHEME.length()));
+            provided = Java8.fromHex(signature.substring(SIGNATURE_SCHEME.length()));
         } catch (IllegalArgumentException e) {
             throw new WebhookException("malformed signature");
         }
@@ -185,7 +186,7 @@ public final class WebhookVerifier {
                 method == null ? "" : method,
                 host(uri),
                 requestTarget(uri),
-                HexFormat.of().formatHex(sha256(body)));
+                Java8.toHex(sha256(body)));
     }
 
     private static String host(URI uri) {
@@ -226,7 +227,7 @@ public final class WebhookVerifier {
 
     private static Map<String, String> normalize(Map<String, String> headers) {
         if (headers == null || headers.isEmpty()) {
-            return Map.of();
+            return Java8.map();
         }
         Map<String, String> normalized = new HashMap<>();
         for (Map.Entry<String, String> entry : headers.entrySet()) {
@@ -280,7 +281,7 @@ public final class WebhookVerifier {
          * @throws IllegalArgumentException when {@code kid} is blank or {@code secret} is empty
          */
         public Builder key(String kid, String secret) {
-            if (kid == null || kid.isBlank()) {
+            if (kid == null || Java8.isBlank(kid)) {
                 throw new IllegalArgumentException("signing key ID must not be empty");
             }
             if (secret == null || secret.isEmpty()) {

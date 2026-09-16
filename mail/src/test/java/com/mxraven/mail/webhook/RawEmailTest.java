@@ -1,12 +1,13 @@
 package com.mxraven.mail.webhook;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,7 +17,7 @@ class RawEmailTest {
             "From: a@example.com\r\nSubject: sample\r\n\r\nbody\r\n".getBytes(StandardCharsets.UTF_8);
 
     private static String sha256(byte[] data) throws Exception {
-        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
+        return Java8.toHex(MessageDigest.getInstance("SHA-256").digest(data));
     }
 
     private static HttpServer server(int status, byte[] body) throws Exception {

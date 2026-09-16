@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.exception.RateLimitException;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -45,24 +47,30 @@ class RateLimitRetryTest {
         String route = path.startsWith("/v2") ? path.substring(3) : path;
         int call = CALLS.computeIfAbsent(route, key -> new AtomicInteger()).incrementAndGet();
         switch (route) {
-            case "/limited-once" -> {
+            case "/limited-once":
                 if (call == 1) {
                     rateLimited(exchange, "0");
                 } else {
                     respond(exchange, 200, "{}");
                 }
-            }
-            case "/limited-delete-once" -> {
+                break;
+            case "/limited-delete-once":
                 if (call == 1) {
                     rateLimited(exchange, "0");
                 } else {
                     exchange.sendResponseHeaders(204, -1);
                     exchange.close();
                 }
-            }
-            case "/always-exhausted", "/always-disabled", "/always-post", "/always-put", "/always-delete"
-                    -> rateLimited(exchange, "0");
-            default -> respond(exchange, 200, "{}");
+                break;
+            case "/always-exhausted":
+            case "/always-disabled":
+            case "/always-post":
+            case "/always-put":
+            case "/always-delete":
+                rateLimited(exchange, "0");
+                break;
+            default:
+                respond(exchange, 200, "{}");
         }
     }
 
@@ -138,10 +146,10 @@ class RateLimitRetryTest {
                 .defaultBackoff(Duration.ZERO)
                 .build();
         assertThrows(RateLimitException.class,
-                () -> client(config).post("/always-post", java.util.Map.of("x", 1)));
+                () -> client(config).post("/always-post", Java8.map("x", 1)));
         assertEquals(1, calls("/always-post"));
         assertThrows(RateLimitException.class,
-                () -> client(config).put("/always-put", java.util.Map.of("x", 1)));
+                () -> client(config).put("/always-put", Java8.map("x", 1)));
         assertEquals(1, calls("/always-put"));
     }
 
@@ -153,6 +161,6 @@ class RateLimitRetryTest {
         String date = ZonedDateTime.now(ZoneOffset.UTC).plusSeconds(30)
                 .format(DateTimeFormatter.RFC_1123_DATE_TIME);
         Duration fromDate = AdminClient.parseRetryAfter(date);
-        assertTrue(fromDate.toSeconds() >= 25 && fromDate.toSeconds() <= 35);
+        assertTrue(fromDate.getSeconds() >= 25 && fromDate.getSeconds() <= 35);
     }
 }

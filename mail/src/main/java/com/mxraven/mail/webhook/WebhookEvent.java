@@ -9,20 +9,23 @@ import java.io.IOException;
  * A decoded webhook delivery. One of {@link InboundEmail}, {@link DeliveryStatus},
  * or {@link StorageStatus}, matching {@link #type()}.
  *
- * <p>Branch with pattern matching:
+ * <p>Branch on the concrete type:
  *
- * <pre>{@code
+ * <pre>
  * WebhookEvent event = verifier.verifyAndDecode(method, url, headers, body);
- * if (event instanceof InboundEmail email) {
+ * if (event instanceof InboundEmail) {
+ *     InboundEmail email = (InboundEmail) event;
  *     // DELIVER_WEBHOOK: a full inbound message.
- * } else if (event instanceof DeliveryStatus status) {
+ * } else if (event instanceof DeliveryStatus) {
+ *     DeliveryStatus status = (DeliveryStatus) event;
  *     // NOTIFY_WEBHOOK: an SMTP delivery status.
- * } else if (event instanceof StorageStatus storage) {
+ * } else if (event instanceof StorageStatus) {
+ *     StorageStatus storage = (StorageStatus) event;
  *     // NOTIFY_WEBHOOK: an object-storage delivery status.
  * }
- * }</pre>
+ * </pre>
  */
-public sealed interface WebhookEvent permits InboundEmail, DeliveryStatus, StorageStatus {
+public interface WebhookEvent {
 
     /**
      * Identifies the payload shape.
@@ -71,17 +74,17 @@ public sealed interface WebhookEvent permits InboundEmail, DeliveryStatus, Stora
 
         String eventType = payload.path("event_type").asText("");
         try {
-            return switch (eventType) {
-                case "inbound_email" -> WebhookJson.MAPPER.treeToValue(payload, InboundEmail.class);
-                case "s3_egress_status" -> WebhookJson.MAPPER.treeToValue(payload, StorageStatus.class);
-                default -> {
-                    if (payload.hasNonNull("status")) {
-                        yield WebhookJson.MAPPER.treeToValue(payload, DeliveryStatus.class);
-                    }
-                    throw new WebhookException(
-                            "decode webhook payload: unrecognized event_type \"" + eventType + "\"");
-                }
-            };
+            if ("inbound_email".equals(eventType)) {
+                return WebhookJson.MAPPER.treeToValue(payload, InboundEmail.class);
+            }
+            if ("s3_egress_status".equals(eventType)) {
+                return WebhookJson.MAPPER.treeToValue(payload, StorageStatus.class);
+            }
+            if (payload.hasNonNull("status")) {
+                return WebhookJson.MAPPER.treeToValue(payload, DeliveryStatus.class);
+            }
+            throw new WebhookException(
+                    "decode webhook payload: unrecognized event_type \"" + eventType + "\"");
         } catch (JsonProcessingException e) {
             throw new WebhookException("decode webhook payload: " + e.getOriginalMessage(), e);
         }

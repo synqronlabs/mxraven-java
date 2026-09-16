@@ -1,5 +1,7 @@
 package com.mxraven.admin.client;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Paged;
 import com.mxraven.admin.QueryParams;
@@ -31,7 +33,7 @@ import java.util.function.Consumer;
 /**
  * Tenant identity-provider collection. Reads and creation return hydrated
  * {@link TenantIdentityProvider} entities. Creation of non-OIDC providers uses
- * the type-specific {@code /identity-providers/{type}} endpoints and is accepted
+ * the type-specific <code>/identity-providers/{type}</code> endpoints and is accepted
  * for durable reconciliation ({@code 202}).
  */
 public final class IdentityProvidersClient {
@@ -484,6 +486,6 @@ public final class IdentityProvidersClient {
     }
 
     private static String seg(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
+        return Java8.urlEncode(value);
     }
 }

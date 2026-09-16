@@ -1,5 +1,7 @@
 package com.mxraven.admin.client;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.model.TenantLoginContext;
 
@@ -33,7 +35,7 @@ public final class AuthClient {
      * @throws IOException if the request fails or is interrupted
      */
     public TenantLoginContext loginContext(String tenantSlug) throws IOException {
-        return client.get("/auth/tenants/" + URLEncoder.encode(tenantSlug, StandardCharsets.UTF_8)
+        return client.get("/auth/tenants/" + Java8.urlEncode(tenantSlug)
                 + "/login-context").as(TenantLoginContext.class);
     }
 }

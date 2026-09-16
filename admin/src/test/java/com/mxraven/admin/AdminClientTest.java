@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.exception.ApiException;
 import com.mxraven.admin.model.Domain;
 import com.mxraven.admin.model.ListenerType;
@@ -48,7 +50,7 @@ class AdminClientTest {
     private static void handle(HttpExchange exchange) throws IOException {
         LAST_METHOD.set(exchange.getRequestMethod());
         LAST_AUTH.set(exchange.getRequestHeaders().getFirst("Authorization"));
-        LAST_BODY.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+        LAST_BODY.set(new String(Java8.readAllBytes(exchange.getRequestBody()), StandardCharsets.UTF_8));
         LAST_PATH.set(exchange.getRequestURI().getPath());
 
         String path = exchange.getRequestURI().getPath();

@@ -1,17 +1,73 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * Request body for
- * {@code POST /v2/tenants/{slug}/listeners/{listener_id}/rules}.
- *
- * @param priority       evaluation order; lower values run first
- * @param expressionText match expression
- * @param action         action performed on a match
+ * <code>POST /v2/tenants/{slug}/listeners/{listener_id}/rules</code>.
  */
-public record CreateRoutingRuleRequest(
-        int priority,
-        String expressionText,
-        RoutingRuleAction action) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateRoutingRuleRequest {
+    private final int priority;
+    private final String expressionText;
+    private final RoutingRuleAction action;
+
+    /** evaluation order; lower values run first */
+    public int priority() {
+        return priority;
+    }
+
+    /** match expression */
+    public String expressionText() {
+        return expressionText;
+    }
+
+    /** action performed on a match */
+    public RoutingRuleAction action() {
+        return action;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateRoutingRuleRequest that = (CreateRoutingRuleRequest) o;
+        return this.priority == that.priority
+                && Objects.equals(this.expressionText, that.expressionText)
+                && Objects.equals(this.action, that.action);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.priority, this.expressionText, this.action);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateRoutingRuleRequest[" + "priority=" + this.priority + ", " + "expressionText=" + this.expressionText + ", " + "action=" + this.action + "]";
+    }
+
+    /**
+     * Creates a new CreateRoutingRuleRequest.
+     *
+     * @param priority evaluation order; lower values run first
+     * @param expressionText match expression
+     * @param action action performed on a match
+     */
+    @JsonCreator
+    public CreateRoutingRuleRequest(int priority, String expressionText, RoutingRuleAction action) {
+        this.priority = priority;
+        this.expressionText = expressionText;
+        this.action = action;
+    }
 
     /**
      * Creates a new request builder.
@@ -71,7 +127,7 @@ public record CreateRoutingRuleRequest(
             if (priority < 1) {
                 throw new IllegalArgumentException("priority must be greater than 0");
             }
-            if (expressionText == null || expressionText.isBlank()) {
+            if (expressionText == null || Java8.isBlank(expressionText)) {
                 throw new IllegalArgumentException("expression_text is required");
             }
             if (expressionText.codePointCount(0, expressionText.length()) > 4096) {

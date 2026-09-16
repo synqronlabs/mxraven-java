@@ -1,31 +1,134 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers}.
- *
- * @param idpRef immutable identity-provider reference
- * @param displayName human-readable provider name
- * @param providerType identity-provider type
- * @param issuer OIDC issuer URL
- * @param clientId OAuth client identifier
- * @param clientSecret OAuth client secret
- * @param scopes optional OAuth scopes
- * @param isIdTokenMapping optional flag to map claims from the ID token
- * @param usePkce optional flag to use PKCE
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers</code>.
  */
-public record CreateTenantIdentityProviderRequest(
-        String idpRef,
-        String displayName,
-        IdentityProviderType providerType,
-        String issuer,
-        String clientId,
-        String clientSecret,
-        List<String> scopes,
-        Boolean isIdTokenMapping,
-        Boolean usePkce,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantIdentityProviderRequest {
+    private final String idpRef;
+    private final String displayName;
+    private final IdentityProviderType providerType;
+    private final String issuer;
+    private final String clientId;
+    private final String clientSecret;
+    private final List<String> scopes;
+    private final Boolean isIdTokenMapping;
+    private final Boolean usePkce;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** identity-provider type */
+    public IdentityProviderType providerType() {
+        return providerType;
+    }
+
+    /** OIDC issuer URL */
+    public String issuer() {
+        return issuer;
+    }
+
+    /** OAuth client identifier */
+    public String clientId() {
+        return clientId;
+    }
+
+    /** OAuth client secret */
+    public String clientSecret() {
+        return clientSecret;
+    }
+
+    /** optional OAuth scopes */
+    public List<String> scopes() {
+        return scopes;
+    }
+
+    /** optional flag to map claims from the ID token */
+    public Boolean isIdTokenMapping() {
+        return isIdTokenMapping;
+    }
+
+    /** optional flag to use PKCE */
+    public Boolean usePkce() {
+        return usePkce;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantIdentityProviderRequest that = (CreateTenantIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.providerType, that.providerType)
+                && Objects.equals(this.issuer, that.issuer)
+                && Objects.equals(this.clientId, that.clientId)
+                && Objects.equals(this.clientSecret, that.clientSecret)
+                && Objects.equals(this.scopes, that.scopes)
+                && Objects.equals(this.isIdTokenMapping, that.isIdTokenMapping)
+                && Objects.equals(this.usePkce, that.usePkce)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.displayName, this.providerType, this.issuer, this.clientId, this.clientSecret, this.scopes, this.isIdTokenMapping, this.usePkce, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "displayName=" + this.displayName + ", " + "providerType=" + this.providerType + ", " + "issuer=" + this.issuer + ", " + "clientId=" + this.clientId + ", " + "clientSecret=" + this.clientSecret + ", " + "scopes=" + this.scopes + ", " + "isIdTokenMapping=" + this.isIdTokenMapping + ", " + "usePkce=" + this.usePkce + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param displayName human-readable provider name
+     * @param providerType identity-provider type
+     * @param issuer OIDC issuer URL
+     * @param clientId OAuth client identifier
+     * @param clientSecret OAuth client secret
+     * @param scopes optional OAuth scopes
+     * @param isIdTokenMapping optional flag to map claims from the ID token
+     * @param usePkce optional flag to use PKCE
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantIdentityProviderRequest(String idpRef, String displayName, IdentityProviderType providerType, String issuer, String clientId, String clientSecret, List<String> scopes, Boolean isIdTokenMapping, Boolean usePkce, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.displayName = displayName;
+        this.providerType = providerType;
+        this.issuer = issuer;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.scopes = scopes;
+        this.isIdTokenMapping = isIdTokenMapping;
+        this.usePkce = usePkce;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

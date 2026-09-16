@@ -4,7 +4,7 @@ import com.mxraven.mail.feedback.FeedbackClient;
 import com.mxraven.mail.feedback.LearningResult;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Reports spam/ham feedback for a message mxRaven processed, and handles a
@@ -24,7 +24,7 @@ public final class FeedbackExample {
                 .credentials("feedback-key", "feedback-secret")
                 .build();
 
-        byte[] rawMime = Files.readAllBytes(Path.of("message.eml"));
+        byte[] rawMime = Files.readAllBytes(Paths.get("message.eml"));
 
         LearningResult learned = feedback.learnSpam(rawMime);
         System.out.println("status=" + learned.status()

@@ -26,16 +26,7 @@ class WebhookDecodeTest {
 
     @Test
     void decodesAnSmtpDeliveryStatus() {
-        String body = """
-                {
-                  "task_id": "task-1",
-                  "status": "deferred",
-                  "attempt": 2,
-                  "smtp_code": 451,
-                  "enhanced_status_code": "4.7.1",
-                  "remote_response": "greylisted",
-                  "next_retry_at_utc": 1789303000
-                }""";
+        String body = "{\n  \"task_id\": \"task-1\",\n  \"status\": \"deferred\",\n  \"attempt\": 2,\n  \"smtp_code\": 451,\n  \"enhanced_status_code\": \"4.7.1\",\n  \"remote_response\": \"greylisted\",\n  \"next_retry_at_utc\": 1789303000\n}";
 
         WebhookEvent event = WebhookEvent.decode(bytes(body));
 
@@ -48,14 +39,7 @@ class WebhookDecodeTest {
 
     @Test
     void decodesAStorageStatus() {
-        String body = """
-                {
-                  "event_type": "s3_egress_status",
-                  "task_id": "task-1",
-                  "status": "delivered",
-                  "attempt": 1,
-                  "object_key": "2026/09/task-1.eml"
-                }""";
+        String body = "{\n  \"event_type\": \"s3_egress_status\",\n  \"task_id\": \"task-1\",\n  \"status\": \"delivered\",\n  \"attempt\": 1,\n  \"object_key\": \"2026/09/task-1.eml\"\n}";
 
         WebhookEvent event = WebhookEvent.decode(bytes(body));
 

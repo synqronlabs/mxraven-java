@@ -1,19 +1,66 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * Request body for {@code PUT /v2/tenants/{slug}/recipient-sets/{set_ref}}.
+ * Request body for <code>PUT /v2/tenants/{slug}/recipient-sets/{set_ref}</code>.
  *
  * <p>Both fields are required; null clears the stored value.
- *
- * @param displayName human-readable recipient set name
- * @param description recipient set description
  */
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 @JsonInclude(JsonInclude.Include.ALWAYS)
-public record UpdateRecipientSetRequest(
-        String displayName,
-        String description) {
+public final class UpdateRecipientSetRequest {
+    private final String displayName;
+    private final String description;
+
+    /** human-readable recipient set name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** recipient set description */
+    public String description() {
+        return description;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UpdateRecipientSetRequest that = (UpdateRecipientSetRequest) o;
+        return Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.description, that.description);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.displayName, this.description);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateRecipientSetRequest[" + "displayName=" + this.displayName + ", " + "description=" + this.description + "]";
+    }
+
+    /**
+     * Creates a new UpdateRecipientSetRequest.
+     *
+     * @param displayName human-readable recipient set name
+     * @param description recipient set description
+     */
+    @JsonCreator
+    public UpdateRecipientSetRequest(String displayName, String description) {
+        this.displayName = displayName;
+        this.description = description;
+    }
 
     /**
      * Creates a new request builder.

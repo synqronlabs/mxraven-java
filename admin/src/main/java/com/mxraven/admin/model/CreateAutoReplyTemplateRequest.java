@@ -1,28 +1,112 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 import java.util.List;
 
 /**
- * Request body for {@code POST /v2/tenants/{slug}/auto-reply-templates}.
- *
- * @param templateRef immutable template reference
- * @param displayName human-readable template name
- * @param fromAddress sender address used for replies
- * @param subject reply subject line
- * @param textBody optional plain-text body
- * @param htmlBody optional HTML body
- * @param headers optional custom headers
+ * Request body for <code>POST /v2/tenants/{slug}/auto-reply-templates</code>.
  */
-public record CreateAutoReplyTemplateRequest(
-        String templateRef,
-        String displayName,
-        String fromAddress,
-        String subject,
-        String textBody,
-        String htmlBody,
-        List<AutoReplyTemplateHeader> headers) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateAutoReplyTemplateRequest {
+    private final String templateRef;
+    private final String displayName;
+    private final String fromAddress;
+    private final String subject;
+    private final String textBody;
+    private final String htmlBody;
+    private final List<AutoReplyTemplateHeader> headers;
+
+    /** immutable template reference */
+    public String templateRef() {
+        return templateRef;
+    }
+
+    /** human-readable template name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** sender address used for replies */
+    public String fromAddress() {
+        return fromAddress;
+    }
+
+    /** reply subject line */
+    public String subject() {
+        return subject;
+    }
+
+    /** optional plain-text body */
+    public String textBody() {
+        return textBody;
+    }
+
+    /** optional HTML body */
+    public String htmlBody() {
+        return htmlBody;
+    }
+
+    /** optional custom headers */
+    public List<AutoReplyTemplateHeader> headers() {
+        return headers;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateAutoReplyTemplateRequest that = (CreateAutoReplyTemplateRequest) o;
+        return Objects.equals(this.templateRef, that.templateRef)
+                && Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.fromAddress, that.fromAddress)
+                && Objects.equals(this.subject, that.subject)
+                && Objects.equals(this.textBody, that.textBody)
+                && Objects.equals(this.htmlBody, that.htmlBody)
+                && Objects.equals(this.headers, that.headers);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.templateRef, this.displayName, this.fromAddress, this.subject, this.textBody, this.htmlBody, this.headers);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateAutoReplyTemplateRequest[" + "templateRef=" + this.templateRef + ", " + "displayName=" + this.displayName + ", " + "fromAddress=" + this.fromAddress + ", " + "subject=" + this.subject + ", " + "textBody=" + this.textBody + ", " + "htmlBody=" + this.htmlBody + ", " + "headers=" + this.headers + "]";
+    }
+
+    /**
+     * Creates a new CreateAutoReplyTemplateRequest.
+     *
+     * @param templateRef immutable template reference
+     * @param displayName human-readable template name
+     * @param fromAddress sender address used for replies
+     * @param subject reply subject line
+     * @param textBody optional plain-text body
+     * @param htmlBody optional HTML body
+     * @param headers optional custom headers
+     */
+    @JsonCreator
+    public CreateAutoReplyTemplateRequest(String templateRef, String displayName, String fromAddress, String subject, String textBody, String htmlBody, List<AutoReplyTemplateHeader> headers) {
+        this.templateRef = templateRef;
+        this.displayName = displayName;
+        this.fromAddress = fromAddress;
+        this.subject = subject;
+        this.textBody = textBody;
+        this.htmlBody = htmlBody;
+        this.headers = headers;
+    }
 
     /**
      * Creates a new request builder.
@@ -129,7 +213,7 @@ public record CreateAutoReplyTemplateRequest(
          * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateAutoReplyTemplateRequest build() {
-            if (templateRef == null || templateRef.isBlank()) {
+            if (templateRef == null || Java8.isBlank(templateRef)) {
                 throw new IllegalArgumentException("template_ref is required");
             }
             if (templateRef.codePointCount(0, templateRef.length()) > 100) {
@@ -139,13 +223,13 @@ public record CreateAutoReplyTemplateRequest(
                 throw new IllegalArgumentException("template_ref must start with a letter or digit and may contain "
                         + "letters, digits, dots, underscores, or hyphens");
             }
-            if (displayName == null || displayName.isBlank()) {
+            if (displayName == null || Java8.isBlank(displayName)) {
                 throw new IllegalArgumentException("display_name is required");
             }
             if (displayName.codePointCount(0, displayName.length()) > 255) {
                 throw new IllegalArgumentException("display_name must be 255 characters or fewer");
             }
-            if (fromAddress == null || fromAddress.isBlank()) {
+            if (fromAddress == null || Java8.isBlank(fromAddress)) {
                 throw new IllegalArgumentException("from_address is required");
             }
             if (fromAddress.codePointCount(0, fromAddress.length()) > 320) {
@@ -154,7 +238,7 @@ public record CreateAutoReplyTemplateRequest(
             if (fromAddress.indexOf('@') < 0 || fromAddress.indexOf('\r') >= 0 || fromAddress.indexOf('\n') >= 0) {
                 throw new IllegalArgumentException("from_address must be a valid mailbox");
             }
-            if (subject == null || subject.isBlank()) {
+            if (subject == null || Java8.isBlank(subject)) {
                 throw new IllegalArgumentException("subject is required");
             }
             if (subject.codePointCount(0, subject.length()) > 1_048_576) {
@@ -169,7 +253,7 @@ public record CreateAutoReplyTemplateRequest(
             if (htmlBody != null && htmlBody.codePointCount(0, htmlBody.length()) > 1_048_576) {
                 throw new IllegalArgumentException("html_body must be 1048576 characters or fewer");
             }
-            if ((textBody == null || textBody.isBlank()) && (htmlBody == null || htmlBody.isBlank())) {
+            if ((textBody == null || Java8.isBlank(textBody)) && (htmlBody == null || Java8.isBlank(htmlBody))) {
                 throw new IllegalArgumentException("text_body or html_body is required");
             }
             AutoReplyTemplateHeader.validateList(headers, false);

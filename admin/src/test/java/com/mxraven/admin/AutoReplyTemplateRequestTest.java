@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.model.AutoReplyTemplateHeader;
 import com.mxraven.admin.model.CreateAutoReplyTemplateRequest;
 import com.mxraven.admin.model.UpdateAutoReplyTemplateRequest;
@@ -61,14 +63,14 @@ class AutoReplyTemplateRequestTest {
                 .displayName("hello")
                 .fromAddress("noreply@example.com")
                 .subject("Thanks")
-                .headers(List.of())
+                .headers(Java8.list())
                 .build());
         assertDoesNotThrow(() -> UpdateAutoReplyTemplateRequest.builder()
                 .displayName("hello")
                 .fromAddress("noreply@example.com")
                 .subject("Thanks")
                 .htmlBody("<p>Hi</p>")
-                .headers(List.of())
+                .headers(Java8.list())
                 .build());
     }
 
@@ -80,7 +82,7 @@ class AutoReplyTemplateRequestTest {
                 .fromAddress("noreply@example.com")
                 .subject("Thanks")
                 .textBody("Hi")
-                .headers(List.of(new AutoReplyTemplateHeader("Bad:Name", "v")))
+                .headers(Java8.list(new AutoReplyTemplateHeader("Bad:Name", "v")))
                 .build());
         assertDoesNotThrow(() -> CreateAutoReplyTemplateRequest.builder()
                 .templateRef("welcome")
@@ -88,7 +90,7 @@ class AutoReplyTemplateRequestTest {
                 .fromAddress("noreply@example.com")
                 .subject("Thanks")
                 .textBody("Hi")
-                .headers(List.of(new AutoReplyTemplateHeader("X-Tag", "v")))
+                .headers(Java8.list(new AutoReplyTemplateHeader("X-Tag", "v")))
                 .build());
     }
 }

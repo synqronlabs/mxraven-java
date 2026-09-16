@@ -4,26 +4,26 @@ package com.mxraven.mail.webhook;
  * Typed {@link WebhookListener} for when you handle specific event types.
  * Override only the callbacks you need; the others are ignored.
  *
- * <pre>{@code
+ * <pre>
  * WebhookListener listener = new WebhookCallbacks() {
- *     @Override
+ *     &#64;Override
  *     public void onInboundEmail(InboundEmail email) {
  *         app.processInbound(email);
  *     }
  *
- *     @Override
+ *     &#64;Override
  *     public void onDeliveryStatus(DeliveryStatus status) {
  *         app.recordStatus(status);
  *     }
  * };
- * }</pre>
+ * </pre>
  *
  * <p>Prefer the functional {@link WebhookListener} when a single lambda is
  * enough:
  *
- * <pre>{@code
- * WebhookListener listener = event -> app.handle(event);
- * }</pre>
+ * <pre>
+ * WebhookListener listener = event -&gt; app.handle(event);
+ * </pre>
  *
  * <p>Because this extends {@link WebhookListener}, a {@code WebhookCallbacks}
  * can be passed anywhere a listener is accepted.
@@ -33,12 +33,12 @@ public interface WebhookCallbacks extends WebhookListener {
     /** Dispatches to the typed callback for the event. */
     @Override
     default void onEvent(WebhookEvent event) {
-        if (event instanceof InboundEmail email) {
-            onInboundEmail(email);
-        } else if (event instanceof DeliveryStatus status) {
-            onDeliveryStatus(status);
-        } else if (event instanceof StorageStatus storage) {
-            onStorageStatus(storage);
+        if (event instanceof InboundEmail) {
+            onInboundEmail((InboundEmail) event);
+        } else if (event instanceof DeliveryStatus) {
+            onDeliveryStatus((DeliveryStatus) event);
+        } else if (event instanceof StorageStatus) {
+            onStorageStatus((StorageStatus) event);
         }
     }
 

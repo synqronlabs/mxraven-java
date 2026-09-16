@@ -1,5 +1,7 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -11,7 +13,7 @@ final class RequestSupport {
     }
 
     static String requireString(String value, String field, int maxLength) {
-        if (value == null || value.isBlank()) {
+        if (value == null || Java8.isBlank(value)) {
             throw new IllegalArgumentException(field + " is required");
         }
         return optionalString(value, field, maxLength);

@@ -1,5 +1,7 @@
 package com.mxraven.mail.mime;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.mxraven.mail.model.Headers;
 
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ public final class MimeParser {
     public static MimePart parse(byte[] raw) {
         if (raw == null || raw.length == 0) {
             return new MimePart(new Headers(), "text/plain", "us-ascii",
-                    ContentTransferEncoding.SEVEN_BIT, null, null, null, new byte[0], List.of());
+                    ContentTransferEncoding.SEVEN_BIT, null, null, null, new byte[0], Java8.list());
         }
         return parsePart(raw);
     }
@@ -64,7 +66,7 @@ public final class MimeParser {
 
         MediaType dispositionType = null;
         String disposition = null;
-        var dispositionHeader = headers.first("Content-Disposition");
+        java.util.Optional<String> dispositionHeader = headers.first("Content-Disposition");
         if (dispositionHeader.isPresent()) {
             dispositionType = MediaType.parse(dispositionHeader.get());
             disposition = dispositionType.type();
@@ -82,16 +84,16 @@ public final class MimeParser {
                 .filter(value -> !value.isEmpty())
                 .orElse(null);
 
-        List<MimePart> parts = List.of();
+        List<MimePart> parts = Java8.list();
         if (mediaType.startsWith("multipart/")) {
             String boundary = contentType.parameter("boundary");
-            if (boundary != null && !boundary.isBlank()) {
+            if (boundary != null && !Java8.isBlank(boundary)) {
                 List<String> sections = splitMultipart(body, boundary);
                 List<MimePart> children = new ArrayList<>(sections.size());
                 for (String section : sections) {
                     children.add(parsePart(MimePart.latin1(section)));
                 }
-                parts = List.copyOf(children);
+                parts = Java8.copyList(children);
             }
         }
 
@@ -108,13 +110,18 @@ public final class MimeParser {
         if (semicolon >= 0) {
             token = token.substring(0, semicolon).trim();
         }
-        return switch (token) {
-            case "base64" -> ContentTransferEncoding.BASE64;
-            case "quoted-printable" -> ContentTransferEncoding.QUOTED_PRINTABLE;
-            case "8bit" -> ContentTransferEncoding.EIGHT_BIT;
-            case "binary" -> ContentTransferEncoding.BINARY;
-            default -> ContentTransferEncoding.SEVEN_BIT;
-        };
+        switch (token) {
+            case "base64":
+                return ContentTransferEncoding.BASE64;
+            case "quoted-printable":
+                return ContentTransferEncoding.QUOTED_PRINTABLE;
+            case "8bit":
+                return ContentTransferEncoding.EIGHT_BIT;
+            case "binary":
+                return ContentTransferEncoding.BINARY;
+            default:
+                return ContentTransferEncoding.SEVEN_BIT;
+        }
     }
 
     /**
@@ -166,9 +173,9 @@ public final class MimeParser {
     }
 
     private static String firstNonBlank(String first, String second) {
-        if (first != null && !first.isBlank()) {
+        if (first != null && !Java8.isBlank(first)) {
             return first;
         }
-        return second != null && !second.isBlank() ? second : null;
+        return second != null && !Java8.isBlank(second) ? second : null;
     }
 }

@@ -4,12 +4,13 @@ The `mail` module is the Java client for the mxRaven email service. It sends mai
 over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
 messages, verifies and receives webhooks, and submits recipient feedback.
 
-- Group / artifact: `com.mxraven` / `mail`
+- Group / artifact: `com.mxraven` / `mail-jdk8`
 - Current version: `2.0.1`
 - JavaDoc: https://java.mxraven.com/mail/
-- Requirements: **Java 17+** (the build toolchain targets Java 17)
-- Runtime dependency: `com.fasterxml.jackson.core:jackson-databind` (webhook and
-  feedback JSON only; SMTP and MIME are pure JDK)
+- Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
+- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` (webhook
+  and feedback JSON) and `com.squareup.okhttp3:okhttp` (feedback submissions and
+  raw-message downloads); SMTP and MIME are pure JDK
 
 What it covers:
 
@@ -42,7 +43,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail:2.0.1")
+    implementation("com.mxraven:mail-jdk8:2.0.1")
 }
 ```
 
@@ -51,7 +52,7 @@ dependencies {
 ```xml
 <dependency>
     <groupId>com.mxraven</groupId>
-    <artifactId>mail</artifactId>
+    <artifactId>mail-jdk8</artifactId>
     <version>2.0.1</version>
 </dependency>
 ```
@@ -67,9 +68,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mail:2.0.1")
-    // Latest main build:  ...:mail:main-SNAPSHOT
-    // Or pin a commit:    ...:mail:<commit-sha>
+    implementation("com.github.synqronlabs.mxraven-java:mail-jdk8:2.0.1")
+    // Latest main build:  ...:mail-jdk8:main-SNAPSHOT
+    // Or pin a commit:    ...:mail-jdk8:<commit-sha>
 }
 ```
 

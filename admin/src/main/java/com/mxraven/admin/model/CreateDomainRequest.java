@@ -1,12 +1,61 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
- * Request body for {@code POST /v2/tenants/{slug}/domains}.
- *
- * @param domainName          domain to onboard for outbound sending
- * @param dmarcReportAddress  optional DMARC aggregate report mailbox
+ * Request body for <code>POST /v2/tenants/{slug}/domains</code>.
  */
-public record CreateDomainRequest(String domainName, String dmarcReportAddress) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateDomainRequest {
+    private final String domainName;
+    private final String dmarcReportAddress;
+
+    /** domain to onboard for outbound sending */
+    public String domainName() {
+        return domainName;
+    }
+
+    /** optional DMARC aggregate report mailbox */
+    public String dmarcReportAddress() {
+        return dmarcReportAddress;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateDomainRequest that = (CreateDomainRequest) o;
+        return Objects.equals(this.domainName, that.domainName)
+                && Objects.equals(this.dmarcReportAddress, that.dmarcReportAddress);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.domainName, this.dmarcReportAddress);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateDomainRequest[" + "domainName=" + this.domainName + ", " + "dmarcReportAddress=" + this.dmarcReportAddress + "]";
+    }
+
+    /**
+     * Creates a new CreateDomainRequest.
+     *
+     * @param domainName domain to onboard for outbound sending
+     * @param dmarcReportAddress optional DMARC aggregate report mailbox
+     */
+    @JsonCreator
+    public CreateDomainRequest(String domainName, String dmarcReportAddress) {
+        this.domainName = domainName;
+        this.dmarcReportAddress = dmarcReportAddress;
+    }
 
     /**
      * Creates a request with no DMARC report address.

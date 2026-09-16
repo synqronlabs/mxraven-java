@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.model.CreateRecipientSetRequest;
 import com.mxraven.admin.model.RecipientSetMemberRequest;
 import com.mxraven.admin.model.RecipientSetMembersBatchRequest;
@@ -24,7 +26,7 @@ class RecipientSetRequestTest {
                 .build());
         assertThrows(IllegalArgumentException.class, () -> CreateRecipientSetRequest.builder()
                 .setRef("ref")
-                .description("x".repeat(4097))
+                .description(Java8.repeat("x", 4097))
                 .build());
         assertDoesNotThrow(() -> CreateRecipientSetRequest.builder()
                 .setRef("VIP_Customers-1")
@@ -36,7 +38,7 @@ class RecipientSetRequestTest {
     @Test
     void updateEnforcesMaximumLengthsButAllowsNull() {
         assertThrows(IllegalArgumentException.class, () -> UpdateRecipientSetRequest.builder()
-                .displayName("x".repeat(256))
+                .displayName(Java8.repeat("x", 256))
                 .build());
         assertDoesNotThrow(() -> UpdateRecipientSetRequest.builder()
                 .displayName(null)
@@ -58,10 +60,10 @@ class RecipientSetRequestTest {
     @Test
     void batchEnforcesSizeAndMemberValidity() {
         assertThrows(IllegalArgumentException.class, () -> RecipientSetMembersBatchRequest.builder()
-                .emailAddresses(List.of())
+                .emailAddresses(Java8.list())
                 .build());
         assertThrows(IllegalArgumentException.class, () -> RecipientSetMembersBatchRequest.builder()
-                .emailAddresses(List.of("good@example.com", "bad"))
+                .emailAddresses(Java8.list("good@example.com", "bad"))
                 .build());
         List<String> tooMany = new ArrayList<>();
         for (int index = 0; index <= 1000; index++) {

@@ -17,8 +17,8 @@ Please be respectful and constructive in issues, reviews, and discussions.
 Open an issue with enough detail to reproduce it:
 
 - What you expected to happen and what happened instead.
-- The exact version (`com.mxraven:mail` / `com.mxraven:admin`) and your Java
-  version.
+- The exact version (`com.mxraven:mail-jdk8` / `com.mxraven:admin-jdk8`) and
+  your Java version.
 - A minimal code snippet or steps to reproduce.
 - The full exception or response output, including the `traceId` from any
   `ApiException` if the control plane returned an error.
@@ -31,8 +31,9 @@ easier to review than broad ones.
 
 ## Development setup
 
-1. Install **JDK 17** or newer. The build uses a Gradle toolchain, so Gradle can
-   provision it if it is missing.
+1. Install **JDK 17** or newer so Gradle can run. Compilation, tests, and
+   Javadoc use a **JDK 8** Gradle toolchain, which Gradle provisions
+   automatically if it is missing, so the published artifacts target Java 8.
 2. Fork the repository and clone your fork.
 3. Create a branch with a descriptive name, for example:
    `git checkout -b feat/attachments-streaming`.
@@ -110,6 +111,26 @@ Before opening a pull request, confirm:
 In the description, explain what the change does and why, and link the related
 issue. A maintainer will review and may request changes; please be responsive to
 feedback.
+
+## Releasing
+
+Releases are published automatically by
+[`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+1. Merge the change into the `jdk8` branch.
+2. Create a GitHub tag and release from that branch (for example `v2.1.0`).
+3. The **Release** workflow checks out the tag, sets the version from the tag,
+   runs `./gradlew test`, and runs `./gradlew publishAggregationToCentralPortal`.
+
+The workflow uses the Gradle toolchain, so the runner only needs a JDK 17 to run
+Gradle; the JDK 8 compiler and Javadoc are provisioned automatically by the
+foojay resolver. Required repository secrets: `CENTRAL_PORTAL_USERNAME`,
+`CENTRAL_PORTAL_PASSWORD`, `SIGNING_KEY`, and `SIGNING_PASSWORD`.
+
+On this branch the artifacts are published as `com.mxraven:mail-jdk8` and
+`com.mxraven:admin-jdk8`. A release created from `main` continues to publish the
+Java 17 artifacts (`com.mxraven:mail` / `com.mxraven:admin`), so both lines can
+coexist.
 
 ## License
 

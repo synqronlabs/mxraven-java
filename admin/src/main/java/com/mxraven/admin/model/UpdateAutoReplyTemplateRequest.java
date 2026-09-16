@@ -1,31 +1,108 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
 
 /**
  * Request body for
- * {@code PUT /v2/tenants/{slug}/auto-reply-templates/{template_id}}.
+ * <code>PUT /v2/tenants/{slug}/auto-reply-templates/{template_id}</code>.
  *
  * <p>Replaces all writable fields; {@code textBody} and {@code htmlBody} may be
  * null.
- *
- * @param displayName human-readable template name
- * @param fromAddress From address used for replies
- * @param subject template subject
- * @param textBody plain-text body; may be null
- * @param htmlBody HTML body; may be null
- * @param headers additional template headers
  */
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 @JsonInclude(JsonInclude.Include.ALWAYS)
-public record UpdateAutoReplyTemplateRequest(
-        String displayName,
-        String fromAddress,
-        String subject,
-        String textBody,
-        String htmlBody,
-        List<AutoReplyTemplateHeader> headers) {
+public final class UpdateAutoReplyTemplateRequest {
+    private final String displayName;
+    private final String fromAddress;
+    private final String subject;
+    private final String textBody;
+    private final String htmlBody;
+    private final List<AutoReplyTemplateHeader> headers;
+
+    /** human-readable template name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** From address used for replies */
+    public String fromAddress() {
+        return fromAddress;
+    }
+
+    /** template subject */
+    public String subject() {
+        return subject;
+    }
+
+    /** plain-text body; may be null */
+    public String textBody() {
+        return textBody;
+    }
+
+    /** HTML body; may be null */
+    public String htmlBody() {
+        return htmlBody;
+    }
+
+    /** additional template headers */
+    public List<AutoReplyTemplateHeader> headers() {
+        return headers;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UpdateAutoReplyTemplateRequest that = (UpdateAutoReplyTemplateRequest) o;
+        return Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.fromAddress, that.fromAddress)
+                && Objects.equals(this.subject, that.subject)
+                && Objects.equals(this.textBody, that.textBody)
+                && Objects.equals(this.htmlBody, that.htmlBody)
+                && Objects.equals(this.headers, that.headers);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.displayName, this.fromAddress, this.subject, this.textBody, this.htmlBody, this.headers);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateAutoReplyTemplateRequest[" + "displayName=" + this.displayName + ", " + "fromAddress=" + this.fromAddress + ", " + "subject=" + this.subject + ", " + "textBody=" + this.textBody + ", " + "htmlBody=" + this.htmlBody + ", " + "headers=" + this.headers + "]";
+    }
+
+    /**
+     * Creates a new UpdateAutoReplyTemplateRequest.
+     *
+     * @param displayName human-readable template name
+     * @param fromAddress From address used for replies
+     * @param subject template subject
+     * @param textBody plain-text body; may be null
+     * @param htmlBody HTML body; may be null
+     * @param headers additional template headers
+     */
+    @JsonCreator
+    public UpdateAutoReplyTemplateRequest(String displayName, String fromAddress, String subject, String textBody, String htmlBody, List<AutoReplyTemplateHeader> headers) {
+        this.displayName = displayName;
+        this.fromAddress = fromAddress;
+        this.subject = subject;
+        this.textBody = textBody;
+        this.htmlBody = htmlBody;
+        this.headers = headers;
+    }
 
     /**
      * Creates a new request builder.
@@ -118,13 +195,13 @@ public record UpdateAutoReplyTemplateRequest(
          * @throws IllegalArgumentException if a field fails validation
          */
         public UpdateAutoReplyTemplateRequest build() {
-            if (displayName == null || displayName.isBlank()) {
+            if (displayName == null || Java8.isBlank(displayName)) {
                 throw new IllegalArgumentException("display_name is required");
             }
             if (displayName.codePointCount(0, displayName.length()) > 255) {
                 throw new IllegalArgumentException("display_name must be 255 characters or fewer");
             }
-            if (fromAddress == null || fromAddress.isBlank()) {
+            if (fromAddress == null || Java8.isBlank(fromAddress)) {
                 throw new IllegalArgumentException("from_address is required");
             }
             if (fromAddress.codePointCount(0, fromAddress.length()) > 320) {
@@ -133,7 +210,7 @@ public record UpdateAutoReplyTemplateRequest(
             if (fromAddress.indexOf('@') < 0 || fromAddress.indexOf('\r') >= 0 || fromAddress.indexOf('\n') >= 0) {
                 throw new IllegalArgumentException("from_address must be a valid mailbox");
             }
-            if (subject == null || subject.isBlank()) {
+            if (subject == null || Java8.isBlank(subject)) {
                 throw new IllegalArgumentException("subject is required");
             }
             if (subject.codePointCount(0, subject.length()) > 1_048_576) {
@@ -148,7 +225,7 @@ public record UpdateAutoReplyTemplateRequest(
             if (htmlBody != null && htmlBody.codePointCount(0, htmlBody.length()) > 1_048_576) {
                 throw new IllegalArgumentException("html_body must be 1048576 characters or fewer");
             }
-            if ((textBody == null || textBody.isBlank()) && (htmlBody == null || htmlBody.isBlank())) {
+            if ((textBody == null || Java8.isBlank(textBody)) && (htmlBody == null || Java8.isBlank(htmlBody))) {
                 throw new IllegalArgumentException("text_body or html_body is required");
             }
             AutoReplyTemplateHeader.validateList(headers, true);

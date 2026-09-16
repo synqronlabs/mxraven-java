@@ -1,5 +1,7 @@
 package com.mxraven.mail.model;
 
+import com.mxraven.mail.internal.Java8;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,7 +41,7 @@ public final class Headers {
      * @return an immutable copy of the fields
      */
     public List<Header> fields() {
-        return List.copyOf(fields);
+        return Java8.copyList(fields);
     }
 
     /**
@@ -65,7 +67,7 @@ public final class Headers {
         return fields.stream()
                 .filter(h -> h.name().equalsIgnoreCase(name))
                 .map(Header::value)
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
     }
 
     /**
@@ -86,7 +88,7 @@ public final class Headers {
      */
     public static Headers parse(String block) {
         Headers headers = new Headers();
-        if (block == null || block.isBlank()) {
+        if (block == null || Java8.isBlank(block)) {
             return headers;
         }
         String[] lines = block.replace("\r\n", "\n").split("\n", -1);

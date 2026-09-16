@@ -11,13 +11,13 @@ import java.util.List;
  * <p>Build one with the per-action factories or the fluent builder. Factories validate the payload
  * shape and values locally, matching the control plane.
  *
- * <pre>{@code
+ * <pre>
  * CreateRoutingRuleRequest.builder()
  *         .priority(1)
  *         .expressionText("from == 'billing@example.com'")
  *         .action(RoutingRuleAction.smtpForward("billing-dest"))
  *         .build();
- * }</pre>
+ * </pre>
  */
 public final class RoutingRuleAction {
     private final RoutingRuleActionKind actionType;

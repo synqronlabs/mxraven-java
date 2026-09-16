@@ -1,5 +1,7 @@
 package com.mxraven.mail.examples;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.mxraven.mail.SendResult;
 import com.mxraven.mail.SmtpClient;
 import com.mxraven.mail.SmtpConfig;
@@ -31,7 +33,7 @@ public final class SendRawMessageExample {
 
         Envelope envelope = Envelope.builder()
                 .from(Path.of("sender@example.com"))
-                .to(List.of(Recipient.of("recipient@example.com")))
+                .to(Java8.list(Recipient.of("recipient@example.com")))
                 .build();
 
         byte[] raw = ("From: sender@example.com\r\n"

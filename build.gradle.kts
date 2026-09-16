@@ -1,8 +1,10 @@
+import org.gradle.api.plugins.BasePluginExtension
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.external.javadoc.StandardJavadocDocletOptions
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -24,8 +26,14 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(17))
+            languageVersion.set(JavaLanguageVersion.of(8))
         }
+    }
+
+    // Publish under <module>-jdk8 (for example com.mxraven:mail-jdk8) and name
+    // the jars accordingly.
+    extensions.configure<BasePluginExtension> {
+        archivesName.set("${project.name}-jdk8")
     }
 
     dependencies {
@@ -34,15 +42,21 @@ subprojects {
         add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
     }
 
+    tasks.withType<JavaCompile>().configureEach {
+        // The build runs on a JDK 8 toolchain, so the source/target level is 8.
+        // (`--release` is not supported by the JDK 8 compiler.)
+        options.encoding = "UTF-8"
+        // Keep constructor parameter names for Jackson's ParameterNamesModule.
+        options.compilerArgs.add("-parameters")
+    }
+
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
     }
 
     tasks.withType<Javadoc>().configureEach {
         // Fail on broken references and malformed HTML. The `missing` group is
-        // excluded because JDK doclint reports record compact constructors and
-        // explicitly declared record accessors even when the record documents
-        // its components via @param.
+        // excluded so undocumented members are tolerated.
         (options as StandardJavadocDocletOptions).addBooleanOption("Xdoclint:all,-missing", true)
     }
 
@@ -105,11 +119,12 @@ subprojects {
         publications {
             create<MavenPublication>("maven") {
                 from(components["java"])
+                artifactId = "${project.name}-jdk8"
                 artifact(project.tasks.named("sourcesJar"))
                 artifact(project.tasks.named("javadocJar"))
                 pom {
-                    name.set("mxRaven ${project.name} SDK")
-                    description.set("mxRaven ${project.name} Java SDK")
+                    name.set("mxRaven ${project.name} SDK (Java 8)")
+                    description.set("mxRaven ${project.name} Java SDK for Java 8+")
                     url.set("https://github.com/synqronlabs/mxraven-java")
                     licenses {
                         license {

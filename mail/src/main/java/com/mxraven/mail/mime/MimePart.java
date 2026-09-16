@@ -137,11 +137,13 @@ public final class MimePart {
      * @return a copy of the decoded body bytes
      */
     public byte[] decodedBody() {
-        return switch (encoding) {
-            case BASE64 -> Base64.getMimeDecoder().decode(rawBody);
-            case QUOTED_PRINTABLE -> decodeQuotedPrintable(rawBody);
-            default -> rawBody.clone();
-        };
+        if (encoding == ContentTransferEncoding.BASE64) {
+            return Base64.getMimeDecoder().decode(rawBody);
+        }
+        if (encoding == ContentTransferEncoding.QUOTED_PRINTABLE) {
+            return decodeQuotedPrintable(rawBody);
+        }
+        return rawBody.clone();
     }
 
     /**

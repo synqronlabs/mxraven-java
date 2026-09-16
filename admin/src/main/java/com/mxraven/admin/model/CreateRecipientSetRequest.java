@@ -1,18 +1,74 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 /**
- * Request body for {@code POST /v2/tenants/{slug}/recipient-sets}.
- *
- * @param setRef immutable recipient-set reference
- * @param displayName optional human-readable set name
- * @param description optional set description
+ * Request body for <code>POST /v2/tenants/{slug}/recipient-sets</code>.
  */
-public record CreateRecipientSetRequest(
-        String setRef,
-        String displayName,
-        String description) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateRecipientSetRequest {
+    private final String setRef;
+    private final String displayName;
+    private final String description;
+
+    /** immutable recipient-set reference */
+    public String setRef() {
+        return setRef;
+    }
+
+    /** optional human-readable set name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** optional set description */
+    public String description() {
+        return description;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateRecipientSetRequest that = (CreateRecipientSetRequest) o;
+        return Objects.equals(this.setRef, that.setRef)
+                && Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.description, that.description);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.setRef, this.displayName, this.description);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateRecipientSetRequest[" + "setRef=" + this.setRef + ", " + "displayName=" + this.displayName + ", " + "description=" + this.description + "]";
+    }
+
+    /**
+     * Creates a new CreateRecipientSetRequest.
+     *
+     * @param setRef immutable recipient-set reference
+     * @param displayName optional human-readable set name
+     * @param description optional set description
+     */
+    @JsonCreator
+    public CreateRecipientSetRequest(String setRef, String displayName, String description) {
+        this.setRef = setRef;
+        this.displayName = displayName;
+        this.description = description;
+    }
 
     /**
      * Creates a new request builder.
@@ -71,7 +127,7 @@ public record CreateRecipientSetRequest(
          * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateRecipientSetRequest build() {
-            if (setRef == null || setRef.isBlank()) {
+            if (setRef == null || Java8.isBlank(setRef)) {
                 throw new IllegalArgumentException("set_ref is required");
             }
             if (setRef.codePointCount(0, setRef.length()) > 100) {

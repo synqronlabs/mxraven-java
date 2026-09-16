@@ -1,29 +1,125 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers/azure-ad}.
- *
- * @param idpRef immutable identity-provider reference
- * @param name human-readable provider name
- * @param clientId Azure AD client identifier
- * @param clientSecret Azure AD client secret
- * @param tenantId optional Azure AD tenant identifier
- * @param tenantType optional Azure AD tenant type
- * @param emailVerified optional email-verified flag
- * @param scopes optional OAuth scopes
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers/azure-ad</code>.
  */
-public record CreateTenantAzureAdIdentityProviderRequest(
-        String idpRef,
-        String name,
-        String clientId,
-        String clientSecret,
-        String tenantId,
-        AzureAdTenantType tenantType,
-        Boolean emailVerified,
-        List<String> scopes,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantAzureAdIdentityProviderRequest {
+    private final String idpRef;
+    private final String name;
+    private final String clientId;
+    private final String clientSecret;
+    private final String tenantId;
+    private final AzureAdTenantType tenantType;
+    private final Boolean emailVerified;
+    private final List<String> scopes;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String name() {
+        return name;
+    }
+
+    /** Azure AD client identifier */
+    public String clientId() {
+        return clientId;
+    }
+
+    /** Azure AD client secret */
+    public String clientSecret() {
+        return clientSecret;
+    }
+
+    /** optional Azure AD tenant identifier */
+    public String tenantId() {
+        return tenantId;
+    }
+
+    /** optional Azure AD tenant type */
+    public AzureAdTenantType tenantType() {
+        return tenantType;
+    }
+
+    /** optional email-verified flag */
+    public Boolean emailVerified() {
+        return emailVerified;
+    }
+
+    /** optional OAuth scopes */
+    public List<String> scopes() {
+        return scopes;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantAzureAdIdentityProviderRequest that = (CreateTenantAzureAdIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.clientId, that.clientId)
+                && Objects.equals(this.clientSecret, that.clientSecret)
+                && Objects.equals(this.tenantId, that.tenantId)
+                && Objects.equals(this.tenantType, that.tenantType)
+                && Objects.equals(this.emailVerified, that.emailVerified)
+                && Objects.equals(this.scopes, that.scopes)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.name, this.clientId, this.clientSecret, this.tenantId, this.tenantType, this.emailVerified, this.scopes, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantAzureAdIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "name=" + this.name + ", " + "clientId=" + this.clientId + ", " + "clientSecret=" + this.clientSecret + ", " + "tenantId=" + this.tenantId + ", " + "tenantType=" + this.tenantType + ", " + "emailVerified=" + this.emailVerified + ", " + "scopes=" + this.scopes + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantAzureAdIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param name human-readable provider name
+     * @param clientId Azure AD client identifier
+     * @param clientSecret Azure AD client secret
+     * @param tenantId optional Azure AD tenant identifier
+     * @param tenantType optional Azure AD tenant type
+     * @param emailVerified optional email-verified flag
+     * @param scopes optional OAuth scopes
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantAzureAdIdentityProviderRequest(String idpRef, String name, String clientId, String clientSecret, String tenantId, AzureAdTenantType tenantType, Boolean emailVerified, List<String> scopes, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.name = name;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.tenantId = tenantId;
+        this.tenantType = tenantType;
+        this.emailVerified = emailVerified;
+        this.scopes = scopes;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

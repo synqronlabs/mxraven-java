@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.model.ConfirmSmtpForwardDestinationRequest;
 import com.mxraven.admin.model.CreateSmtpForwardDestinationRequest;
 import org.junit.jupiter.api.Test;
@@ -40,10 +42,10 @@ class SmtpForwardDestinationRequestTest {
                 .token("too-short")
                 .build());
         assertThrows(IllegalArgumentException.class, () -> ConfirmSmtpForwardDestinationRequest.builder()
-                .token("x".repeat(129))
+                .token(Java8.repeat("x", 129))
                 .build());
         assertDoesNotThrow(() -> ConfirmSmtpForwardDestinationRequest.builder()
-                .token("x".repeat(40))
+                .token(Java8.repeat("x", 40))
                 .build());
     }
 }

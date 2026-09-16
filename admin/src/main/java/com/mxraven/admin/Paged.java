@@ -16,13 +16,13 @@ import java.util.stream.StreamSupport;
  * {@link Iterable}, so it can be used directly in a for-each loop, and it also
  * exposes {@link #stream()} and {@link #toList()}:
  *
- * <pre>{@code
+ * <pre>
  * for (Domain domain : ws.domains().list()) {
  *     System.out.println(domain.domainName());
  * }
  *
- * List<Domain> all = ws.domains().list().toList();
- * }</pre>
+ * List&lt;Domain&gt; all = ws.domains().list().toList();
+ * </pre>
  *
  * <p>The first page is fetched when the owning {@code list(...)} call is made.
  * Subsequent pages are fetched lazily, only as the iterator advances, so a large
@@ -65,7 +65,7 @@ public final class Paged<T> implements Iterable<T> {
     /** Walk every item across all pages. */
     @Override
     public Iterator<T> iterator() {
-        return new Iterator<>() {
+        return new Iterator<T>() {
             private final Set<String> seenTokens = new HashSet<>();
             private Page<T> page = firstPage;
             private int index = 0;
@@ -112,7 +112,7 @@ public final class Paged<T> implements Iterable<T> {
      * @return an immutable list of all items
      */
     public List<T> toList() {
-        return stream().toList();
+        return stream().collect(java.util.stream.Collectors.toList());
     }
 
     /**

@@ -1,29 +1,125 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers/github-enterprise-server}.
- *
- * @param idpRef immutable identity-provider reference
- * @param name human-readable provider name
- * @param clientId GitHub Enterprise Server client identifier
- * @param clientSecret GitHub Enterprise Server client secret
- * @param authorizationEndpoint OAuth authorization endpoint
- * @param tokenEndpoint OAuth token endpoint
- * @param userEndpoint user-info endpoint
- * @param scopes optional OAuth scopes
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers/github-enterprise-server</code>.
  */
-public record CreateTenantGitHubEnterpriseServerIdentityProviderRequest(
-        String idpRef,
-        String name,
-        String clientId,
-        String clientSecret,
-        String authorizationEndpoint,
-        String tokenEndpoint,
-        String userEndpoint,
-        List<String> scopes,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantGitHubEnterpriseServerIdentityProviderRequest {
+    private final String idpRef;
+    private final String name;
+    private final String clientId;
+    private final String clientSecret;
+    private final String authorizationEndpoint;
+    private final String tokenEndpoint;
+    private final String userEndpoint;
+    private final List<String> scopes;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String name() {
+        return name;
+    }
+
+    /** GitHub Enterprise Server client identifier */
+    public String clientId() {
+        return clientId;
+    }
+
+    /** GitHub Enterprise Server client secret */
+    public String clientSecret() {
+        return clientSecret;
+    }
+
+    /** OAuth authorization endpoint */
+    public String authorizationEndpoint() {
+        return authorizationEndpoint;
+    }
+
+    /** OAuth token endpoint */
+    public String tokenEndpoint() {
+        return tokenEndpoint;
+    }
+
+    /** user-info endpoint */
+    public String userEndpoint() {
+        return userEndpoint;
+    }
+
+    /** optional OAuth scopes */
+    public List<String> scopes() {
+        return scopes;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantGitHubEnterpriseServerIdentityProviderRequest that = (CreateTenantGitHubEnterpriseServerIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.clientId, that.clientId)
+                && Objects.equals(this.clientSecret, that.clientSecret)
+                && Objects.equals(this.authorizationEndpoint, that.authorizationEndpoint)
+                && Objects.equals(this.tokenEndpoint, that.tokenEndpoint)
+                && Objects.equals(this.userEndpoint, that.userEndpoint)
+                && Objects.equals(this.scopes, that.scopes)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.name, this.clientId, this.clientSecret, this.authorizationEndpoint, this.tokenEndpoint, this.userEndpoint, this.scopes, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantGitHubEnterpriseServerIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "name=" + this.name + ", " + "clientId=" + this.clientId + ", " + "clientSecret=" + this.clientSecret + ", " + "authorizationEndpoint=" + this.authorizationEndpoint + ", " + "tokenEndpoint=" + this.tokenEndpoint + ", " + "userEndpoint=" + this.userEndpoint + ", " + "scopes=" + this.scopes + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantGitHubEnterpriseServerIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param name human-readable provider name
+     * @param clientId GitHub Enterprise Server client identifier
+     * @param clientSecret GitHub Enterprise Server client secret
+     * @param authorizationEndpoint OAuth authorization endpoint
+     * @param tokenEndpoint OAuth token endpoint
+     * @param userEndpoint user-info endpoint
+     * @param scopes optional OAuth scopes
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantGitHubEnterpriseServerIdentityProviderRequest(String idpRef, String name, String clientId, String clientSecret, String authorizationEndpoint, String tokenEndpoint, String userEndpoint, List<String> scopes, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.name = name;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.authorizationEndpoint = authorizationEndpoint;
+        this.tokenEndpoint = tokenEndpoint;
+        this.userEndpoint = userEndpoint;
+        this.scopes = scopes;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

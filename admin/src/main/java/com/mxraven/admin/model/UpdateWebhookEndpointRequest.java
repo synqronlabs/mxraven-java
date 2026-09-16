@@ -1,14 +1,63 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
- * Request body for {@code PUT /v2/tenants/{slug}/webhook-endpoints/{endpoint_id}}.
- *
- * @param displayName human-readable endpoint name
- * @param targetUrl   HTTPS URL that deliveries are sent to
+ * Request body for <code>PUT /v2/tenants/{slug}/webhook-endpoints/{endpoint_id}</code>.
  */
-public record UpdateWebhookEndpointRequest(
-        String displayName,
-        String targetUrl) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class UpdateWebhookEndpointRequest {
+    private final String displayName;
+    private final String targetUrl;
+
+    /** human-readable endpoint name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** HTTPS URL that deliveries are sent to */
+    public String targetUrl() {
+        return targetUrl;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UpdateWebhookEndpointRequest that = (UpdateWebhookEndpointRequest) o;
+        return Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.targetUrl, that.targetUrl);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.displayName, this.targetUrl);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateWebhookEndpointRequest[" + "displayName=" + this.displayName + ", " + "targetUrl=" + this.targetUrl + "]";
+    }
+
+    /**
+     * Creates a new UpdateWebhookEndpointRequest.
+     *
+     * @param displayName human-readable endpoint name
+     * @param targetUrl HTTPS URL that deliveries are sent to
+     */
+    @JsonCreator
+    public UpdateWebhookEndpointRequest(String displayName, String targetUrl) {
+        this.displayName = displayName;
+        this.targetUrl = targetUrl;
+    }
 
     /**
      * Creates a new request builder.
@@ -53,7 +102,7 @@ public record UpdateWebhookEndpointRequest(
          * @throws IllegalArgumentException if a field fails validation
          */
         public UpdateWebhookEndpointRequest build() {
-            if (displayName == null || displayName.isBlank()) {
+            if (displayName == null || Java8.isBlank(displayName)) {
                 throw new IllegalArgumentException("display_name is required");
             }
             if (displayName.codePointCount(0, displayName.length()) > 255) {
@@ -64,7 +113,7 @@ public record UpdateWebhookEndpointRequest(
         }
 
         private static void validateTargetUrl(String targetUrl) {
-            if (targetUrl == null || targetUrl.isBlank()) {
+            if (targetUrl == null || Java8.isBlank(targetUrl)) {
                 throw new IllegalArgumentException("target_url is required");
             }
             String trimmed = targetUrl.trim();
@@ -79,7 +128,7 @@ public record UpdateWebhookEndpointRequest(
             if (slash >= 0) {
                 host = host.substring(0, slash);
             }
-            if (host.isBlank() || host.indexOf(' ') >= 0) {
+            if (Java8.isBlank(host) || host.indexOf(' ') >= 0) {
                 throw new IllegalArgumentException("target_url host is required");
             }
         }

@@ -14,7 +14,7 @@ import java.util.List;
  * its sending-domain policy before it can send. Reads return a snapshot; call
  * {@link #reload()} for fresh state.
  *
- * <pre>{@code
+ * <pre>
  * Domain d = ws.domains().create("example.com");
  * if (!d.dkimVerified()) {
  *     d.replace("dmarc@example.com");
@@ -23,7 +23,7 @@ import java.util.List;
  *     // ...
  * }
  * d.delete();
- * }</pre>
+ * </pre>
  */
 public final class Domain extends Entity<DomainData> {
     /**

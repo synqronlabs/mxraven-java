@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import java.util.List;
 import java.util.function.Function;
 
@@ -11,11 +13,11 @@ import java.util.function.Function;
  * {@link Paged#firstPage()}, for callers that want to walk pages deliberately.
  * A page returned from a {@code list(...)} call can fetch its neighbours:
  *
- * <pre>{@code
- * Page<Domain> first = ws.domains().list().firstPage();
- * Page<Domain> second = first.nextPage();
- * Page<Domain> back = second.previousPage();
- * }</pre>
+ * <pre>
+ * Page&lt;Domain&gt; first = ws.domains().list().firstPage();
+ * Page&lt;Domain&gt; second = first.nextPage();
+ * Page&lt;Domain&gt; back = second.previousPage();
+ * </pre>
  *
  * <p>Tokens are opaque. Never parse, construct, or persist them as durable
  * resource identifiers.
@@ -33,7 +35,7 @@ public final class Page<T> {
 
     Page(List<T> items, String nextPageToken, String previousPageToken, String lastPageToken,
          Function<String, Page<T>> fetchPage) {
-        this.items = items == null ? List.of() : List.copyOf(items);
+        this.items = items == null ? Java8.list() : Java8.copyList(items);
         this.nextPageToken = nextPageToken;
         this.previousPageToken = previousPageToken;
         this.lastPageToken = lastPageToken;
@@ -87,7 +89,7 @@ public final class Page<T> {
      * @return {@code true} if {@link #nextPageToken()} is present
      */
     public boolean hasNext() {
-        return nextPageToken != null && !nextPageToken.isBlank();
+        return nextPageToken != null && !Java8.isBlank(nextPageToken);
     }
 
     /**
@@ -96,7 +98,7 @@ public final class Page<T> {
      * @return {@code true} if {@link #previousPageToken()} is present
      */
     public boolean hasPrevious() {
-        return previousPageToken != null && !previousPageToken.isBlank();
+        return previousPageToken != null && !Java8.isBlank(previousPageToken);
     }
 
     /**
@@ -142,7 +144,7 @@ public final class Page<T> {
      * @return a new page with mapped items and the same tokens, without a fetcher
      */
     public <R> Page<R> map(Function<? super T, ? extends R> mapper) {
-        List<R> mapped = items.stream().<R>map(mapper).toList();
+        List<R> mapped = items.stream().<R>map(mapper).collect(java.util.stream.Collectors.toList());
         return new Page<>(mapped, nextPageToken, previousPageToken, lastPageToken, null);
     }
 

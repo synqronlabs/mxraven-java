@@ -1,7 +1,10 @@
 package com.mxraven.admin.exception;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.mxraven.admin.Problem;
 import com.mxraven.admin.ProblemError;
 
@@ -17,7 +20,7 @@ import java.util.List;
  * <p>Common HTTP statuses are surfaced as typed subclasses so callers can catch
  * the category they care about without inspecting the status:
  *
- * <pre>{@code
+ * <pre>
  * try {
  *     ws.domains().create(new CreateDomainRequest("example.com"));
  * } catch (NotFoundException e) {
@@ -25,11 +28,11 @@ import java.util.List;
  * } catch (ConflictException e) {
  *     // 409
  * } catch (ValidationException e) {
- *     e.errors().forEach(err -> System.err.println(err.pointer() + " -> " + err.code()));
+ *     e.errors().forEach(err -&gt; System.err.println(err.pointer() + " -&gt; " + err.code()));
  * } catch (ApiException e) {
  *     // anything else
  * }
- * }</pre>
+ * </pre>
  */
 public class ApiException extends MxRavenException {
     /** HTTP status code of the response. */
@@ -74,7 +77,7 @@ public class ApiException extends MxRavenException {
         this.title = problem == null ? null : problem.title();
         this.detail = problem == null ? fallbackDetail : problem.detail();
         this.traceId = problem == null ? null : problem.traceId();
-        this.errors = problem == null || problem.errors() == null ? List.of() : List.copyOf(problem.errors());
+        this.errors = problem == null || problem.errors() == null ? Java8.list() : Java8.copyList(problem.errors());
     }
 
     /**
@@ -113,31 +116,39 @@ public class ApiException extends MxRavenException {
                 problem = null;
             }
         }
-        String fallback = rawBody == null || rawBody.isBlank() ? null : rawBody;
+        String fallback = rawBody == null || Java8.isBlank(rawBody) ? null : rawBody;
         return forStatus(status, fallback, problem, retryAfter);
     }
 
     private static ApiException forStatus(int status, String fallbackDetail, Problem problem, Duration retryAfter) {
-        return switch (status) {
-            case 400 -> new BadRequestException(fallbackDetail, problem);
-            case 401 -> new AuthenticationException(fallbackDetail, problem);
-            case 403 -> new PermissionDeniedException(fallbackDetail, problem);
-            case 404 -> new NotFoundException(fallbackDetail, problem);
-            case 409 -> new ConflictException(fallbackDetail, problem);
-            case 422 -> new ValidationException(fallbackDetail, problem);
-            case 429 -> new RateLimitException(fallbackDetail, problem, retryAfter);
-            default -> status >= 500
-                    ? new ServerException(status, fallbackDetail, problem, retryAfter)
-                    : new ApiException(status, fallbackDetail, problem, retryAfter);
-        };
+        switch (status) {
+            case 400:
+                return new BadRequestException(fallbackDetail, problem);
+            case 401:
+                return new AuthenticationException(fallbackDetail, problem);
+            case 403:
+                return new PermissionDeniedException(fallbackDetail, problem);
+            case 404:
+                return new NotFoundException(fallbackDetail, problem);
+            case 409:
+                return new ConflictException(fallbackDetail, problem);
+            case 422:
+                return new ValidationException(fallbackDetail, problem);
+            case 429:
+                return new RateLimitException(fallbackDetail, problem, retryAfter);
+            default:
+                return status >= 500
+                        ? new ServerException(status, fallbackDetail, problem, retryAfter)
+                        : new ApiException(status, fallbackDetail, problem, retryAfter);
+        }
     }
 
     private static Problem problemOrNull(int status, String body) {
-        if (body == null || body.isBlank()) {
+        if (body == null || Java8.isBlank(body)) {
             return null;
         }
         try {
-            return new ObjectMapper().readValue(body, Problem.class);
+            return new ObjectMapper().registerModule(new ParameterNamesModule()).readValue(body, Problem.class);
         } catch (Exception ignored) {
             return null;
         }
@@ -150,9 +161,9 @@ public class ApiException extends MxRavenException {
         if (code != null) {
             sb.append(" ").append(code);
         }
-        if (detail != null && !detail.isBlank()) {
+        if (detail != null && !Java8.isBlank(detail)) {
             sb.append(": ").append(detail);
-        } else if (fallbackDetail != null && !fallbackDetail.isBlank()) {
+        } else if (fallbackDetail != null && !Java8.isBlank(fallbackDetail)) {
             sb.append(": ").append(fallbackDetail);
         }
         return sb.toString();

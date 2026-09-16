@@ -1,23 +1,99 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
- * Request body for {@code POST /v2/tenants/{slug}/listeners}.
- *
- * @param displayName                human-readable listener name
- * @param listenerType               {@code submission} or {@code mta}
- * @param streamType                 {@code transactional} or {@code marketing}
- * @param defaultTerminalActionType  terminal action type; must be valid for the listener type
- * @param defaultTerminalActionPayload action-specific payload; use {@link TerminalActionPayload}
- *                                     factories, or {@code null} when the action takes none
- * @param rspamdScanningEnabled      enables inbound scanning; defaults by listener type
+ * Request body for <code>POST /v2/tenants/{slug}/listeners</code>.
  */
-public record CreateListenerRequest(
-        String displayName,
-        ListenerType listenerType,
-        StreamType streamType,
-        TerminalActionType defaultTerminalActionType,
-        TerminalActionPayload defaultTerminalActionPayload,
-        Boolean rspamdScanningEnabled) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateListenerRequest {
+    private final String displayName;
+    private final ListenerType listenerType;
+    private final StreamType streamType;
+    private final TerminalActionType defaultTerminalActionType;
+    private final TerminalActionPayload defaultTerminalActionPayload;
+    private final Boolean rspamdScanningEnabled;
+
+    /** human-readable listener name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** {@code submission} or {@code mta} */
+    public ListenerType listenerType() {
+        return listenerType;
+    }
+
+    /** {@code transactional} or {@code marketing} */
+    public StreamType streamType() {
+        return streamType;
+    }
+
+    /** terminal action type; must be valid for the listener type */
+    public TerminalActionType defaultTerminalActionType() {
+        return defaultTerminalActionType;
+    }
+
+    /** action-specific payload; use {@link TerminalActionPayload} factories, or {@code null} when the action takes none */
+    public TerminalActionPayload defaultTerminalActionPayload() {
+        return defaultTerminalActionPayload;
+    }
+
+    /** enables inbound scanning; defaults by listener type */
+    public Boolean rspamdScanningEnabled() {
+        return rspamdScanningEnabled;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateListenerRequest that = (CreateListenerRequest) o;
+        return Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.listenerType, that.listenerType)
+                && Objects.equals(this.streamType, that.streamType)
+                && Objects.equals(this.defaultTerminalActionType, that.defaultTerminalActionType)
+                && Objects.equals(this.defaultTerminalActionPayload, that.defaultTerminalActionPayload)
+                && Objects.equals(this.rspamdScanningEnabled, that.rspamdScanningEnabled);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.displayName, this.listenerType, this.streamType, this.defaultTerminalActionType, this.defaultTerminalActionPayload, this.rspamdScanningEnabled);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateListenerRequest[" + "displayName=" + this.displayName + ", " + "listenerType=" + this.listenerType + ", " + "streamType=" + this.streamType + ", " + "defaultTerminalActionType=" + this.defaultTerminalActionType + ", " + "defaultTerminalActionPayload=" + this.defaultTerminalActionPayload + ", " + "rspamdScanningEnabled=" + this.rspamdScanningEnabled + "]";
+    }
+
+    /**
+     * Creates a new CreateListenerRequest.
+     *
+     * @param displayName human-readable listener name
+     * @param listenerType {@code submission} or {@code mta}
+     * @param streamType {@code transactional} or {@code marketing}
+     * @param defaultTerminalActionType terminal action type; must be valid for the listener type
+     * @param defaultTerminalActionPayload action-specific payload; use {@link TerminalActionPayload} factories, or {@code null} when the action takes none
+     * @param rspamdScanningEnabled enables inbound scanning; defaults by listener type
+     */
+    @JsonCreator
+    public CreateListenerRequest(String displayName, ListenerType listenerType, StreamType streamType, TerminalActionType defaultTerminalActionType, TerminalActionPayload defaultTerminalActionPayload, Boolean rspamdScanningEnabled) {
+        this.displayName = displayName;
+        this.listenerType = listenerType;
+        this.streamType = streamType;
+        this.defaultTerminalActionType = defaultTerminalActionType;
+        this.defaultTerminalActionPayload = defaultTerminalActionPayload;
+        this.rspamdScanningEnabled = rspamdScanningEnabled;
+    }
 
     /**
      * Creates a request without a terminal-action payload or Rspamd override.
@@ -154,7 +230,7 @@ public record CreateListenerRequest(
         }
 
         private void validate() {
-            if (displayName == null || displayName.isBlank()) {
+            if (displayName == null || Java8.isBlank(displayName)) {
                 throw new IllegalArgumentException("display_name is required");
             }
             if (displayName.codePointCount(0, displayName.length()) > 255) {
@@ -182,17 +258,17 @@ public record CreateListenerRequest(
         }
 
         private static boolean validTerminalAction(ListenerType listenerType, TerminalActionType action) {
-            return switch (listenerType) {
-                case SUBMISSION -> action == TerminalActionType.DELIVER_DEDICATED
+            if (listenerType == ListenerType.SUBMISSION) {
+                return action == TerminalActionType.DELIVER_DEDICATED
                         || action == TerminalActionType.DELIVER
                         || action == TerminalActionType.SMARTHOST_RELAY
                         || action == TerminalActionType.DROP
                         || action == TerminalActionType.REJECT;
-                case MTA -> action == TerminalActionType.RELAY
-                        || action == TerminalActionType.AUTO_REPLY
-                        || action == TerminalActionType.DROP
-                        || action == TerminalActionType.REJECT;
-            };
+            }
+            return action == TerminalActionType.RELAY
+                    || action == TerminalActionType.AUTO_REPLY
+                    || action == TerminalActionType.DROP
+                    || action == TerminalActionType.REJECT;
         }
     }
 }

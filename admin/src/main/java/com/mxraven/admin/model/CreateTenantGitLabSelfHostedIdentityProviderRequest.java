@@ -1,25 +1,107 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers/gitlab-self-hosted}.
- *
- * @param idpRef immutable identity-provider reference
- * @param name human-readable provider name
- * @param issuer GitLab instance issuer
- * @param clientId GitLab client identifier
- * @param clientSecret GitLab client secret
- * @param scopes optional OAuth scopes
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers/gitlab-self-hosted</code>.
  */
-public record CreateTenantGitLabSelfHostedIdentityProviderRequest(
-        String idpRef,
-        String name,
-        String issuer,
-        String clientId,
-        String clientSecret,
-        List<String> scopes,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantGitLabSelfHostedIdentityProviderRequest {
+    private final String idpRef;
+    private final String name;
+    private final String issuer;
+    private final String clientId;
+    private final String clientSecret;
+    private final List<String> scopes;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String name() {
+        return name;
+    }
+
+    /** GitLab instance issuer */
+    public String issuer() {
+        return issuer;
+    }
+
+    /** GitLab client identifier */
+    public String clientId() {
+        return clientId;
+    }
+
+    /** GitLab client secret */
+    public String clientSecret() {
+        return clientSecret;
+    }
+
+    /** optional OAuth scopes */
+    public List<String> scopes() {
+        return scopes;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantGitLabSelfHostedIdentityProviderRequest that = (CreateTenantGitLabSelfHostedIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.issuer, that.issuer)
+                && Objects.equals(this.clientId, that.clientId)
+                && Objects.equals(this.clientSecret, that.clientSecret)
+                && Objects.equals(this.scopes, that.scopes)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.name, this.issuer, this.clientId, this.clientSecret, this.scopes, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantGitLabSelfHostedIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "name=" + this.name + ", " + "issuer=" + this.issuer + ", " + "clientId=" + this.clientId + ", " + "clientSecret=" + this.clientSecret + ", " + "scopes=" + this.scopes + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantGitLabSelfHostedIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param name human-readable provider name
+     * @param issuer GitLab instance issuer
+     * @param clientId GitLab client identifier
+     * @param clientSecret GitLab client secret
+     * @param scopes optional OAuth scopes
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantGitLabSelfHostedIdentityProviderRequest(String idpRef, String name, String issuer, String clientId, String clientSecret, List<String> scopes, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.name = name;
+        this.issuer = issuer;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.scopes = scopes;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

@@ -1,11 +1,52 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * Request body for replacing the active state of a secret-backed integration.
- *
- * @param isActive whether the integration is active
  */
-public record SetIntegrationActiveRequest(boolean isActive) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class SetIntegrationActiveRequest {
+    private final boolean isActive;
+
+    /** whether the integration is active */
+    public boolean isActive() {
+        return isActive;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SetIntegrationActiveRequest that = (SetIntegrationActiveRequest) o;
+        return this.isActive == that.isActive;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.isActive);
+    }
+
+    @Override
+    public String toString() {
+        return "SetIntegrationActiveRequest[" + "isActive=" + this.isActive + "]";
+    }
+
+    /**
+     * Creates a new SetIntegrationActiveRequest.
+     *
+     * @param isActive whether the integration is active
+     */
+    @JsonCreator
+    public SetIntegrationActiveRequest(boolean isActive) {
+        this.isActive = isActive;
+    }
 
     /**
      * Creates a new builder.

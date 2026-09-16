@@ -1,14 +1,56 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 /**
- * Request body for {@code POST .../recipient-sets/{set_ref}/members}.
- *
- * @param emailAddress member email address
+ * Request body for <code>POST .../recipient-sets/{set_ref}/members</code>.
  */
-public record RecipientSetMemberRequest(
-        String emailAddress) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class RecipientSetMemberRequest {
+    private final String emailAddress;
+
+    /** member email address */
+    public String emailAddress() {
+        return emailAddress;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RecipientSetMemberRequest that = (RecipientSetMemberRequest) o;
+        return Objects.equals(this.emailAddress, that.emailAddress);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.emailAddress);
+    }
+
+    @Override
+    public String toString() {
+        return "RecipientSetMemberRequest[" + "emailAddress=" + this.emailAddress + "]";
+    }
+
+    /**
+     * Creates a new RecipientSetMemberRequest.
+     *
+     * @param emailAddress member email address
+     */
+    @JsonCreator
+    public RecipientSetMemberRequest(String emailAddress) {
+        this.emailAddress = emailAddress;
+    }
 
     /**
      * Creates a new builder.
@@ -43,7 +85,7 @@ public record RecipientSetMemberRequest(
          * @throws IllegalArgumentException if the email address is missing, too long, or invalid
          */
         public RecipientSetMemberRequest build() {
-            if (emailAddress == null || emailAddress.isBlank()) {
+            if (emailAddress == null || Java8.isBlank(emailAddress)) {
                 throw new IllegalArgumentException("email_address is required");
             }
             if (emailAddress.length() > 255) {

@@ -1,5 +1,7 @@
 package com.mxraven.mail.webhook;
 
+import com.mxraven.mail.internal.Java8;
+
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -64,7 +66,7 @@ class WebhookHandlerTest {
         byte[] body = bytes(INBOUND_BODY);
 
         assertEquals(WebhookResult.BAD_REQUEST,
-                handler(event -> { }).handle("POST", URI, Map.of(), body));
+                handler(event -> { }).handle("POST", URI, Java8.map(), body));
     }
 
     @Test

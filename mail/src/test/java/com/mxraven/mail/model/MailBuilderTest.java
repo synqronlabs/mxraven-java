@@ -25,12 +25,12 @@ class MailBuilderTest {
                 .build();
 
         Headers headers = mail.content().headers();
-        assertEquals("sender@example.com", headers.first("From").orElseThrow());
-        assertEquals("bounce@example.com", headers.first("Sender").orElseThrow());
-        assertEquals("to@example.com", headers.first("To").orElseThrow());
-        assertEquals("cc@example.com", headers.first("Cc").orElseThrow());
-        assertEquals("Subject", headers.first("Subject").orElseThrow());
-        assertTrue(headers.first("Bcc").isEmpty());
+        assertEquals("sender@example.com", headers.first("From").get());
+        assertEquals("bounce@example.com", headers.first("Sender").get());
+        assertEquals("to@example.com", headers.first("To").get());
+        assertEquals("cc@example.com", headers.first("Cc").get());
+        assertEquals("Subject", headers.first("Subject").get());
+        assertTrue(!headers.first("Bcc").isPresent());
 
         Envelope envelope = mail.envelope();
         assertEquals("sender@example.com", envelope.from().mailbox().toString());
@@ -49,7 +49,7 @@ class MailBuilderTest {
                 .build();
 
         Content content = mail.content();
-        assertEquals("text/plain; charset=utf-8", content.headers().first("Content-Type").orElseThrow());
+        assertEquals("text/plain; charset=utf-8", content.headers().first("Content-Type").get());
         assertEquals(ContentTransferEncoding.SEVEN_BIT, content.encoding());
         assertEquals("hello", new String(content.body(), StandardCharsets.UTF_8));
     }
@@ -63,7 +63,7 @@ class MailBuilderTest {
                 .build();
 
         assertEquals("text/html; charset=utf-8",
-                mail.content().headers().first("Content-Type").orElseThrow());
+                mail.content().headers().first("Content-Type").get());
     }
 
     @Test
@@ -74,7 +74,7 @@ class MailBuilderTest {
                 .build();
 
         assertTrue(mail.envelope().from().isNull());
-        assertTrue(mail.content().headers().first("From").isEmpty());
+        assertTrue(!mail.content().headers().first("From").isPresent());
     }
 
     @Test
@@ -88,8 +88,8 @@ class MailBuilderTest {
                 .build();
 
         Headers headers = mail.content().headers();
-        assertEquals("value", headers.first("X-Custom").orElseThrow());
-        assertEquals("<id@example.com>", headers.first("Message-ID").orElseThrow());
+        assertEquals("value", headers.first("X-Custom").get());
+        assertEquals("<id@example.com>", headers.first("Message-ID").get());
         assertTrue(headers.first("Date").isPresent());
     }
 
@@ -113,7 +113,7 @@ class MailBuilderTest {
                 .build();
 
         assertEquals("x@example.com, y@example.com",
-                mail.content().headers().first("To").orElseThrow());
+                mail.content().headers().first("To").get());
         assertEquals(2, mail.envelope().to().size());
     }
 
@@ -128,8 +128,8 @@ class MailBuilderTest {
                 .build();
 
         Headers headers = mail.content().headers();
-        assertEquals("<id@example.com>", headers.first("Message-ID").orElseThrow());
-        assertEquals("<parent@example.com>", headers.first("In-Reply-To").orElseThrow());
-        assertEquals("<one@example.com> <two@example.com>", headers.first("References").orElseThrow());
+        assertEquals("<id@example.com>", headers.first("Message-ID").get());
+        assertEquals("<parent@example.com>", headers.first("In-Reply-To").get());
+        assertEquals("<one@example.com> <two@example.com>", headers.first("References").get());
     }
 }

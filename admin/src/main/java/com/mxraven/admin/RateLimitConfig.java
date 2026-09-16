@@ -13,14 +13,14 @@ import java.time.Duration;
  * (POST/PUT) are never retried automatically, so they cannot be applied twice or
  * amplify load.
  *
- * <pre>{@code
+ * <pre>
  * RateLimitConfig rateLimits = RateLimitConfig.builder()
  *         .maxRetries(5)
  *         .defaultBackoff(Duration.ofSeconds(2))
  *         .maxBackoff(Duration.ofMinutes(2))
  *         .build();
  * AdminClient admin = new AdminClient(baseUrl, token, rateLimits);
- * }</pre>
+ * </pre>
  */
 public final class RateLimitConfig {
     private static final RateLimitConfig DEFAULTS = builder().build();

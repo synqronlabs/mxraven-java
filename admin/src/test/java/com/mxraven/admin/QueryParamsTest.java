@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -19,10 +21,10 @@ class QueryParamsTest {
 
     @Test
     void searchOmitsBlankAndRejectsShortValues() {
-        assertEquals(Map.of(), QueryParams.create().q(null).toMap());
-        assertEquals(Map.of(), QueryParams.create().q("").toMap());
-        assertEquals(Map.of(), QueryParams.create().q("   ").toMap());
+        assertEquals(Java8.map(), QueryParams.create().q(null).toMap());
+        assertEquals(Java8.map(), QueryParams.create().q("").toMap());
+        assertEquals(Java8.map(), QueryParams.create().q("   ").toMap());
         assertThrows(IllegalArgumentException.class, () -> QueryParams.create().q("ra"));
-        assertEquals(Map.of("q", "rav"), QueryParams.create().q("rav").toMap());
+        assertEquals(Java8.map("q", "rav"), QueryParams.create().q("rav").toMap());
     }
 }

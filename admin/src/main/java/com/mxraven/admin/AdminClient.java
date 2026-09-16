@@ -1,21 +1,19 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.mxraven.admin.client.AuthClient;
 import com.mxraven.admin.exception.ApiException;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpHeaders;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,7 +22,15 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+
+import okhttp3.HttpUrl;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 
 /**
  * Client for the mxRaven control-plane v2 REST API.
@@ -32,12 +38,12 @@ import java.util.function.Function;
  * <p>Construct one with the control-plane base URL and a ZITADEL-issued bearer
  * access token, then reach resource families through the typed accessors:
  *
- * <pre>{@code
+ * <pre>
  * AdminClient admin = new AdminClient("https://api.mxraven.com", token);
  * for (Domain domain : admin.workspace("my-workspace").domains().list()) {
  *     System.out.println(domain.domainName() + " " + domain.status());
  * }
- * }</pre>
+ * </pre>
  *
  * <p>All response timestamps are returned as ISO-8601 strings. Pagination is
  * cursor-based: pass {@link Page#nextPageToken()} back into the same list call.
@@ -56,12 +62,14 @@ public final class AdminClient implements AutoCloseable {
     public static final String DEFAULT_BASE_URL = "https://api.mxraven.email";
 
     private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper()
+            .registerModule(new ParameterNamesModule())
             .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
             .setDefaultPropertyInclusion(JsonInclude.Value.construct(
                     JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private final HttpClient http;
+    private final OkHttpClient http;
+    private final boolean ownsHttp;
     private final ObjectMapper json;
     private final String baseUrl;
     private final String token;
@@ -96,7 +104,7 @@ public final class AdminClient implements AutoCloseable {
      * @param http HTTP client used to send requests
      * @param json mapper used to encode and decode JSON
      */
-    public AdminClient(String token, HttpClient http, ObjectMapper json) {
+    public AdminClient(String token, OkHttpClient http, ObjectMapper json) {
         this(DEFAULT_BASE_URL, token, http, json, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
     }
 
@@ -143,9 +151,14 @@ public final class AdminClient implements AutoCloseable {
      * @param apiVersion API version prefix applied to every request path
      */
     public AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig, String apiVersion) {
-        this(baseUrl, token, HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .build(), DEFAULT_MAPPER, rateLimitConfig, apiVersion);
+        this(baseUrl, token, defaultHttpClient(), DEFAULT_MAPPER, rateLimitConfig, apiVersion, true);
+    }
+
+    private static OkHttpClient defaultHttpClient() {
+        return new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .callTimeout(60, TimeUnit.SECONDS)
+                .build();
     }
 
     /**
@@ -157,16 +170,24 @@ public final class AdminClient implements AutoCloseable {
      * @param http HTTP client used to send requests
      * @param json mapper used to encode and decode JSON
      */
-    public AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json) {
+    public AdminClient(String baseUrl, String token, OkHttpClient http, ObjectMapper json) {
         this(baseUrl, token, http, json, RateLimitConfig.defaults(), DEFAULT_API_VERSION);
     }
 
-    private AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json,
+    private AdminClient(String baseUrl, String token, OkHttpClient http, ObjectMapper json,
                         RateLimitConfig rateLimitConfig, String apiVersion) {
+        this(baseUrl, token, http, json, rateLimitConfig, apiVersion, false);
+    }
+
+    private AdminClient(String baseUrl, String token, OkHttpClient http, ObjectMapper json,
+                        RateLimitConfig rateLimitConfig, String apiVersion, boolean ownsHttp) {
         this.baseUrl = baseUrl.replaceAll("/+$", "");
         this.token = token;
         this.http = http;
-        this.json = json;
+        this.ownsHttp = ownsHttp;
+        // The value classes are deserialized through @JsonCreator constructors, so
+        // a caller-supplied mapper needs the parameter-names module as well.
+        this.json = json.registerModule(new ParameterNamesModule());
         this.rateLimitConfig = rateLimitConfig == null ? RateLimitConfig.defaults() : rateLimitConfig;
         this.apiVersion = normalizeApiVersion(apiVersion);
     }
@@ -349,47 +370,66 @@ public final class AdminClient implements AutoCloseable {
      */
     public Response request(String method, String path, Map<String, String> query, Object body) throws IOException {
         String resolvedPath = resolvePath(path);
-        URI uri = URI.create(baseUrl + resolvedPath + encodeQuery(query));
-        HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
-                .timeout(Duration.ofSeconds(60))
+        HttpUrl url = HttpUrl.parse(baseUrl + resolvedPath + encodeQuery(query));
+        if (url == null) {
+            throw new IOException("invalid control-plane URL: " + baseUrl + resolvedPath);
+        }
+        Request.Builder builder = new Request.Builder()
+                .url(url)
                 .header("Accept", "application/json");
-        if (token != null && !token.isBlank()) {
+        if (token != null && !Java8.isBlank(token)) {
             builder.header("Authorization", "Bearer " + token);
         }
-        if (body != null) {
-            builder.header("Content-Type", "application/json")
-                    .method(method, HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)));
-        } else {
-            builder.method(method, HttpRequest.BodyPublishers.noBody());
-        }
+        RequestBody requestBody = body == null
+                ? null
+                : RequestBody.create(json.writeValueAsString(body).getBytes(StandardCharsets.UTF_8),
+                        MediaType.get("application/json"));
 
-        HttpRequest httpRequest = builder.build();
+        Request httpRequest = buildRequest(builder, method, requestBody);
         int attempt = 0;
         while (true) {
-            HttpResponse<String> response;
+            okhttp3.Response response;
             try {
-                response = http.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IOException("interrupted while calling " + method + " " + resolvedPath, e);
+                response = http.newCall(httpRequest).execute();
+            } catch (IOException e) {
+                throw new IOException(method + " " + resolvedPath + " failed: " + e, e);
             }
+            try {
+                String responseBody = bodyString(response);
+                if (response.code() == 429
+                        && isRetryable(method)
+                        && rateLimitConfig.enabled()
+                        && attempt < rateLimitConfig.maxRetries()) {
+                    attempt++;
+                    sleep(retryDelay(response));
+                    continue;
+                }
 
-            if (response.statusCode() == 429
-                    && isRetryable(method)
-                    && rateLimitConfig.enabled()
-                    && attempt < rateLimitConfig.maxRetries()) {
-                attempt++;
-                sleep(retryDelay(response));
-                continue;
+                JsonNode decoded = parseBody(responseBody);
+                if (response.code() >= 400) {
+                    throw ApiException.from(response.code(), responseBody, decoded, json, parseRetryAfter(response));
+                }
+                return new Response(response.code(), response.headers(), decoded, json);
+            } finally {
+                response.close();
             }
-
-            JsonNode decoded = parseBody(response.body());
-            if (response.statusCode() >= 400) {
-                throw ApiException.from(response.statusCode(), response.body(), decoded, json,
-                        parseRetryAfter(response.headers()));
-            }
-            return new Response(response.statusCode(), response.headers(), decoded, json);
         }
+    }
+
+    private static Request buildRequest(Request.Builder builder, String method, RequestBody body) {
+        if (body != null) {
+            return builder.method(method, body).build();
+        }
+        if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)
+                || "PATCH".equalsIgnoreCase(method)) {
+            return builder.method(method, RequestBody.create(new byte[0], null)).build();
+        }
+        return builder.method(method, null).build();
+    }
+
+    private static String bodyString(okhttp3.Response response) throws IOException {
+        ResponseBody body = response.body();
+        return body == null ? null : body.string();
     }
 
     /**
@@ -409,7 +449,7 @@ public final class AdminClient implements AutoCloseable {
     }
 
     private static String normalizeApiVersion(String apiVersion) {
-        if (apiVersion == null || apiVersion.isBlank()) {
+        if (apiVersion == null || Java8.isBlank(apiVersion)) {
             return DEFAULT_API_VERSION;
         }
         return apiVersion.replaceAll("^/+", "").replaceAll("/+$", "");
@@ -420,8 +460,8 @@ public final class AdminClient implements AutoCloseable {
         return "GET".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method);
     }
 
-    private Duration retryDelay(HttpResponse<?> response) {
-        Duration retryAfter = parseRetryAfter(response.headers());
+    private Duration retryDelay(okhttp3.Response response) {
+        Duration retryAfter = parseRetryAfter(response);
         Duration delay = retryAfter != null ? retryAfter : rateLimitConfig.defaultBackoff();
         if (delay.isNegative()) {
             delay = Duration.ZERO;
@@ -444,8 +484,8 @@ public final class AdminClient implements AutoCloseable {
         }
     }
 
-    private static Duration parseRetryAfter(HttpHeaders headers) {
-        return headers.firstValue("Retry-After").map(AdminClient::parseRetryAfter).orElse(null);
+    private static Duration parseRetryAfter(okhttp3.Response response) {
+        return parseRetryAfter(response.header("Retry-After"));
     }
 
     static Duration parseRetryAfter(String value) {
@@ -473,12 +513,14 @@ public final class AdminClient implements AutoCloseable {
 
     @Override
     public void close() {
-        // No-op: java.net.http.HttpClient manages its own resources and does not
-        // require explicit closing on Java 17. Retained to satisfy AutoCloseable.
+        if (ownsHttp) {
+            http.dispatcher().executorService().shutdown();
+            http.connectionPool().evictAll();
+        }
     }
 
     private JsonNode parseBody(String body) throws IOException {
-        if (body == null || body.isBlank()) {
+        if (body == null || Java8.isBlank(body)) {
             return null;
         }
         return json.readTree(body);
@@ -493,10 +535,10 @@ public final class AdminClient implements AutoCloseable {
             if (entry.getValue() == null) {
                 continue;
             }
-            sb.append(sb.isEmpty() ? '?' : '&');
-            sb.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
+            sb.append(sb.length() == 0 ? '?' : '&');
+            sb.append(Java8.urlEncode(entry.getKey()))
                     .append('=')
-                    .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
+                    .append(Java8.urlEncode(entry.getValue()));
         }
         return sb.toString();
     }

@@ -1,32 +1,142 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
- * Request body for {@code POST /v2/tenants/{slug}/identity-providers/saml}.
- *
- * @param idpRef immutable identity-provider reference
- * @param name human-readable provider name
- * @param metadataUrl optional SAML metadata URL
- * @param metadataXml optional inline SAML metadata XML
- * @param binding SAML binding
- * @param withSignedRequest optional flag to sign authentication requests
- * @param nameIdFormat SAML NameID format
- * @param transientMappingAttributeName optional attribute mapped to transient NameIDs
- * @param federatedLogoutEnabled optional flag to enable federated logout
- * @param signatureAlgorithm SAML signature algorithm
- * @param providerOptions optional provider-specific options
+ * Request body for <code>POST /v2/tenants/{slug}/identity-providers/saml</code>.
  */
-public record CreateTenantSamlIdentityProviderRequest(
-        String idpRef,
-        String name,
-        String metadataUrl,
-        String metadataXml,
-        SamlBinding binding,
-        Boolean withSignedRequest,
-        SamlNameIdFormat nameIdFormat,
-        String transientMappingAttributeName,
-        Boolean federatedLogoutEnabled,
-        SamlSignatureAlgorithm signatureAlgorithm,
-        ProviderOptions providerOptions) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateTenantSamlIdentityProviderRequest {
+    private final String idpRef;
+    private final String name;
+    private final String metadataUrl;
+    private final String metadataXml;
+    private final SamlBinding binding;
+    private final Boolean withSignedRequest;
+    private final SamlNameIdFormat nameIdFormat;
+    private final String transientMappingAttributeName;
+    private final Boolean federatedLogoutEnabled;
+    private final SamlSignatureAlgorithm signatureAlgorithm;
+    private final ProviderOptions providerOptions;
+
+    /** immutable identity-provider reference */
+    public String idpRef() {
+        return idpRef;
+    }
+
+    /** human-readable provider name */
+    public String name() {
+        return name;
+    }
+
+    /** optional SAML metadata URL */
+    public String metadataUrl() {
+        return metadataUrl;
+    }
+
+    /** optional inline SAML metadata XML */
+    public String metadataXml() {
+        return metadataXml;
+    }
+
+    /** SAML binding */
+    public SamlBinding binding() {
+        return binding;
+    }
+
+    /** optional flag to sign authentication requests */
+    public Boolean withSignedRequest() {
+        return withSignedRequest;
+    }
+
+    /** SAML NameID format */
+    public SamlNameIdFormat nameIdFormat() {
+        return nameIdFormat;
+    }
+
+    /** optional attribute mapped to transient NameIDs */
+    public String transientMappingAttributeName() {
+        return transientMappingAttributeName;
+    }
+
+    /** optional flag to enable federated logout */
+    public Boolean federatedLogoutEnabled() {
+        return federatedLogoutEnabled;
+    }
+
+    /** SAML signature algorithm */
+    public SamlSignatureAlgorithm signatureAlgorithm() {
+        return signatureAlgorithm;
+    }
+
+    /** optional provider-specific options */
+    public ProviderOptions providerOptions() {
+        return providerOptions;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateTenantSamlIdentityProviderRequest that = (CreateTenantSamlIdentityProviderRequest) o;
+        return Objects.equals(this.idpRef, that.idpRef)
+                && Objects.equals(this.name, that.name)
+                && Objects.equals(this.metadataUrl, that.metadataUrl)
+                && Objects.equals(this.metadataXml, that.metadataXml)
+                && Objects.equals(this.binding, that.binding)
+                && Objects.equals(this.withSignedRequest, that.withSignedRequest)
+                && Objects.equals(this.nameIdFormat, that.nameIdFormat)
+                && Objects.equals(this.transientMappingAttributeName, that.transientMappingAttributeName)
+                && Objects.equals(this.federatedLogoutEnabled, that.federatedLogoutEnabled)
+                && Objects.equals(this.signatureAlgorithm, that.signatureAlgorithm)
+                && Objects.equals(this.providerOptions, that.providerOptions);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idpRef, this.name, this.metadataUrl, this.metadataXml, this.binding, this.withSignedRequest, this.nameIdFormat, this.transientMappingAttributeName, this.federatedLogoutEnabled, this.signatureAlgorithm, this.providerOptions);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateTenantSamlIdentityProviderRequest[" + "idpRef=" + this.idpRef + ", " + "name=" + this.name + ", " + "metadataUrl=" + this.metadataUrl + ", " + "metadataXml=" + this.metadataXml + ", " + "binding=" + this.binding + ", " + "withSignedRequest=" + this.withSignedRequest + ", " + "nameIdFormat=" + this.nameIdFormat + ", " + "transientMappingAttributeName=" + this.transientMappingAttributeName + ", " + "federatedLogoutEnabled=" + this.federatedLogoutEnabled + ", " + "signatureAlgorithm=" + this.signatureAlgorithm + ", " + "providerOptions=" + this.providerOptions + "]";
+    }
+
+    /**
+     * Creates a new CreateTenantSamlIdentityProviderRequest.
+     *
+     * @param idpRef immutable identity-provider reference
+     * @param name human-readable provider name
+     * @param metadataUrl optional SAML metadata URL
+     * @param metadataXml optional inline SAML metadata XML
+     * @param binding SAML binding
+     * @param withSignedRequest optional flag to sign authentication requests
+     * @param nameIdFormat SAML NameID format
+     * @param transientMappingAttributeName optional attribute mapped to transient NameIDs
+     * @param federatedLogoutEnabled optional flag to enable federated logout
+     * @param signatureAlgorithm SAML signature algorithm
+     * @param providerOptions optional provider-specific options
+     */
+    @JsonCreator
+    public CreateTenantSamlIdentityProviderRequest(String idpRef, String name, String metadataUrl, String metadataXml, SamlBinding binding, Boolean withSignedRequest, SamlNameIdFormat nameIdFormat, String transientMappingAttributeName, Boolean federatedLogoutEnabled, SamlSignatureAlgorithm signatureAlgorithm, ProviderOptions providerOptions) {
+        this.idpRef = idpRef;
+        this.name = name;
+        this.metadataUrl = metadataUrl;
+        this.metadataXml = metadataXml;
+        this.binding = binding;
+        this.withSignedRequest = withSignedRequest;
+        this.nameIdFormat = nameIdFormat;
+        this.transientMappingAttributeName = transientMappingAttributeName;
+        this.federatedLogoutEnabled = federatedLogoutEnabled;
+        this.signatureAlgorithm = signatureAlgorithm;
+        this.providerOptions = providerOptions;
+    }
 
     /**
      * Creates a new request builder.

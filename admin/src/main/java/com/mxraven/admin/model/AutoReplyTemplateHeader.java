@@ -1,16 +1,65 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.List;
 
 /**
  * A custom header stored on an auto-reply template.
- *
- * @param name header name
- * @param value header value
  */
-public record AutoReplyTemplateHeader(
-        String name,
-        String value) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class AutoReplyTemplateHeader {
+    private final String name;
+    private final String value;
+
+    /** header name */
+    public String name() {
+        return name;
+    }
+
+    /** header value */
+    public String value() {
+        return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        AutoReplyTemplateHeader that = (AutoReplyTemplateHeader) o;
+        return Objects.equals(this.name, that.name)
+                && Objects.equals(this.value, that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.name, this.value);
+    }
+
+    @Override
+    public String toString() {
+        return "AutoReplyTemplateHeader[" + "name=" + this.name + ", " + "value=" + this.value + "]";
+    }
+
+    /**
+     * Creates a new AutoReplyTemplateHeader.
+     *
+     * @param name header name
+     * @param value header value
+     */
+    @JsonCreator
+    public AutoReplyTemplateHeader(String name, String value) {
+        this.name = name;
+        this.value = value;
+    }
 
     static void validateList(List<AutoReplyTemplateHeader> headers, boolean required) {
         if (headers == null) {
@@ -24,7 +73,7 @@ public record AutoReplyTemplateHeader(
         }
         for (int index = 0; index < headers.size(); index++) {
             AutoReplyTemplateHeader header = headers.get(index);
-            if (header == null || header.name() == null || header.name().isBlank()) {
+            if (header == null || header.name() == null || Java8.isBlank(header.name())) {
                 throw new IllegalArgumentException("headers[" + index + "].name is required");
             }
             if (header.name().length() > 255) {

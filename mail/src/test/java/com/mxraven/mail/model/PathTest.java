@@ -1,5 +1,7 @@
 package com.mxraven.mail.model;
 
+import com.mxraven.mail.internal.Java8;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -15,7 +17,7 @@ class PathTest {
         Path path = Path.of("alice@example.com");
         assertFalse(path.isNull());
         assertEquals("<alice@example.com>", path.toString());
-        assertEquals(List.of(), path.sourceRoutes());
+        assertEquals(Java8.list(), path.sourceRoutes());
     }
 
     @Test
@@ -27,14 +29,14 @@ class PathTest {
 
     @Test
     void keepsSourceRoutes() {
-        Path path = new Path(MailboxAddress.of("a@b.com"), List.of("route.example"));
-        assertEquals(List.of("route.example"), path.sourceRoutes());
+        Path path = new Path(MailboxAddress.of("a@b.com"), Java8.list("route.example"));
+        assertEquals(Java8.list("route.example"), path.sourceRoutes());
     }
 
     @Test
     void defaultsNullComponents() {
         Path path = new Path(null, null);
         assertTrue(path.isNull());
-        assertEquals(List.of(), path.sourceRoutes());
+        assertEquals(Java8.list(), path.sourceRoutes());
     }
 }

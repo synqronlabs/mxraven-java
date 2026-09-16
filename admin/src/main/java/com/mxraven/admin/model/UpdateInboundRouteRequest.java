@@ -1,15 +1,62 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * Request body for
- * {@code PUT /v2/tenants/{slug}/inbound-routes/{route_id}}.
- *
- * @param mtaListenerId identifier of the MTA listener that routes inbound mail
- * @param domainName inbound domain name
+ * <code>PUT /v2/tenants/{slug}/inbound-routes/{route_id}</code>.
  */
-public record UpdateInboundRouteRequest(
-        String mtaListenerId,
-        String domainName) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class UpdateInboundRouteRequest {
+    private final String mtaListenerId;
+    private final String domainName;
+
+    /** identifier of the MTA listener that routes inbound mail */
+    public String mtaListenerId() {
+        return mtaListenerId;
+    }
+
+    /** inbound domain name */
+    public String domainName() {
+        return domainName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        UpdateInboundRouteRequest that = (UpdateInboundRouteRequest) o;
+        return Objects.equals(this.mtaListenerId, that.mtaListenerId)
+                && Objects.equals(this.domainName, that.domainName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.mtaListenerId, this.domainName);
+    }
+
+    @Override
+    public String toString() {
+        return "UpdateInboundRouteRequest[" + "mtaListenerId=" + this.mtaListenerId + ", " + "domainName=" + this.domainName + "]";
+    }
+
+    /**
+     * Creates a new UpdateInboundRouteRequest.
+     *
+     * @param mtaListenerId identifier of the MTA listener that routes inbound mail
+     * @param domainName inbound domain name
+     */
+    @JsonCreator
+    public UpdateInboundRouteRequest(String mtaListenerId, String domainName) {
+        this.mtaListenerId = mtaListenerId;
+        this.domainName = domainName;
+    }
 
     /**
      * Creates a new request builder.

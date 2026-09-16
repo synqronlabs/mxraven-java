@@ -1,5 +1,7 @@
 package com.mxraven.mail.mime;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.mxraven.mail.model.Headers;
 import com.mxraven.mail.model.MailboxAddress;
 
@@ -16,14 +18,14 @@ import java.util.Optional;
  * A convenience view of a parsed email: decoded common headers plus the text,
  * HTML, and attachment content found anywhere in the MIME tree.
  *
- * <pre>{@code
+ * <pre>
  * ParsedEmail email = ParsedEmail.parse(rawBytes);
  * System.out.println(email.subject());
  * email.textBody().ifPresent(System.out::println);
  * for (Attachment file : email.attachments()) {
- *     Files.write(Path.of(file.filename()), file.data());
+ *     Files.write(Paths.get(file.filename()), file.data());
  * }
- * }</pre>
+ * </pre>
  *
  * <p>For full control over the MIME structure use {@link #mime()} or
  * {@link MimeParser} directly.
@@ -36,7 +38,7 @@ public final class ParsedEmail {
         this.root = root;
         List<MimePart> collected = new ArrayList<>();
         collectLeaves(root, collected);
-        this.leaves = List.copyOf(collected);
+        this.leaves = Java8.copyList(collected);
     }
 
     /**
@@ -171,7 +173,7 @@ public final class ParsedEmail {
                     part.contentId().orElse(null),
                     part.decodedBody()));
         }
-        return List.copyOf(out);
+        return Java8.copyList(out);
     }
 
     private Optional<String> firstBody(String mediaType) {
@@ -219,8 +221,8 @@ public final class ParsedEmail {
     }
 
     private static List<MailboxAddress> addresses(String headerValue) {
-        if (headerValue == null || headerValue.isBlank()) {
-            return List.of();
+        if (headerValue == null || Java8.isBlank(headerValue)) {
+            return Java8.list();
         }
         List<MailboxAddress> out = new ArrayList<>();
         for (String token : splitAddresses(headerValue)) {
@@ -244,7 +246,7 @@ public final class ParsedEmail {
             out.add(new MailboxAddress(base.localPart(), base.domain(),
                     display == null || display.isEmpty() ? null : display));
         }
-        return List.copyOf(out);
+        return Java8.copyList(out);
     }
 
     /** Splits an address list on commas outside quotes and angle brackets. */

@@ -1,5 +1,11 @@
 package com.mxraven.mail.mime;
 
+import com.mxraven.mail.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,13 +17,59 @@ import java.util.Map;
  * type (or disposition token) plus its parameters, with RFC 2231 extended
  * parameter values decoded.
  */
-record MediaType(String type, Map<String, String> parameters) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+final class MediaType {
+    private final String type;
+    private final Map<String, String> parameters;
+
+    public String type() {
+        return type;
+    }
+
+    public Map<String, String> parameters() {
+        return parameters;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        MediaType that = (MediaType) o;
+        return Objects.equals(this.type, that.type)
+                && Objects.equals(this.parameters, that.parameters);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.type, this.parameters);
+    }
+
+    @Override
+    public String toString() {
+        return "MediaType[" + "type=" + this.type + ", " + "parameters=" + this.parameters + "]";
+    }
+
+    /**
+     * Creates a new MediaType.
+     *
+     * @param type
+     * @param parameters
+     */
+    @JsonCreator
+    public MediaType(String type, Map<String, String> parameters) {
+        this.type = type;
+        this.parameters = parameters;
+    }
 
     private static final String DEFAULT_TYPE = "text/plain";
 
     static MediaType parse(String value) {
-        if (value == null || value.isBlank()) {
-            return new MediaType(DEFAULT_TYPE, Map.of());
+        if (value == null || Java8.isBlank(value)) {
+            return new MediaType(DEFAULT_TYPE, Java8.map());
         }
         List<String> segments = splitTopLevel(value);
         String type = segments.get(0).trim().toLowerCase(Locale.ROOT);

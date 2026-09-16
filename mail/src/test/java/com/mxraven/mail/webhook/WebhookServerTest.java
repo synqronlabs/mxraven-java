@@ -5,14 +5,15 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -40,11 +41,14 @@ class WebhookServerTest {
                 .build();
     }
 
-    private static HttpResponse<String> post(URI uri, Map<String, String> headers, byte[] body) throws Exception {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body));
+    private static int post(URI uri, Map<String, String> headers, byte[] body) throws Exception {
+        Request.Builder builder = new Request.Builder()
+                .url(uri.toString())
+                .post(RequestBody.create(body, null));
         headers.forEach(builder::header);
-        return HttpClient.newHttpClient().send(builder.build(), HttpResponse.BodyHandlers.ofString());
+        try (okhttp3.Response response = new OkHttpClient().newCall(builder.build()).execute()) {
+            return response.code();
+        }
     }
 
     @Test
@@ -57,9 +61,9 @@ class WebhookServerTest {
             byte[] body = bytes(INBOUND_BODY);
             Map<String, String> headers = signedHeaders("POST", uri, body, now(), "task-123", SECRET);
 
-            HttpResponse<String> response = post(uri, headers, body);
+            int status = post(uri, headers, body);
 
-            assertEquals(204, response.statusCode());
+            assertEquals(204, status);
             assertEquals(1, received.size());
             assertInstanceOf(InboundEmail.class, received.get(0));
         }
@@ -75,9 +79,9 @@ class WebhookServerTest {
             byte[] body = bytes(INBOUND_BODY);
             Map<String, String> headers = signedHeaders("POST", uri, body, now(), "task-123", SECRET);
 
-            HttpResponse<String> response = post(uri, headers, bytes(INBOUND_BODY + " "));
+            int status = post(uri, headers, bytes(INBOUND_BODY + " "));
 
-            assertEquals(401, response.statusCode());
+            assertEquals(401, status);
             assertEquals(0, received.size());
         }
     }
@@ -86,14 +90,14 @@ class WebhookServerTest {
     void printsADevelopmentBannerByDefault() throws Exception {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream original = System.err;
-        System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));
+        System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8.name()));
         try (WebhookServer server = server(event -> { })) {
             server.start();
         } finally {
             System.setErr(original);
         }
 
-        String output = captured.toString(StandardCharsets.UTF_8);
+        String output = new String(captured.toByteArray(), StandardCharsets.UTF_8);
         assertTrue(output.contains("Running on http://127.0.0.1:"), output);
         assertTrue(output.contains("development server"), output);
     }
@@ -102,7 +106,7 @@ class WebhookServerTest {
     void bannerCanBeDisabled() throws Exception {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream original = System.err;
-        System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));
+        System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8.name()));
         try (WebhookServer server = WebhookServer.builder()
                 .port(0)
                 .path("/mxraven/webhook")
@@ -117,6 +121,6 @@ class WebhookServerTest {
             System.setErr(original);
         }
 
-        assertEquals("", captured.toString(StandardCharsets.UTF_8));
+        assertEquals("", new String(captured.toByteArray(), StandardCharsets.UTF_8));
     }
 }

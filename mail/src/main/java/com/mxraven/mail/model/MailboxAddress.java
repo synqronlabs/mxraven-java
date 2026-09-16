@@ -1,21 +1,66 @@
 package com.mxraven.mail.model;
 
+import com.mxraven.mail.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * An RFC 5322 mailbox: a local part, a domain, and an optional display name.
- *
- * @param localPart   the part before the {@code @}; a {@code null} value is
- *                    replaced with {@code ""}
- * @param domain      the part after the {@code @}; a {@code null} value is
- *                    replaced with {@code ""}
- * @param displayName the display name, or {@code null}
  */
-public record MailboxAddress(String localPart, String domain, String displayName) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class MailboxAddress {
+    private final String localPart;
+    private final String domain;
+    private final String displayName;
+
+    /** the part before the {@code @}; a {@code null} value is replaced with {@code ""} */
+    public String localPart() {
+        return localPart;
+    }
+
+    /** the part after the {@code @}; a {@code null} value is replaced with {@code ""} */
+    public String domain() {
+        return domain;
+    }
+
+    /** the display name, or {@code null} */
+    public String displayName() {
+        return displayName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        MailboxAddress that = (MailboxAddress) o;
+        return Objects.equals(this.localPart, that.localPart)
+                && Objects.equals(this.domain, that.domain)
+                && Objects.equals(this.displayName, that.displayName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.localPart, this.domain, this.displayName);
+    }
+
     /**
      * Creates a mailbox address, replacing {@code null} parts with empty strings.
      */
-    public MailboxAddress {
+    @JsonCreator
+    public MailboxAddress(String localPart, String domain, String displayName) {
+
         localPart = localPart == null ? "" : localPart;
         domain = domain == null ? "" : domain;
+    
+        this.localPart = localPart;
+        this.domain = domain;
+        this.displayName = displayName;
     }
 
     /**
@@ -61,7 +106,7 @@ public record MailboxAddress(String localPart, String domain, String displayName
      *         {@code null} or blank
      */
     public static MailboxAddress of(String address) {
-        if (address == null || address.isBlank()) {
+        if (address == null || Java8.isBlank(address)) {
             return new MailboxAddress("", "", null);
         }
         String value = address.trim();

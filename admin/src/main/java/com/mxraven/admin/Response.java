@@ -1,13 +1,16 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mxraven.admin.exception.ApiException;
 
-import java.net.http.HttpHeaders;
 import java.util.List;
 import java.util.Optional;
+
+import okhttp3.Headers;
 
 /**
  * A successful control-plane HTTP response with its status, headers, and decoded
@@ -16,11 +19,11 @@ import java.util.Optional;
  */
 public final class Response {
     private final int status;
-    private final HttpHeaders headers;
+    private final Headers headers;
     private final JsonNode body;
     private final ObjectMapper json;
 
-    Response(int status, HttpHeaders headers, JsonNode body, ObjectMapper json) {
+    Response(int status, Headers headers, JsonNode body, ObjectMapper json) {
         this.status = status;
         this.headers = headers;
         this.body = body;
@@ -41,7 +44,7 @@ public final class Response {
      *
      * @return the response headers
      */
-    public HttpHeaders headers() {
+    public Headers headers() {
         return headers;
     }
 
@@ -52,7 +55,7 @@ public final class Response {
      * @return the first header value, or empty when the header is absent
      */
     public Optional<String> header(String name) {
-        return headers.firstValue(name);
+        return Optional.ofNullable(headers.get(name));
     }
 
     /**
@@ -87,7 +90,7 @@ public final class Response {
      */
     public <T> List<T> listOf(Class<T> elementType) {
         if (body == null || body.isNull()) {
-            return List.of();
+            return Java8.list();
         }
         JavaType listType = json.getTypeFactory().constructCollectionType(List.class, elementType);
         return json.convertValue(body, listType);

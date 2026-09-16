@@ -11,13 +11,13 @@ import java.io.IOException;
  * Typed filter and pagination builder for {@link DomainsClient#list()}. Filters
  * are combined with AND; results are ordered by case-insensitive domain name.
  *
- * <pre>{@code
- * Paged<Domain> verified = ws.domains().query()
+ * <pre>
+ * Paged&lt;Domain&gt; verified = ws.domains().query()
  *         .status(DomainStatus.VERIFIED)
  *         .dkimVerified(true)
  *         .search("example.com")
  *         .list();
- * }</pre>
+ * </pre>
  *
  * <p>Obtain one from {@link DomainsClient#query()}. Instances are not thread-safe.
  */

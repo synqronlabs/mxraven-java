@@ -1,36 +1,160 @@
 package com.mxraven.admin.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 /**
  * LDAP attribute-name mapping.
- *
- * @param idAttribute LDAP attribute mapped to the identifier
- * @param firstNameAttribute LDAP attribute mapped to the given name
- * @param lastNameAttribute LDAP attribute mapped to the family name
- * @param displayNameAttribute LDAP attribute mapped to the display name
- * @param nickNameAttribute LDAP attribute mapped to the nickname
- * @param preferredUsernameAttribute LDAP attribute mapped to the preferred username
- * @param emailAttribute LDAP attribute mapped to the email address
- * @param emailVerifiedAttribute LDAP attribute mapped to the email verification flag
- * @param phoneAttribute LDAP attribute mapped to the phone number
- * @param phoneVerifiedAttribute LDAP attribute mapped to the phone verification flag
- * @param preferredLanguageAttribute LDAP attribute mapped to the preferred language
- * @param avatarUrlAttribute LDAP attribute mapped to the avatar URL
- * @param profileAttribute LDAP attribute mapped to the profile
  */
-public record LdapAttributes(
-        String idAttribute,
-        String firstNameAttribute,
-        String lastNameAttribute,
-        String displayNameAttribute,
-        String nickNameAttribute,
-        String preferredUsernameAttribute,
-        String emailAttribute,
-        String emailVerifiedAttribute,
-        String phoneAttribute,
-        String phoneVerifiedAttribute,
-        String preferredLanguageAttribute,
-        String avatarUrlAttribute,
-        String profileAttribute) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class LdapAttributes {
+    private final String idAttribute;
+    private final String firstNameAttribute;
+    private final String lastNameAttribute;
+    private final String displayNameAttribute;
+    private final String nickNameAttribute;
+    private final String preferredUsernameAttribute;
+    private final String emailAttribute;
+    private final String emailVerifiedAttribute;
+    private final String phoneAttribute;
+    private final String phoneVerifiedAttribute;
+    private final String preferredLanguageAttribute;
+    private final String avatarUrlAttribute;
+    private final String profileAttribute;
+
+    /** LDAP attribute mapped to the identifier */
+    public String idAttribute() {
+        return idAttribute;
+    }
+
+    /** LDAP attribute mapped to the given name */
+    public String firstNameAttribute() {
+        return firstNameAttribute;
+    }
+
+    /** LDAP attribute mapped to the family name */
+    public String lastNameAttribute() {
+        return lastNameAttribute;
+    }
+
+    /** LDAP attribute mapped to the display name */
+    public String displayNameAttribute() {
+        return displayNameAttribute;
+    }
+
+    /** LDAP attribute mapped to the nickname */
+    public String nickNameAttribute() {
+        return nickNameAttribute;
+    }
+
+    /** LDAP attribute mapped to the preferred username */
+    public String preferredUsernameAttribute() {
+        return preferredUsernameAttribute;
+    }
+
+    /** LDAP attribute mapped to the email address */
+    public String emailAttribute() {
+        return emailAttribute;
+    }
+
+    /** LDAP attribute mapped to the email verification flag */
+    public String emailVerifiedAttribute() {
+        return emailVerifiedAttribute;
+    }
+
+    /** LDAP attribute mapped to the phone number */
+    public String phoneAttribute() {
+        return phoneAttribute;
+    }
+
+    /** LDAP attribute mapped to the phone verification flag */
+    public String phoneVerifiedAttribute() {
+        return phoneVerifiedAttribute;
+    }
+
+    /** LDAP attribute mapped to the preferred language */
+    public String preferredLanguageAttribute() {
+        return preferredLanguageAttribute;
+    }
+
+    /** LDAP attribute mapped to the avatar URL */
+    public String avatarUrlAttribute() {
+        return avatarUrlAttribute;
+    }
+
+    /** LDAP attribute mapped to the profile */
+    public String profileAttribute() {
+        return profileAttribute;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        LdapAttributes that = (LdapAttributes) o;
+        return Objects.equals(this.idAttribute, that.idAttribute)
+                && Objects.equals(this.firstNameAttribute, that.firstNameAttribute)
+                && Objects.equals(this.lastNameAttribute, that.lastNameAttribute)
+                && Objects.equals(this.displayNameAttribute, that.displayNameAttribute)
+                && Objects.equals(this.nickNameAttribute, that.nickNameAttribute)
+                && Objects.equals(this.preferredUsernameAttribute, that.preferredUsernameAttribute)
+                && Objects.equals(this.emailAttribute, that.emailAttribute)
+                && Objects.equals(this.emailVerifiedAttribute, that.emailVerifiedAttribute)
+                && Objects.equals(this.phoneAttribute, that.phoneAttribute)
+                && Objects.equals(this.phoneVerifiedAttribute, that.phoneVerifiedAttribute)
+                && Objects.equals(this.preferredLanguageAttribute, that.preferredLanguageAttribute)
+                && Objects.equals(this.avatarUrlAttribute, that.avatarUrlAttribute)
+                && Objects.equals(this.profileAttribute, that.profileAttribute);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.idAttribute, this.firstNameAttribute, this.lastNameAttribute, this.displayNameAttribute, this.nickNameAttribute, this.preferredUsernameAttribute, this.emailAttribute, this.emailVerifiedAttribute, this.phoneAttribute, this.phoneVerifiedAttribute, this.preferredLanguageAttribute, this.avatarUrlAttribute, this.profileAttribute);
+    }
+
+    @Override
+    public String toString() {
+        return "LdapAttributes[" + "idAttribute=" + this.idAttribute + ", " + "firstNameAttribute=" + this.firstNameAttribute + ", " + "lastNameAttribute=" + this.lastNameAttribute + ", " + "displayNameAttribute=" + this.displayNameAttribute + ", " + "nickNameAttribute=" + this.nickNameAttribute + ", " + "preferredUsernameAttribute=" + this.preferredUsernameAttribute + ", " + "emailAttribute=" + this.emailAttribute + ", " + "emailVerifiedAttribute=" + this.emailVerifiedAttribute + ", " + "phoneAttribute=" + this.phoneAttribute + ", " + "phoneVerifiedAttribute=" + this.phoneVerifiedAttribute + ", " + "preferredLanguageAttribute=" + this.preferredLanguageAttribute + ", " + "avatarUrlAttribute=" + this.avatarUrlAttribute + ", " + "profileAttribute=" + this.profileAttribute + "]";
+    }
+
+    /**
+     * Creates a new LdapAttributes.
+     *
+     * @param idAttribute LDAP attribute mapped to the identifier
+     * @param firstNameAttribute LDAP attribute mapped to the given name
+     * @param lastNameAttribute LDAP attribute mapped to the family name
+     * @param displayNameAttribute LDAP attribute mapped to the display name
+     * @param nickNameAttribute LDAP attribute mapped to the nickname
+     * @param preferredUsernameAttribute LDAP attribute mapped to the preferred username
+     * @param emailAttribute LDAP attribute mapped to the email address
+     * @param emailVerifiedAttribute LDAP attribute mapped to the email verification flag
+     * @param phoneAttribute LDAP attribute mapped to the phone number
+     * @param phoneVerifiedAttribute LDAP attribute mapped to the phone verification flag
+     * @param preferredLanguageAttribute LDAP attribute mapped to the preferred language
+     * @param avatarUrlAttribute LDAP attribute mapped to the avatar URL
+     * @param profileAttribute LDAP attribute mapped to the profile
+     */
+    @JsonCreator
+    public LdapAttributes(String idAttribute, String firstNameAttribute, String lastNameAttribute, String displayNameAttribute, String nickNameAttribute, String preferredUsernameAttribute, String emailAttribute, String emailVerifiedAttribute, String phoneAttribute, String phoneVerifiedAttribute, String preferredLanguageAttribute, String avatarUrlAttribute, String profileAttribute) {
+        this.idAttribute = idAttribute;
+        this.firstNameAttribute = firstNameAttribute;
+        this.lastNameAttribute = lastNameAttribute;
+        this.displayNameAttribute = displayNameAttribute;
+        this.nickNameAttribute = nickNameAttribute;
+        this.preferredUsernameAttribute = preferredUsernameAttribute;
+        this.emailAttribute = emailAttribute;
+        this.emailVerifiedAttribute = emailVerifiedAttribute;
+        this.phoneAttribute = phoneAttribute;
+        this.phoneVerifiedAttribute = phoneVerifiedAttribute;
+        this.preferredLanguageAttribute = preferredLanguageAttribute;
+        this.avatarUrlAttribute = avatarUrlAttribute;
+        this.profileAttribute = profileAttribute;
+    }
 
     /**
      * Returns a new {@link Builder}.

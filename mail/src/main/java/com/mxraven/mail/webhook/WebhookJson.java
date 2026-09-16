@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 /**
  * Shared Jackson configuration for webhook payloads. Fields use
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
  */
 final class WebhookJson {
     static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new ParameterNamesModule())
             .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
             .setDefaultPropertyInclusion(JsonInclude.Value.construct(
                     JsonInclude.Include.NON_NULL, JsonInclude.Include.NON_NULL))

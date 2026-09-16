@@ -1,5 +1,7 @@
 package com.mxraven.mail.webhook;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -19,10 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * A small, dependency-free HTTP server that serves a {@link WebhookHandler} in a
  * standalone process or worker.
  *
- * <pre>{@code
+ * <pre>
  * WebhookHandler handler = WebhookHandler.builder()
  *         .verifier(WebhookVerifier.builder().secret(signingSecret).build())
- *         .listener(event -> app.handle(event))
+ *         .listener(event -&gt; app.handle(event))
  *         .build();
  *
  * try (WebhookServer server = WebhookServer.builder()
@@ -33,10 +35,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     server.start();
  *     // ...
  * }
- * }</pre>
+ * </pre>
  *
- * <p>It only owns the HTTP plumbing: it reads {@code (method, uri, headers,
- * body)}, delegates to {@link WebhookHandler#handle}, and writes the resulting
+ * <p>It only owns the HTTP plumbing: it reads <pre> (method, uri, headers,
+ * body)</pre>, delegates to {@link WebhookHandler#handle}, and writes the resulting
  * status. It is built on the JDK's {@link HttpServer} and adds no dependency.
  * Applications that already own an HTTP stack (Spring, Jakarta, Lambda, …)
  * should skip this class and adapt their framework directly to
@@ -128,15 +130,15 @@ public final class WebhookServer implements AutoCloseable {
             server.stop(0);
             server = null;
         }
-        if (ownsExecutor && executor instanceof ExecutorService service) {
-            service.shutdownNow();
+        if (ownsExecutor && executor instanceof ExecutorService) {
+            ((ExecutorService) executor).shutdownNow();
         }
     }
 
     private void serve(HttpExchange exchange) throws IOException {
         int status;
         try {
-            byte[] body = exchange.getRequestBody().readAllBytes();
+            byte[] body = Java8.readAllBytes(exchange.getRequestBody());
             Map<String, String> headers = headers(exchange);
             URI uri = requestUri(exchange, headers);
             status = handler.handle(exchange.getRequestMethod(), uri, headers, body).status();
@@ -160,13 +162,13 @@ public final class WebhookServer implements AutoCloseable {
 
     private static URI requestUri(HttpExchange exchange, Map<String, String> headers) {
         String scheme = first(headers, "X-Forwarded-Proto");
-        if (scheme == null || scheme.isBlank()) {
+        if (scheme == null || Java8.isBlank(scheme)) {
             scheme = "http";
         } else if (scheme.contains(",")) {
             scheme = scheme.substring(0, scheme.indexOf(',')).trim();
         }
         String host = first(headers, "Host");
-        if (host == null || host.isBlank()) {
+        if (host == null || Java8.isBlank(host)) {
             InetSocketAddress local = exchange.getLocalAddress();
             host = local.getHostString() + ":" + local.getPort();
         }
@@ -203,7 +205,7 @@ public final class WebhookServer implements AutoCloseable {
          * @throws IllegalArgumentException when {@code host} is {@code null} or blank
          */
         public Builder host(String host) {
-            if (host == null || host.isBlank()) {
+            if (host == null || Java8.isBlank(host)) {
                 throw new IllegalArgumentException("host must not be empty");
             }
             this.host = host;

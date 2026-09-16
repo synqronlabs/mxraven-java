@@ -1,5 +1,7 @@
 package com.mxraven.mail.mime;
 
+import com.mxraven.mail.internal.Java8;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -144,43 +146,83 @@ public enum MimeType {
             return APPLICATION_OCTET_STREAM;
         }
         String extension = filename.substring(dot + 1).toLowerCase(Locale.ROOT);
-        return switch (extension) {
-            case "txt", "text", "log" -> TEXT_PLAIN;
-            case "html", "htm" -> TEXT_HTML;
-            case "css" -> TEXT_CSS;
-            case "csv" -> TEXT_CSV;
-            case "md", "markdown" -> TEXT_MARKDOWN;
-            case "ics" -> TEXT_CALENDAR;
-            case "vcf" -> TEXT_VCARD;
-            case "json" -> APPLICATION_JSON;
-            case "xml" -> APPLICATION_XML;
-            case "pdf" -> APPLICATION_PDF;
-            case "zip" -> APPLICATION_ZIP;
-            case "gz" -> APPLICATION_GZIP;
-            case "tar" -> APPLICATION_TAR;
-            case "doc" -> APPLICATION_MSWORD;
-            case "docx" -> APPLICATION_DOCX;
-            case "xls" -> APPLICATION_XLS;
-            case "xlsx" -> APPLICATION_XLSX;
-            case "ppt" -> APPLICATION_PPT;
-            case "pptx" -> APPLICATION_PPTX;
-            case "odt" -> APPLICATION_ODT;
-            case "ods" -> APPLICATION_ODS;
-            case "png" -> IMAGE_PNG;
-            case "jpg", "jpeg" -> IMAGE_JPEG;
-            case "gif" -> IMAGE_GIF;
-            case "webp" -> IMAGE_WEBP;
-            case "bmp" -> IMAGE_BMP;
-            case "svg" -> IMAGE_SVG;
-            case "ico" -> IMAGE_ICON;
-            case "mp3" -> AUDIO_MPEG;
-            case "wav" -> AUDIO_WAV;
-            case "ogg" -> AUDIO_OGG;
-            case "mp4" -> VIDEO_MP4;
-            case "webm" -> VIDEO_WEBM;
-            case "eml" -> MESSAGE_RFC822;
-            default -> APPLICATION_OCTET_STREAM;
-        };
+        switch (extension) {
+            case "txt":
+            case "text":
+            case "log":
+                return TEXT_PLAIN;
+            case "html":
+            case "htm":
+                return TEXT_HTML;
+            case "css":
+                return TEXT_CSS;
+            case "csv":
+                return TEXT_CSV;
+            case "md":
+            case "markdown":
+                return TEXT_MARKDOWN;
+            case "ics":
+                return TEXT_CALENDAR;
+            case "vcf":
+                return TEXT_VCARD;
+            case "json":
+                return APPLICATION_JSON;
+            case "xml":
+                return APPLICATION_XML;
+            case "pdf":
+                return APPLICATION_PDF;
+            case "zip":
+                return APPLICATION_ZIP;
+            case "gz":
+                return APPLICATION_GZIP;
+            case "tar":
+                return APPLICATION_TAR;
+            case "doc":
+                return APPLICATION_MSWORD;
+            case "docx":
+                return APPLICATION_DOCX;
+            case "xls":
+                return APPLICATION_XLS;
+            case "xlsx":
+                return APPLICATION_XLSX;
+            case "ppt":
+                return APPLICATION_PPT;
+            case "pptx":
+                return APPLICATION_PPTX;
+            case "odt":
+                return APPLICATION_ODT;
+            case "ods":
+                return APPLICATION_ODS;
+            case "png":
+                return IMAGE_PNG;
+            case "jpg":
+            case "jpeg":
+                return IMAGE_JPEG;
+            case "gif":
+                return IMAGE_GIF;
+            case "webp":
+                return IMAGE_WEBP;
+            case "bmp":
+                return IMAGE_BMP;
+            case "svg":
+                return IMAGE_SVG;
+            case "ico":
+                return IMAGE_ICON;
+            case "mp3":
+                return AUDIO_MPEG;
+            case "wav":
+                return AUDIO_WAV;
+            case "ogg":
+                return AUDIO_OGG;
+            case "mp4":
+                return VIDEO_MP4;
+            case "webm":
+                return VIDEO_WEBM;
+            case "eml":
+                return MESSAGE_RFC822;
+            default:
+                return APPLICATION_OCTET_STREAM;
+        }
     }
 
     /**
@@ -198,7 +240,7 @@ public enum MimeType {
         }
         try {
             String probed = Files.probeContentType(path);
-            if (probed != null && !probed.isBlank()) {
+            if (probed != null && !Java8.isBlank(probed)) {
                 return fromWire(probed).orElse(APPLICATION_OCTET_STREAM);
             }
         } catch (IOException ignored) {

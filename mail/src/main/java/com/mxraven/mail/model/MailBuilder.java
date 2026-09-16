@@ -1,5 +1,11 @@
 package com.mxraven.mail.model;
 
+import com.mxraven.mail.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import com.mxraven.mail.mime.ContentTransferEncoding;
 import com.mxraven.mail.mime.MimeType;
 import com.mxraven.mail.mime.MimeWriter;
@@ -38,11 +44,136 @@ public final class MailBuilder {
     private String htmlBody;
     private final List<PendingAttachment> attachments = new ArrayList<>();
 
-    private record PendingAttachment(String filename, String contentType, byte[] data,
-                                     boolean inline, String contentId) {
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    private static final class PendingAttachment {
+        private final String filename;
+        private final String contentType;
+        private final byte[] data;
+        private final boolean inline;
+        private final String contentId;
+
+        public String filename() {
+            return filename;
+        }
+
+        public String contentType() {
+            return contentType;
+        }
+
+        public byte[] data() {
+            return data;
+        }
+
+        public boolean inline() {
+            return inline;
+        }
+
+        public String contentId() {
+            return contentId;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            PendingAttachment that = (PendingAttachment) o;
+            return Objects.equals(this.filename, that.filename)
+                    && Objects.equals(this.contentType, that.contentType)
+                    && Objects.equals(this.data, that.data)
+                    && this.inline == that.inline
+                    && Objects.equals(this.contentId, that.contentId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.filename, this.contentType, this.data, this.inline, this.contentId);
+        }
+
+        @Override
+        public String toString() {
+            return "PendingAttachment[" + "filename=" + this.filename + ", " + "contentType=" + this.contentType + ", " + "data=" + this.data + ", " + "inline=" + this.inline + ", " + "contentId=" + this.contentId + "]";
+        }
+
+        /**
+         * Creates a new PendingAttachment.
+         *
+         * @param filename
+         * @param contentType
+         * @param data
+         * @param inline
+         * @param contentId
+         */
+        @JsonCreator
+        public PendingAttachment(String filename, String contentType, byte[] data, boolean inline, String contentId) {
+            this.filename = filename;
+            this.contentType = contentType;
+            this.data = data;
+            this.inline = inline;
+            this.contentId = contentId;
+        }
+    
     }
 
-    private record Entity(String contentType, ContentTransferEncoding encoding, byte[] body) {
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    private static final class Entity {
+        private final String contentType;
+        private final ContentTransferEncoding encoding;
+        private final byte[] body;
+
+        public String contentType() {
+            return contentType;
+        }
+
+        public ContentTransferEncoding encoding() {
+            return encoding;
+        }
+
+        public byte[] body() {
+            return body;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Entity that = (Entity) o;
+            return Objects.equals(this.contentType, that.contentType)
+                    && Objects.equals(this.encoding, that.encoding)
+                    && Objects.equals(this.body, that.body);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.contentType, this.encoding, this.body);
+        }
+
+        @Override
+        public String toString() {
+            return "Entity[" + "contentType=" + this.contentType + ", " + "encoding=" + this.encoding + ", " + "body=" + this.body + "]";
+        }
+
+        /**
+         * Creates a new Entity.
+         *
+         * @param contentType
+         * @param encoding
+         * @param body
+         */
+        @JsonCreator
+        public Entity(String contentType, ContentTransferEncoding encoding, byte[] body) {
+            this.contentType = contentType;
+            this.encoding = encoding;
+            this.body = body;
+        }
+    
     }
 
     /**
@@ -407,7 +538,7 @@ public final class MailBuilder {
     }
 
     private static String orDefault(String contentType) {
-        return contentType == null || contentType.isBlank()
+        return contentType == null || Java8.isBlank(contentType)
                 ? MimeType.APPLICATION_OCTET_STREAM.wire()
                 : contentType;
     }
@@ -443,7 +574,7 @@ public final class MailBuilder {
                 .to(all)
                 .build();
 
-        return new Mail(envelope, content, List.of(), Instant.now());
+        return new Mail(envelope, content, Java8.list(), Instant.now());
     }
 
     private Entity topEntity() {
@@ -470,7 +601,7 @@ public final class MailBuilder {
         }
         if (textBody != null && htmlBody != null) {
             String boundary = MimeWriter.newBoundary();
-            List<MimeWriter.Section> sections = List.of(
+            List<MimeWriter.Section> sections = Java8.list(
                     textSection("plain", textBody),
                     textSection("html", htmlBody));
             return new Entity("multipart/alternative; boundary=\"" + boundary + "\"",
@@ -513,11 +644,11 @@ public final class MailBuilder {
         if (!cc.isEmpty()) {
             contentHeaders.add("Cc", joinRecipients(cc));
         }
-        if (contentHeaders.first("Date").isEmpty()) {
+        if (!contentHeaders.first("Date").isPresent()) {
             contentHeaders.add("Date", DateTimeFormatter.RFC_1123_DATE_TIME
                     .format(Instant.now().atZone(ZoneId.systemDefault())));
         }
-        if (contentHeaders.first("Message-ID").isEmpty()) {
+        if (!contentHeaders.first("Message-ID").isPresent()) {
             contentHeaders.add("Message-ID", generateMessageId());
         }
 
@@ -544,7 +675,7 @@ public final class MailBuilder {
         partHeaders.add(new Header("Content-Transfer-Encoding", "base64"));
         partHeaders.add(new Header("Content-Disposition", MimeWriter.contentDisposition(
                 attachment.inline() ? "inline" : "attachment", attachment.filename())));
-        if (attachment.contentId() != null && !attachment.contentId().isBlank()) {
+        if (attachment.contentId() != null && !Java8.isBlank(attachment.contentId())) {
             partHeaders.add(new Header("Content-ID", "<" + attachment.contentId() + ">"));
         }
         return new MimeWriter.Section(partHeaders, MimeWriter.base64(attachment.data()));
@@ -552,7 +683,7 @@ public final class MailBuilder {
 
     private static MimeWriter.Section textSection(String subtype, String text) {
         Entity entity = textEntity(subtype, text);
-        return new MimeWriter.Section(List.of(
+        return new MimeWriter.Section(Java8.list(
                 new Header("Content-Type", entity.contentType()),
                 new Header("Content-Transfer-Encoding", entity.encoding().wire())), entity.body());
     }
@@ -577,7 +708,7 @@ public final class MailBuilder {
     private static String formatAddress(MailboxAddress mailbox) {
         String email = mailbox.toString();
         String displayName = mailbox.displayName();
-        if (displayName == null || displayName.isBlank()) {
+        if (displayName == null || Java8.isBlank(displayName)) {
             return email;
         }
         return MimeWriter.encodeWord(displayName) + " <" + email + ">";

@@ -1,5 +1,7 @@
 package com.mxraven.admin.client;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Paged;
 import com.mxraven.admin.QueryParams;
@@ -81,7 +83,7 @@ public final class AutoReplyTemplatesClient {
     }
 
     private static String encode(String segment) {
-        return URLEncoder.encode(segment, StandardCharsets.UTF_8);
+        return Java8.urlEncode(segment);
     }
 
     /**

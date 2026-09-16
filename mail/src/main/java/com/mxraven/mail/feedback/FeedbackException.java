@@ -1,5 +1,7 @@
 package com.mxraven.mail.feedback;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.mxraven.mail.exception.MxRavenException;
 
 /**
@@ -57,7 +59,7 @@ public final class FeedbackException extends MxRavenException {
 
     private static String message(int statusCode, String detail) {
         StringBuilder builder = new StringBuilder("HTTP ").append(statusCode);
-        if (detail != null && !detail.isBlank()) {
+        if (detail != null && !Java8.isBlank(detail)) {
             builder.append(": ").append(detail);
         }
         return builder.toString();

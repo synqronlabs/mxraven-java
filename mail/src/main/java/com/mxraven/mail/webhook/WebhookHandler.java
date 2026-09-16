@@ -1,5 +1,7 @@
 package com.mxraven.mail.webhook;
 
+import com.mxraven.mail.internal.Java8;
+
 import java.net.URI;
 import java.util.Map;
 
@@ -11,15 +13,15 @@ import java.util.Map;
  * request primitives and map the returned {@link WebhookResult} back to your
  * framework's response:
  *
- * <pre>{@code
+ * <pre>
  * WebhookHandler handler = WebhookHandler.builder()
  *         .verifier(verifier)
- *         .listener(event -> app.handle(event))
+ *         .listener(event -&gt; app.handle(event))
  *         .build();
  *
  * WebhookResult result = handler.handle(method, requestUri, headers, body);
  * response.setStatus(result.status());
- * }</pre>
+ * </pre>
  *
  * <p>Signature and decoding problems are reported as {@link WebhookResult}
  * values, not thrown, so adapters stay small. A runtime exception thrown by the
@@ -69,7 +71,7 @@ public final class WebhookHandler {
         }
 
         String taskId = event.taskId();
-        boolean dedupe = store != null && taskId != null && !taskId.isBlank();
+        boolean dedupe = store != null && taskId != null && !Java8.isBlank(taskId);
         if (dedupe && store.seen(taskId)) {
             return WebhookResult.DUPLICATE;
         }

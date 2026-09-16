@@ -1,28 +1,119 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 /**
- * Request body for {@code POST /v2/tenants/{slug}/storage-integrations}.
- *
- * @param storageRef    immutable human-readable storage reference
- * @param displayName   human-readable integration name
- * @param accessKey     storage access key
- * @param secretKey     storage secret key
- * @param bucketName    target bucket name
- * @param region        bucket region
- * @param endpointUrl   custom S3-compatible endpoint; may be empty for AWS
- * @param forcePathStyle use path-style bucket addressing
+ * Request body for <code>POST /v2/tenants/{slug}/storage-integrations</code>.
  */
-public record CreateStorageIntegrationRequest(
-        String storageRef,
-        String displayName,
-        String accessKey,
-        String secretKey,
-        String bucketName,
-        String region,
-        String endpointUrl,
-        boolean forcePathStyle) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class CreateStorageIntegrationRequest {
+    private final String storageRef;
+    private final String displayName;
+    private final String accessKey;
+    private final String secretKey;
+    private final String bucketName;
+    private final String region;
+    private final String endpointUrl;
+    private final boolean forcePathStyle;
+
+    /** immutable human-readable storage reference */
+    public String storageRef() {
+        return storageRef;
+    }
+
+    /** human-readable integration name */
+    public String displayName() {
+        return displayName;
+    }
+
+    /** storage access key */
+    public String accessKey() {
+        return accessKey;
+    }
+
+    /** storage secret key */
+    public String secretKey() {
+        return secretKey;
+    }
+
+    /** target bucket name */
+    public String bucketName() {
+        return bucketName;
+    }
+
+    /** bucket region */
+    public String region() {
+        return region;
+    }
+
+    /** custom S3-compatible endpoint; may be empty for AWS */
+    public String endpointUrl() {
+        return endpointUrl;
+    }
+
+    /** use path-style bucket addressing */
+    public boolean forcePathStyle() {
+        return forcePathStyle;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        CreateStorageIntegrationRequest that = (CreateStorageIntegrationRequest) o;
+        return Objects.equals(this.storageRef, that.storageRef)
+                && Objects.equals(this.displayName, that.displayName)
+                && Objects.equals(this.accessKey, that.accessKey)
+                && Objects.equals(this.secretKey, that.secretKey)
+                && Objects.equals(this.bucketName, that.bucketName)
+                && Objects.equals(this.region, that.region)
+                && Objects.equals(this.endpointUrl, that.endpointUrl)
+                && this.forcePathStyle == that.forcePathStyle;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.storageRef, this.displayName, this.accessKey, this.secretKey, this.bucketName, this.region, this.endpointUrl, this.forcePathStyle);
+    }
+
+    @Override
+    public String toString() {
+        return "CreateStorageIntegrationRequest[" + "storageRef=" + this.storageRef + ", " + "displayName=" + this.displayName + ", " + "accessKey=" + this.accessKey + ", " + "secretKey=" + this.secretKey + ", " + "bucketName=" + this.bucketName + ", " + "region=" + this.region + ", " + "endpointUrl=" + this.endpointUrl + ", " + "forcePathStyle=" + this.forcePathStyle + "]";
+    }
+
+    /**
+     * Creates a new CreateStorageIntegrationRequest.
+     *
+     * @param storageRef immutable human-readable storage reference
+     * @param displayName human-readable integration name
+     * @param accessKey storage access key
+     * @param secretKey storage secret key
+     * @param bucketName target bucket name
+     * @param region bucket region
+     * @param endpointUrl custom S3-compatible endpoint; may be empty for AWS
+     * @param forcePathStyle use path-style bucket addressing
+     */
+    @JsonCreator
+    public CreateStorageIntegrationRequest(String storageRef, String displayName, String accessKey, String secretKey, String bucketName, String region, String endpointUrl, boolean forcePathStyle) {
+        this.storageRef = storageRef;
+        this.displayName = displayName;
+        this.accessKey = accessKey;
+        this.secretKey = secretKey;
+        this.bucketName = bucketName;
+        this.region = region;
+        this.endpointUrl = endpointUrl;
+        this.forcePathStyle = forcePathStyle;
+    }
 
     /**
      * Creates a new request builder.
@@ -141,7 +232,7 @@ public record CreateStorageIntegrationRequest(
          * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateStorageIntegrationRequest build() {
-            if (storageRef == null || storageRef.isBlank()) {
+            if (storageRef == null || Java8.isBlank(storageRef)) {
                 throw new IllegalArgumentException("storage_ref is required");
             }
             if (storageRef.codePointCount(0, storageRef.length()) > 100) {
@@ -180,7 +271,7 @@ public record CreateStorageIntegrationRequest(
         }
 
         private static void require(String value, String field, int maxLength) {
-            if (value == null || value.isBlank()) {
+            if (value == null || Java8.isBlank(value)) {
                 throw new IllegalArgumentException(field + " is required");
             }
             if (value.codePointCount(0, value.length()) > maxLength) {

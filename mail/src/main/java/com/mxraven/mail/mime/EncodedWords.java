@@ -1,5 +1,7 @@
 package com.mxraven.mail.mime;
 
+import com.mxraven.mail.internal.Java8;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -72,7 +74,7 @@ final class EncodedWords {
 
     static String decodeCharset(byte[] bytes, String charset) {
         Charset resolved;
-        if (charset == null || charset.isBlank()) {
+        if (charset == null || Java8.isBlank(charset)) {
             resolved = StandardCharsets.UTF_8;
         } else {
             try {

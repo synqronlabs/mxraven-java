@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.client.AutoReplyTemplatesClient;
 import com.mxraven.admin.client.DomainsClient;
 import com.mxraven.admin.client.GovernanceClient;
@@ -26,12 +28,12 @@ import java.nio.charset.StandardCharsets;
  * {@link AdminClient#workspace(String)} and reach every tenant-scoped resource
  * family from it, without repeating the tenant slug on every call:
  *
- * <pre>{@code
+ * <pre>
  * Workspace ws = admin.workspace("my-workspace");
  * for (Domain domain : ws.domains().list()) {
  *     System.out.println(domain.domainName() + " " + domain.status());
  * }
- * }</pre>
+ * </pre>
  *
  * <p>The public {@code auth()} family stays on {@link AdminClient}.
  */
@@ -199,6 +201,6 @@ public final class Workspace {
     }
 
     private static String encode(String segment) {
-        return URLEncoder.encode(segment, StandardCharsets.UTF_8);
+        return Java8.urlEncode(segment);
     }
 }

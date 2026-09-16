@@ -7,15 +7,15 @@ package com.mxraven.mail.webhook;
  * invokes after the signature has been verified. It is intentionally
  * framework-agnostic: use pattern matching to reach the payload you care about:
  *
- * <pre>{@code
- * WebhookListener listener = event -> {
+ * <pre>
+ * WebhookListener listener = event -&gt; {
  *     if (event instanceof InboundEmail email) {
  *         app.processInbound(email);
  *     } else if (event instanceof DeliveryStatus status) {
  *         app.recordStatus(status);
  *     }
  * };
- * }</pre>
+ * </pre>
  *
  * <p>A runtime exception thrown here propagates to the caller (or becomes a
  * {@code 500} when served by {@link WebhookServer}), so the sender retries.

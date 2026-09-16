@@ -1,5 +1,7 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
@@ -14,7 +16,7 @@ import java.util.regex.Pattern;
  * <p>The contract models this as free-form JSON, but each {@link TerminalActionType}
  * expects a specific shape. Use the factories rather than building a raw map:
  *
- * <pre>{@code
+ * <pre>
  * CreateListenerRequest.builder()
  *         .displayName("Inbound")
  *         .listenerType(ListenerType.MTA)
@@ -22,7 +24,7 @@ import java.util.regex.Pattern;
  *         .defaultTerminalActionType(TerminalActionType.RELAY)
  *         .defaultTerminalActionPayload(TerminalActionPayload.relay("primary"))
  *         .build();
- * }</pre>
+ * </pre>
  *
  * <p>Factories validate locally to match the control plane, so malformed payloads
  * fail before a request is sent.
@@ -47,7 +49,7 @@ public final class TerminalActionPayload {
      */
     @JsonCreator
     public static TerminalActionPayload of(Map<String, Object> values) {
-        return new TerminalActionPayload(values == null ? Map.of() : values);
+        return new TerminalActionPayload(values == null ? Java8.map() : values);
     }
 
     /**
@@ -132,7 +134,10 @@ public final class TerminalActionPayload {
      */
     public Integer smtpStatusCode() {
         Object value = values.get("smtp_status_code");
-        return value instanceof Number number ? number.intValue() : null;
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return null;
     }
 
     // --- factories -----------------------------------------------------------
@@ -143,7 +148,7 @@ public final class TerminalActionPayload {
      * @return an empty payload
      */
     public static TerminalActionPayload empty() {
-        return of(Map.of());
+        return of(Java8.map());
     }
 
     /**
@@ -167,7 +172,7 @@ public final class TerminalActionPayload {
         if (!UUID.matcher(value).matches()) {
             throw new IllegalArgumentException("pool_id must be a valid UUID");
         }
-        return of(Map.of("pool_id", value));
+        return of(Java8.map("pool_id", value));
     }
 
     /**
@@ -189,7 +194,7 @@ public final class TerminalActionPayload {
      * @throws IllegalArgumentException if {@code relayRef} is missing or invalid
      */
     public static TerminalActionPayload relay(String relayRef) {
-        return of(Map.of("relay_ref", requireRef(relayRef, "relay_ref")));
+        return of(Java8.map("relay_ref", requireRef(relayRef, "relay_ref")));
     }
 
     /**
@@ -200,7 +205,7 @@ public final class TerminalActionPayload {
      * @throws IllegalArgumentException if {@code templateRef} is missing or invalid
      */
     public static TerminalActionPayload autoReply(String templateRef) {
-        return of(Map.of("template_ref", requireRef(templateRef, "template_ref")));
+        return of(Java8.map("template_ref", requireRef(templateRef, "template_ref")));
     }
 
     /**
@@ -220,7 +225,7 @@ public final class TerminalActionPayload {
      */
     public static TerminalActionPayload drop(String auditReason) {
         String reason = trimToNull(auditReason);
-        return reason == null ? drop() : of(Map.of("audit_reason", reason));
+        return reason == null ? drop() : of(Java8.map("audit_reason", reason));
     }
 
     /**
@@ -268,7 +273,10 @@ public final class TerminalActionPayload {
 
     private String stringValue(String key) {
         Object value = values.get(key);
-        return value instanceof String text ? text : null;
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return null;
     }
 
     private static String require(String value, String field) {

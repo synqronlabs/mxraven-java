@@ -1,5 +1,7 @@
 package com.mxraven.admin;
 
+import com.mxraven.admin.internal.Java8;
+
 import com.mxraven.admin.model.CreateTenantIdentityProviderRequest;
 import com.mxraven.admin.model.CreateTenantOAuthIdentityProviderRequest;
 import com.mxraven.admin.model.IdentityProviderType;
@@ -63,14 +65,14 @@ class IdentityProviderRequestTest {
     @Test
     void provisioningRolesAllowEmptyAndAreBounded() {
         assertDoesNotThrow(() -> UpdateIdentityProvisioningRequest.builder()
-                .roles(List.of())
+                .roles(Java8.list())
                 .build());
         assertDoesNotThrow(() -> UpdateIdentityProvisioningRequest.builder().build());
         assertThrows(IllegalArgumentException.class, () -> UpdateIdentityProvisioningRequest.builder()
-                .roles(IntStream.range(0, 65).mapToObj(i -> "role" + i).toList())
+                .roles(IntStream.range(0, 65).mapToObj(i -> "role" + i).collect(java.util.stream.Collectors.toList()))
                 .build());
         assertDoesNotThrow(() -> UpdateIdentityProvisioningRequest.builder()
-                .roles(List.of("admin"))
+                .roles(Java8.list("admin"))
                 .build());
     }
 }

@@ -1,16 +1,58 @@
 package com.mxraven.admin.model;
 
+import com.mxraven.admin.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import java.util.regex.Pattern;
 
 import java.util.List;
 
 /**
  * Request body for the recipient-set member batch operations.
- *
- * @param emailAddresses member email addresses
  */
-public record RecipientSetMembersBatchRequest(
-        List<String> emailAddresses) {
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+public final class RecipientSetMembersBatchRequest {
+    private final List<String> emailAddresses;
+
+    /** member email addresses */
+    public List<String> emailAddresses() {
+        return emailAddresses;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RecipientSetMembersBatchRequest that = (RecipientSetMembersBatchRequest) o;
+        return Objects.equals(this.emailAddresses, that.emailAddresses);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.emailAddresses);
+    }
+
+    @Override
+    public String toString() {
+        return "RecipientSetMembersBatchRequest[" + "emailAddresses=" + this.emailAddresses + "]";
+    }
+
+    /**
+     * Creates a new RecipientSetMembersBatchRequest.
+     *
+     * @param emailAddresses member email addresses
+     */
+    @JsonCreator
+    public RecipientSetMembersBatchRequest(List<String> emailAddresses) {
+        this.emailAddresses = emailAddresses;
+    }
 
     /**
      * Creates a new builder.
@@ -53,7 +95,7 @@ public record RecipientSetMembersBatchRequest(
             }
             for (int index = 0; index < emailAddresses.size(); index++) {
                 String emailAddress = emailAddresses.get(index);
-                if (emailAddress == null || emailAddress.isBlank()) {
+                if (emailAddress == null || Java8.isBlank(emailAddress)) {
                     throw new IllegalArgumentException("email_addresses[" + index + "] is required");
                 }
                 if (emailAddress.length() > 255) {

@@ -1,5 +1,11 @@
 package com.mxraven.mail.mime;
 
+import com.mxraven.mail.internal.Java8;
+
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Objects;
+
 import com.mxraven.mail.model.Header;
 
 import java.io.ByteArrayOutputStream;
@@ -34,25 +40,57 @@ public final class MimeWriter {
 
     /**
      * One section of a multipart body: its headers and already-encoded body.
-     *
-     * @param headers the section headers; a {@code null} value is replaced with an
-     *                empty list
-     * @param body    the already-encoded section body; a {@code null} value is
-     *                replaced with an empty array
      */
-    public record Section(List<Header> headers, byte[] body) {
-        /**
-         * Creates a section, copying the headers and body.
-         */
-        public Section {
-            headers = headers == null ? List.of() : List.copyOf(headers);
-            body = body == null ? new byte[0] : body.clone();
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    public static final class Section {
+        private final List<Header> headers;
+        private final byte[] body;
+
+        /** the section headers; a {@code null} value is replaced with an empty list */
+        public List<Header> headers() {
+            return headers;
         }
 
         @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Section that = (Section) o;
+            return Objects.equals(this.headers, that.headers)
+                    && Objects.equals(this.body, that.body);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.headers, this.body);
+        }
+
+        @Override
+        public String toString() {
+            return "Section[" + "headers=" + this.headers + ", " + "body=" + this.body + "]";
+        }
+
+        /**
+         * Creates a section, copying the headers and body.
+         */
+        @JsonCreator
+        public Section(List<Header> headers, byte[] body) {
+
+            headers = headers == null ? Java8.list() : Java8.copyList(headers);
+            body = body == null ? new byte[0] : body.clone();
+        
+            this.headers = headers;
+            this.body = body;
+        }
+
         public byte[] body() {
             return body.clone();
         }
+    
     }
 
     /**
@@ -82,8 +120,8 @@ public final class MimeWriter {
         ByteArrayOutputStream out = new ByteArrayOutputStream(encoded.length() + (encoded.length() / BASE64_LINE + 1) * 2);
         for (int i = 0; i < encoded.length(); i += BASE64_LINE) {
             int end = Math.min(i + BASE64_LINE, encoded.length());
-            out.writeBytes(encoded.substring(i, end).getBytes(StandardCharsets.US_ASCII));
-            out.writeBytes(CRLF);
+            Java8.writeBytes(out, encoded.substring(i, end).getBytes(StandardCharsets.US_ASCII));
+            Java8.writeBytes(out, CRLF);
         }
         return out.toByteArray();
     }
@@ -101,7 +139,7 @@ public final class MimeWriter {
         for (int i = 0; i < data.length; i++) {
             int b = data[i] & 0xff;
             if (b == '\r' && i + 1 < data.length && data[i + 1] == '\n') {
-                out.writeBytes(CRLF);
+                Java8.writeBytes(out, CRLF);
                 lineLength = 0;
                 i++;
                 continue;
@@ -114,10 +152,10 @@ public final class MimeWriter {
             }
             if (lineLength + token.length() > QP_LINE) {
                 out.write('=');
-                out.writeBytes(CRLF);
+                Java8.writeBytes(out, CRLF);
                 lineLength = 0;
             }
-            out.writeBytes(token.getBytes(StandardCharsets.US_ASCII));
+            Java8.writeBytes(out, token.getBytes(StandardCharsets.US_ASCII));
             lineLength += token.length();
         }
         return out.toByteArray();
@@ -189,9 +227,9 @@ public final class MimeWriter {
             }
             writeAscii(out, "\r\n");
             byte[] body = section.body();
-            out.writeBytes(body);
+            Java8.writeBytes(out, body);
             if (body.length == 0 || body[body.length - 1] != '\n') {
-                out.writeBytes(CRLF);
+                Java8.writeBytes(out, CRLF);
             }
         }
         writeAscii(out, "--" + boundary + "--\r\n");
@@ -228,6 +266,6 @@ public final class MimeWriter {
     }
 
     private static void writeAscii(ByteArrayOutputStream out, String value) {
-        out.writeBytes(value.getBytes(StandardCharsets.US_ASCII));
+        Java8.writeBytes(out, value.getBytes(StandardCharsets.US_ASCII));
     }
 }

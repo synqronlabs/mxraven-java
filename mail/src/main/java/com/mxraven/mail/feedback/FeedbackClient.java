@@ -1,16 +1,20 @@
 package com.mxraven.mail.feedback;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 
 /**
  * Client for the mxRaven feedback service.
@@ -19,7 +23,7 @@ import java.util.Base64;
  * misclassified. A message is matched to its stored evidence by hash, so the
  * exact raw RFC 822 bytes mxRaven processed must be submitted.
  *
- * <pre>{@code
+ * <pre>
  * FeedbackClient feedback = FeedbackClient.builder()
  *         .baseUrl("https://feedback.mxraven.com")
  *         .credentials("mxr_tx_ab12cd34ef56", apiKeySecret)
@@ -27,7 +31,7 @@ import java.util.Base64;
  *
  * LearningResult result = feedback.learnSpam(rawMessage);
  * System.out.println(result.disposition() + " matched " + result.matchedHashKind());
- * }</pre>
+ * </pre>
  *
  * <p>The credentials are the submission API key: the username is the key's
  * username and the secret is the key's secret. Only the learning methods require
@@ -45,14 +49,16 @@ public final class FeedbackClient {
     private final String baseUrl;
     private final String username;
     private final String secret;
-    private final HttpClient http;
+    private final OkHttpClient http;
     private final Duration requestTimeout;
 
     private FeedbackClient(Builder builder) {
         this.baseUrl = builder.baseUrl.replaceAll("/+$", "");
         this.username = builder.username;
         this.secret = builder.secret;
-        this.http = builder.httpClient;
+        this.http = builder.httpClient.newBuilder()
+                .callTimeout(builder.requestTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                .build();
         this.requestTimeout = builder.requestTimeout;
     }
 
@@ -143,17 +149,13 @@ public final class FeedbackClient {
         }
         requireLearningCredentials();
 
-        HttpRequest request = baseRequest(URI.create(baseUrl + LEARN_PATH + disposition.wire()))
+        Request request = baseRequest(baseUrl + LEARN_PATH + disposition.wire())
                 .header("Content-Type", "message/rfc822")
                 .header("Authorization", basicAuth())
-                .POST(HttpRequest.BodyPublishers.ofByteArray(rawMime))
+                .post(RequestBody.create(rawMime, MediaType.get("message/rfc822")))
                 .build();
 
-        HttpResponse<byte[]> response = send(request);
-        if (response.statusCode() != 200) {
-            throw httpError(response);
-        }
-        return decode(response.body());
+        return execute(request);
     }
 
     /**
@@ -171,7 +173,7 @@ public final class FeedbackClient {
         if (rawMime == null) {
             throw new IllegalArgumentException("rawMime is required");
         }
-        return learn(disposition, rawMime.readAllBytes());
+        return learn(disposition, Java8.readAllBytes(rawMime));
     }
 
     /**
@@ -185,29 +187,40 @@ public final class FeedbackClient {
      * @throws FeedbackException        when the service returns a non-success status
      */
     public void unsubscribe(String token) throws IOException {
-        if (token == null || token.isBlank()) {
+        if (token == null || Java8.isBlank(token)) {
             throw new IllegalArgumentException("unsubscribe token is required");
         }
-        URI uri = URI.create(baseUrl + UNSUBSCRIBE_PATH + encodePathSegment(token.trim()));
-        HttpRequest request = baseRequest(uri)
+        Request request = baseRequest(baseUrl + UNSUBSCRIBE_PATH + encodePathSegment(token.trim()))
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString("List-Unsubscribe=One-Click"))
+                .post(RequestBody.create("List-Unsubscribe=One-Click".getBytes(StandardCharsets.UTF_8),
+                        MediaType.get("application/x-www-form-urlencoded")))
                 .build();
 
-        HttpResponse<byte[]> response = send(request);
-        if (response.statusCode() != 200) {
-            throw httpError(response);
-        }
+        execute(request);
     }
 
-    private HttpRequest.Builder baseRequest(URI uri) {
-        return HttpRequest.newBuilder(uri)
-                .timeout(requestTimeout)
+    private Request.Builder baseRequest(String url) {
+        return new Request.Builder()
+                .url(url)
                 .header("Accept", "application/json");
     }
 
+    private LearningResult execute(Request request) throws IOException {
+        okhttp3.Response response = send(request);
+        try {
+            int code = response.code();
+            byte[] body = response.body() == null ? new byte[0] : response.body().bytes();
+            if (code != 200) {
+                throw httpError(code, body);
+            }
+            return decode(body);
+        } finally {
+            response.close();
+        }
+    }
+
     private void requireLearningCredentials() {
-        if (username == null || username.isBlank() || secret == null || secret.isEmpty()) {
+        if (username == null || Java8.isBlank(username) || secret == null || secret.isEmpty()) {
             throw new IllegalStateException(
                     "credentials are required for learning (configure them with credentials(...))");
         }
@@ -218,14 +231,11 @@ public final class FeedbackClient {
         return "Basic " + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
     }
 
-    private HttpResponse<byte[]> send(HttpRequest request) throws IOException {
+    private okhttp3.Response send(Request request) throws IOException {
         try {
-            return http.send(request, HttpResponse.BodyHandlers.ofByteArray());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("interrupted while calling " + request.method() + " " + request.uri(), e);
+            return http.newCall(request).execute();
         } catch (IOException e) {
-            throw new IOException(request.method() + " " + request.uri() + " failed: " + e, e);
+            throw new IOException(request.method() + " " + request.url() + " failed: " + e, e);
         }
     }
 
@@ -236,21 +246,20 @@ public final class FeedbackClient {
         return FeedbackJson.MAPPER.readValue(body, LearningResult.class);
     }
 
-    private static FeedbackException httpError(HttpResponse<byte[]> response) {
+    private static FeedbackException httpError(int status, byte[] body) {
         String detail = null;
-        byte[] body = response.body();
         if (body != null && body.length > 0) {
             try {
                 JsonNode payload = FeedbackJson.MAPPER.readTree(body);
                 JsonNode error = payload == null ? null : payload.get("error");
-                if (error != null && error.isTextual() && !error.asText().isBlank()) {
+                if (error != null && error.isTextual() && !Java8.isBlank(error.asText())) {
                     detail = error.asText().trim();
                 }
             } catch (IOException ignored) {
                 // Fall back to a message without the service detail.
             }
         }
-        return new FeedbackException(response.statusCode(), detail);
+        return new FeedbackException(status, detail);
     }
 
     private static String encodePathSegment(String value) {
@@ -274,8 +283,8 @@ public final class FeedbackClient {
         private String baseUrl;
         private String username;
         private String secret;
-        private HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+        private OkHttpClient httpClient = new OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
                 .build();
         private Duration requestTimeout = DEFAULT_TIMEOUT;
 
@@ -290,7 +299,7 @@ public final class FeedbackClient {
          * @throws IllegalArgumentException when {@code baseUrl} is {@code null} or blank
          */
         public Builder baseUrl(String baseUrl) {
-            if (baseUrl == null || baseUrl.isBlank()) {
+            if (baseUrl == null || Java8.isBlank(baseUrl)) {
                 throw new IllegalArgumentException("base URL must not be empty");
             }
             this.baseUrl = baseUrl;
@@ -307,7 +316,7 @@ public final class FeedbackClient {
          *                                  {@code secret} is empty
          */
         public Builder credentials(String username, String secret) {
-            if (username == null || username.isBlank()) {
+            if (username == null || Java8.isBlank(username)) {
                 throw new IllegalArgumentException("username must not be empty");
             }
             if (secret == null || secret.isEmpty()) {
@@ -325,7 +334,7 @@ public final class FeedbackClient {
          * @return this builder
          * @throws IllegalArgumentException when {@code httpClient} is {@code null}
          */
-        public Builder httpClient(HttpClient httpClient) {
+        public Builder httpClient(OkHttpClient httpClient) {
             if (httpClient == null) {
                 throw new IllegalArgumentException("HTTP client must not be null");
             }
@@ -356,7 +365,7 @@ public final class FeedbackClient {
          * @throws IllegalStateException when the base URL has not been set
          */
         public FeedbackClient build() {
-            if (baseUrl == null || baseUrl.isBlank()) {
+            if (baseUrl == null || Java8.isBlank(baseUrl)) {
                 throw new IllegalStateException("base URL is required (call baseUrl(...))");
             }
             return new FeedbackClient(this);

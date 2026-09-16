@@ -26,13 +26,13 @@ class MailBuilderMimeTest {
                 .attachFile("notes.txt", "some notes".getBytes(StandardCharsets.UTF_8), MimeType.TEXT_PLAIN)
                 .build();
 
-        String topType = mail.content().headers().first("Content-Type").orElseThrow();
+        String topType = mail.content().headers().first("Content-Type").get();
         assertTrue(topType.startsWith("multipart/mixed; boundary="), topType);
 
         ParsedEmail parsed = ParsedEmail.parse(mail.content().toRaw());
         assertEquals("H\u00e9llo", parsed.subject());
-        assertEquals("Hello \u2713", parsed.textBody().orElseThrow());
-        assertEquals("<b>Hello</b>", parsed.htmlBody().orElseThrow());
+        assertEquals("Hello \u2713", parsed.textBody().get());
+        assertEquals("<b>Hello</b>", parsed.htmlBody().get());
         assertEquals("Alice Example", parsed.from().get(0).displayName());
 
         assertEquals(1, parsed.attachments().size());
@@ -49,8 +49,8 @@ class MailBuilderMimeTest {
                 .textBody("plain")
                 .build();
 
-        assertEquals("text/plain; charset=utf-8", mail.content().headers().first("Content-Type").orElseThrow());
-        assertEquals("7bit", mail.content().headers().first("Content-Transfer-Encoding").orElseThrow());
+        assertEquals("text/plain; charset=utf-8", mail.content().headers().first("Content-Type").get());
+        assertEquals("7bit", mail.content().headers().first("Content-Transfer-Encoding").get());
         assertEquals(ContentTransferEncoding.SEVEN_BIT, mail.content().encoding());
     }
 
@@ -64,9 +64,9 @@ class MailBuilderMimeTest {
                 .build();
 
         assertEquals("quoted-printable",
-                mail.content().headers().first("Content-Transfer-Encoding").orElseThrow());
+                mail.content().headers().first("Content-Transfer-Encoding").get());
         assertEquals(ContentTransferEncoding.QUOTED_PRINTABLE, mail.content().encoding());
-        assertTrue(mail.content().headers().first("Subject").orElseThrow().startsWith("=?UTF-8?B?"));
+        assertTrue(mail.content().headers().first("Subject").get().startsWith("=?UTF-8?B?"));
         assertEquals("caf\u00e9", ParsedEmail.parse(mail.content().toRaw()).subject());
     }
 
@@ -90,7 +90,7 @@ class MailBuilderMimeTest {
     @Test
     void attachesAFileFromDisk(@TempDir java.nio.file.Path directory) throws Exception {
         java.nio.file.Path file = directory.resolve("notes.txt");
-        Files.writeString(file, "from disk");
+        Files.write(file, "from disk".getBytes(StandardCharsets.UTF_8));
 
         Mail mail = MailBuilder.create()
                 .from("a@example.com")

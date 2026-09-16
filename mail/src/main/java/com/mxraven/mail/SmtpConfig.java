@@ -1,5 +1,7 @@
 package com.mxraven.mail;
 
+import com.mxraven.mail.internal.Java8;
+
 import javax.net.ssl.SSLContext;
 import java.time.Duration;
 
@@ -289,7 +291,7 @@ public final class SmtpConfig {
          * @throws IllegalStateException when the host is {@code null} or blank
          */
         public SmtpConfig build() {
-            if (host == null || host.isBlank()) {
+            if (host == null || Java8.isBlank(host)) {
                 throw new IllegalStateException("host must not be blank");
             }
             return new SmtpConfig(this);

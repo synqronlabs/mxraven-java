@@ -1,10 +1,10 @@
 # mxRaven Java SDK
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.mxraven/mail?label=Maven%20Central&style=for-the-badge)](https://central.sonatype.com/artifact/com.mxraven/mail)
+[![Maven Central](https://img.shields.io/maven-central/v/com.mxraven/mail-jdk8?label=Maven%20Central&style=for-the-badge)](https://central.sonatype.com/artifact/com.mxraven/mail-jdk8)
 [![JitPack](https://img.shields.io/jitpack/v/github/synqronlabs/mxraven-java?color=blue&logo=jitpack&style=for-the-badge)](https://jitpack.io/#synqronlabs/mxraven-java)
 [![JavaDoc](https://img.shields.io/badge/docs-java.mxraven.com-blue?style=for-the-badge&logo=readthedocs)](https://java.mxraven.com/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge)](./LICENSE)
-![Java](https://img.shields.io/badge/Java-17%2B-orange?style=for-the-badge)
+![Java](https://img.shields.io/badge/Java-8%2B-orange?style=for-the-badge)
 ![Maintenance](https://img.shields.io/maintenance/yes/2026?logo=github&style=for-the-badge)
 [![Repo size](https://img.shields.io/github/repo-size/synqronlabs/mxraven-java?style=for-the-badge)](https://github.com/synqronlabs/mxraven-java)
 
@@ -26,21 +26,23 @@ It has two modules:
 | `mail` guide | [`mail/README.md`](mail/README.md) |
 | `admin` guide | [`admin/README.md`](admin/README.md) |
 
-Both modules target **Java 17+**. The only runtime dependency they bring in is
-Jackson (webhook/feedback and REST JSON); SMTP and MIME use just the JDK.
+Both modules target **Java 8+**. Their runtime dependencies are Jackson
+(webhook/feedback and REST JSON) and OkHttp (feedback, raw-message downloads,
+and the control-plane REST client); SMTP and MIME use just the JDK. Compilation,
+tests, and Javadoc all run on a JDK 8 Gradle toolchain.
 
 ## Modules
 
 | Module | Artifact | Guide | Use it when |
 | --- | --- | --- | --- |
-| `mail` | `com.mxraven:mail` | [`mail/README.md`](mail/README.md) | You need to **send** mail, **build/parse** MIME, or **receive** inbound webhooks and feedback. |
-| `admin` | `com.mxraven:admin` | [`admin/README.md`](admin/README.md) | You need to **manage** your mxRaven workspace through the control-plane API. |
+| `mail` | `com.mxraven:mail-jdk8` | [`mail/README.md`](mail/README.md) | You need to **send** mail, **build/parse** MIME, or **receive** inbound webhooks and feedback. |
+| `admin` | `com.mxraven:admin-jdk8` | [`admin/README.md`](admin/README.md) | You need to **manage** your mxRaven workspace through the control-plane API. |
 
 ## Installation
 
-Install only the module(s) you need: `mail` to send/receive mail, `admin` to
-manage your workspace. Both are published to Maven Central; snapshots and
-unreleased builds come from JitPack.
+Install only the module(s) you need: `mail-jdk8` to send/receive mail,
+`admin-jdk8` to manage your workspace. Both are published to Maven Central;
+snapshots and unreleased builds come from JitPack.
 
 ### Maven Central (releases)
 
@@ -52,8 +54,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail:2.0.1")    // send & receive mail
-    implementation("com.mxraven:admin:2.0.1")   // control-plane API
+    implementation("com.mxraven:mail-jdk8:2.0.1")    // send & receive mail
+    implementation("com.mxraven:admin-jdk8:2.0.1")   // control-plane API
 }
 ```
 
@@ -63,12 +65,12 @@ dependencies {
 <dependencies>
     <dependency>
         <groupId>com.mxraven</groupId>
-        <artifactId>mail</artifactId>
+        <artifactId>mail-jdk8</artifactId>
         <version>2.0.1</version>
     </dependency>
     <dependency>
         <groupId>com.mxraven</groupId>
-        <artifactId>admin</artifactId>
+        <artifactId>admin-jdk8</artifactId>
         <version>2.0.1</version>
     </dependency>
 </dependencies>
@@ -88,11 +90,11 @@ repositories {
 
 dependencies {
     // Latest commit on main:
-    implementation("com.github.synqronlabs.mxraven-java:mail:main-SNAPSHOT")
-    implementation("com.github.synqronlabs.mxraven-java:admin:main-SNAPSHOT")
+    implementation("com.github.synqronlabs.mxraven-java:mail-jdk8:main-SNAPSHOT")
+    implementation("com.github.synqronlabs.mxraven-java:admin-jdk8:main-SNAPSHOT")
     // or pin an exact commit:
-    // implementation("com.github.synqronlabs.mxraven-java:mail:<commit-sha>")
-    // implementation("com.github.synqronlabs.mxraven-java:admin:<commit-sha>")
+    // implementation("com.github.synqronlabs.mxraven-java:mail-jdk8:<commit-sha>")
+    // implementation("com.github.synqronlabs.mxraven-java:admin-jdk8:<commit-sha>")
 }
 ```
 

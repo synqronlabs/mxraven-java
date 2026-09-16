@@ -8,13 +8,14 @@ providers, quotas, rate limits, governance, mail analytics, plus the public auth
 login context.
 
 It mirrors the same `/v2` surface the customer dashboard uses, with typed
-request/response models and a small dependency footprint (Jackson only).
+request/response models and a small dependency footprint (Jackson and OkHttp).
 
-- Group / artifact: `com.mxraven` / `admin`
+- Group / artifact: `com.mxraven` / `admin-jdk8`
 - Current version: `2.0.1`
 - JavaDoc: https://java.mxraven.com/admin/
-- Requirements: **Java 17+** (the build toolchain targets Java 17)
-- Runtime dependency: `com.fasterxml.jackson.core:jackson-databind`
+- Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
+- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` and
+  `com.squareup.okhttp3:okhttp`
 
 ---
 
@@ -35,7 +36,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:admin:2.0.1")
+    implementation("com.mxraven:admin-jdk8:2.0.1")
 }
 ```
 
@@ -44,7 +45,7 @@ dependencies {
 ```xml
 <dependency>
     <groupId>com.mxraven</groupId>
-    <artifactId>admin</artifactId>
+    <artifactId>admin-jdk8</artifactId>
     <version>2.0.1</version>
 </dependency>
 ```
@@ -60,9 +61,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:admin:2.0.1")
-    // Latest main build:  ...:admin:main-SNAPSHOT
-    // Or pin a commit:    ...:admin:<commit-sha>
+    implementation("com.github.synqronlabs.mxraven-java:admin-jdk8:2.0.1")
+    // Latest main build:  ...:admin-jdk8:main-SNAPSHOT
+    // Or pin a commit:    ...:admin-jdk8:<commit-sha>
 }
 ```
 

@@ -1,5 +1,7 @@
 package com.mxraven.mail.webhook;
 
+import com.mxraven.mail.internal.Java8;
+
 /**
  * The HMAC signature of a webhook request did not match the configured secret.
  *
@@ -19,7 +21,7 @@ public final class InvalidSignatureException extends WebhookException {
      * @param detail additional detail to append, or {@code null} to use the default message
      */
     public InvalidSignatureException(String detail) {
-        super(detail == null || detail.isBlank()
+        super(detail == null || Java8.isBlank(detail)
                 ? "webhook: invalid signature"
                 : "webhook: invalid signature (" + detail + ")");
     }

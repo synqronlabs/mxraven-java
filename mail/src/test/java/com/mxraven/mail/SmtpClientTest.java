@@ -1,5 +1,7 @@
 package com.mxraven.mail;
 
+import com.mxraven.mail.internal.Java8;
+
 import com.mxraven.mail.model.BodyType;
 import com.mxraven.mail.model.DSNEnvelopeParams;
 import com.mxraven.mail.model.DSNRecipientParams;
@@ -49,7 +51,7 @@ class SmtpClientTest {
             assertTrue(client.hasExtension("SIZE"));
             assertTrue(client.hasExtension("8BITMIME"));
             assertEquals("10240000", client.extensionParam("SIZE"));
-            assertEquals(List.of("EHLO test.local"), server.commands);
+            assertEquals(Java8.list("EHLO test.local"), server.commands);
         }
     }
 
@@ -74,7 +76,7 @@ class SmtpClientTest {
             }
 
             assertEquals("<sender@example.com>", server.mailFrom);
-            assertEquals(List.of(
+            assertEquals(Java8.list(
                     "<to1@example.com>",
                     "<to2@example.com>",
                     "<cc@example.com>",
@@ -206,11 +208,11 @@ class SmtpClientTest {
 
     @Test
     void includesConfiguredSmtpExtensionParameters() throws Exception {
-        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, List.of("DSN"))) {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, Java8.list("DSN"))) {
             Envelope envelope = Envelope.builder()
                     .from(Path.of("sender@example.com"))
-                    .to(List.of(new Recipient(Path.of("to@example.com"),
-                            new DSNRecipientParams(List.of("success", "failure"), "rfc822;orig@example.com"))))
+                    .to(Java8.list(new Recipient(Path.of("to@example.com"),
+                            new DSNRecipientParams(Java8.list("success", "failure"), "rfc822;orig@example.com"))))
                     .size(1234)
                     .bodyType(BodyType.EIGHT_BIT_MIME)
                     .smtpUtf8(true)
@@ -241,8 +243,8 @@ class SmtpClientTest {
         try (FakeSmtpServer server = new FakeSmtpServer()) {
             Envelope envelope = Envelope.builder()
                     .from(Path.of("sender@example.com"))
-                    .to(List.of(new Recipient(Path.of("to@example.com"),
-                            new DSNRecipientParams(List.of("SUCCESS"), "rfc822;x@example.com"))))
+                    .to(Java8.list(new Recipient(Path.of("to@example.com"),
+                            new DSNRecipientParams(Java8.list("SUCCESS"), "rfc822;x@example.com"))))
                     .dsnParams(new DSNEnvelopeParams("FULL"))
                     .build();
 
@@ -251,7 +253,7 @@ class SmtpClientTest {
             }
 
             assertEquals("<sender@example.com>", server.mailFrom);
-            assertEquals(List.of("<to@example.com>"), server.recipients);
+            assertEquals(Java8.list("<to@example.com>"), server.recipients);
         }
     }
 
@@ -260,7 +262,7 @@ class SmtpClientTest {
         try (FakeSmtpServer server = new FakeSmtpServer()) {
             Envelope envelope = Envelope.builder()
                     .from(Path.of("sender@example.com"))
-                    .to(List.of(Recipient.of("to@example.com")))
+                    .to(Java8.list(Recipient.of("to@example.com")))
                     .requireTls(true)
                     .build();
 

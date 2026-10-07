@@ -13,6 +13,18 @@ public record UpdateListenerDefaultTerminalActionRequest(
         TerminalActionPayload actionPayload) {
 
     /**
+     * Validates and creates a default-terminal-action update request.
+     *
+     * @param actionType    terminal action type; must be valid for the listener type
+     * @param actionPayload action-specific payload, or {@code null} when the action
+     *                      takes none
+     * @throws IllegalArgumentException if the action type is missing
+     */
+    public UpdateListenerDefaultTerminalActionRequest {
+        RequestSupport.require(actionType, "action_type");
+    }
+
+    /**
      * Creates a new request builder.
      *
      * @return a new builder
@@ -77,6 +89,7 @@ public record UpdateListenerDefaultTerminalActionRequest(
          * Builds the request.
          *
          * @return the update request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public UpdateListenerDefaultTerminalActionRequest build() {
             return new UpdateListenerDefaultTerminalActionRequest(actionType, actionPayload);

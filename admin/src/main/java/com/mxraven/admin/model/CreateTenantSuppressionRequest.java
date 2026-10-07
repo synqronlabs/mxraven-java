@@ -12,6 +12,21 @@ public record CreateTenantSuppressionRequest(
         SuppressionReason reason) {
 
     /**
+     * Validates and creates a suppression creation request.
+     *
+     * @param emailAddress email address to suppress
+     * @param reason       optional suppression reason
+     * @throws IllegalArgumentException if the email address is missing, longer
+     *         than 255 characters, or not a valid mailbox
+     */
+    public CreateTenantSuppressionRequest {
+        RequestSupport.requireString(emailAddress, "email_address", 255);
+        if (emailAddress.indexOf('@') < 0 || emailAddress.indexOf('\r') >= 0 || emailAddress.indexOf('\n') >= 0) {
+            throw new IllegalArgumentException("email_address must be a valid mailbox");
+        }
+    }
+
+    /**
      * Creates a new request builder.
      *
      * @return a new builder
@@ -51,6 +66,7 @@ public record CreateTenantSuppressionRequest(
          * Builds the request.
          *
          * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateTenantSuppressionRequest build() {
             return new CreateTenantSuppressionRequest(emailAddress, reason);

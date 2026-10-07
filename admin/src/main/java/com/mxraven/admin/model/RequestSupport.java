@@ -6,6 +6,8 @@ import java.util.regex.Pattern;
 /** Shared validation helpers for request records. */
 final class RequestSupport {
     private static final Pattern REFERENCE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9._-]*$");
+    private static final Pattern UUID = Pattern.compile(
+            "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private RequestSupport() {
     }
@@ -20,6 +22,16 @@ final class RequestSupport {
     static String optionalString(String value, String field, int maxLength) {
         if (value != null && value.codePointCount(0, value.length()) > maxLength) {
             throw new IllegalArgumentException(field + " must be " + maxLength + " characters or fewer");
+        }
+        return value;
+    }
+
+    static String requireUuid(String value, String field) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(field + " is required");
+        }
+        if (!UUID.matcher(value).matches()) {
+            throw new IllegalArgumentException(field + " must be a valid UUID");
         }
         return value;
     }

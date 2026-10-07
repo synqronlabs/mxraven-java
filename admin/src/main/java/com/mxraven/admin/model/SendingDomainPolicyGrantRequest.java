@@ -11,6 +11,19 @@ public record SendingDomainPolicyGrantRequest(
         SendingDomainSubdomainScope subdomainScope) {
 
     /**
+     * Validates and creates a sending-domain grant.
+     *
+     * @param domainId       identifier of the granted domain
+     * @param subdomainScope {@code exact} or {@code include_subdomains}
+     * @throws IllegalArgumentException if the domain identifier is missing or not
+     *         a UUID, or the subdomain scope is missing
+     */
+    public SendingDomainPolicyGrantRequest {
+        RequestSupport.requireUuid(domainId, "domain_id");
+        RequestSupport.require(subdomainScope, "subdomain_scope");
+    }
+
+    /**
      * Creates a new builder.
      *
      * @return a new builder
@@ -50,6 +63,7 @@ public record SendingDomainPolicyGrantRequest(
          * Builds the request.
          *
          * @return a new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public SendingDomainPolicyGrantRequest build() {
             return new SendingDomainPolicyGrantRequest(domainId, subdomainScope);

@@ -9,6 +9,17 @@ package com.mxraven.admin.model;
 public record UpdateListenerRequest(String displayName) {
 
     /**
+     * Validates and creates a listener update request.
+     *
+     * @param displayName new human-readable listener name
+     * @throws IllegalArgumentException if the display name is missing or longer
+     *         than 255 characters
+     */
+    public UpdateListenerRequest {
+        RequestSupport.requireString(displayName, "display_name", 255);
+    }
+
+    /**
      * Creates a new request builder.
      *
      * @return a new builder
@@ -36,6 +47,7 @@ public record UpdateListenerRequest(String displayName) {
          * Builds the request.
          *
          * @return the update request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public UpdateListenerRequest build() {
             return new UpdateListenerRequest(displayName);

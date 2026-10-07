@@ -12,6 +12,19 @@ public record UpdateInboundRouteRequest(
         String domainName) {
 
     /**
+     * Validates and creates an inbound-route update request.
+     *
+     * @param mtaListenerId identifier of the MTA listener that routes inbound mail
+     * @param domainName    inbound domain name
+     * @throws IllegalArgumentException if the listener identifier is missing or not
+     *         a UUID, or the domain name is missing or longer than 255 characters
+     */
+    public UpdateInboundRouteRequest {
+        RequestSupport.requireUuid(mtaListenerId, "mta_listener_id");
+        RequestSupport.requireString(domainName, "domain_name", 255);
+    }
+
+    /**
      * Creates a new request builder.
      *
      * @return a new builder
@@ -51,6 +64,7 @@ public record UpdateInboundRouteRequest(
          * Builds the request.
          *
          * @return the update request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public UpdateInboundRouteRequest build() {
             return new UpdateInboundRouteRequest(mtaListenerId, domainName);

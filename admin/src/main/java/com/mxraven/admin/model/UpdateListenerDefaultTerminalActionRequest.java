@@ -51,9 +51,11 @@ public final class UpdateListenerDefaultTerminalActionRequest {
      *
      * @param actionType terminal action type; must be valid for the listener type
      * @param actionPayload action-specific payload; use {@link TerminalActionPayload} factories, or {@code null} when the action takes none
+     * @throws IllegalArgumentException if the action type is missing
      */
     @JsonCreator
     public UpdateListenerDefaultTerminalActionRequest(TerminalActionType actionType, TerminalActionPayload actionPayload) {
+        RequestSupport.require(actionType, "action_type");
         this.actionType = actionType;
         this.actionPayload = actionPayload;
     }
@@ -123,6 +125,7 @@ public final class UpdateListenerDefaultTerminalActionRequest {
          * Builds the request.
          *
          * @return the update request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public UpdateListenerDefaultTerminalActionRequest build() {
             return new UpdateListenerDefaultTerminalActionRequest(actionType, actionPayload);

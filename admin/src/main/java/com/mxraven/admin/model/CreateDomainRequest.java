@@ -50,9 +50,17 @@ public final class CreateDomainRequest {
      *
      * @param domainName domain to onboard for outbound sending
      * @param dmarcReportAddress optional DMARC aggregate report mailbox
+     * @throws IllegalArgumentException if the domain name is missing, shorter than
+     *         3 characters, or longer than 253 characters, or the DMARC report
+     *         address is longer than 320 characters
      */
     @JsonCreator
     public CreateDomainRequest(String domainName, String dmarcReportAddress) {
+        RequestSupport.requireString(domainName, "domain_name", 253);
+        if (domainName.codePointCount(0, domainName.length()) < 3) {
+            throw new IllegalArgumentException("domain_name must be at least 3 characters");
+        }
+        RequestSupport.optionalString(dmarcReportAddress, "dmarc_report_address", 320);
         this.domainName = domainName;
         this.dmarcReportAddress = dmarcReportAddress;
     }
@@ -106,6 +114,7 @@ public final class CreateDomainRequest {
          * Builds the request.
          *
          * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateDomainRequest build() {
             return new CreateDomainRequest(domainName, dmarcReportAddress);

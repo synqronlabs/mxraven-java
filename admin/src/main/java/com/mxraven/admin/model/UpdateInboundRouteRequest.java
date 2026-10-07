@@ -51,9 +51,13 @@ public final class UpdateInboundRouteRequest {
      *
      * @param mtaListenerId identifier of the MTA listener that routes inbound mail
      * @param domainName inbound domain name
+     * @throws IllegalArgumentException if the listener identifier is missing or not
+     *         a UUID, or the domain name is missing or longer than 255 characters
      */
     @JsonCreator
     public UpdateInboundRouteRequest(String mtaListenerId, String domainName) {
+        RequestSupport.requireUuid(mtaListenerId, "mta_listener_id");
+        RequestSupport.requireString(domainName, "domain_name", 255);
         this.mtaListenerId = mtaListenerId;
         this.domainName = domainName;
     }
@@ -98,6 +102,7 @@ public final class UpdateInboundRouteRequest {
          * Builds the request.
          *
          * @return the update request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public UpdateInboundRouteRequest build() {
             return new UpdateInboundRouteRequest(mtaListenerId, domainName);

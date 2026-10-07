@@ -45,10 +45,19 @@ public final class ReplaceSendingDomainPolicyRequest {
     /**
      * Creates a new ReplaceSendingDomainPolicyRequest.
      *
-     * @param grants complete set of domain grants
+     * @param grants complete set of domain grants; may be empty to clear all grants
+     * @throws IllegalArgumentException if {@code grants} is {@code null}, contains
+     *         more than 10000 entries, or contains a {@code null} entry
      */
     @JsonCreator
     public ReplaceSendingDomainPolicyRequest(List<SendingDomainPolicyGrantRequest> grants) {
+        RequestSupport.require(grants, "grants");
+        RequestSupport.optionalList(grants, "grants", 10000);
+        for (SendingDomainPolicyGrantRequest grant : grants) {
+            if (grant == null) {
+                throw new IllegalArgumentException("grants must not contain null entries");
+            }
+        }
         this.grants = grants;
     }
 
@@ -80,6 +89,7 @@ public final class ReplaceSendingDomainPolicyRequest {
          * Builds the request.
          *
          * @return a new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public ReplaceSendingDomainPolicyRequest build() {
             return new ReplaceSendingDomainPolicyRequest(grants);

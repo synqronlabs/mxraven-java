@@ -50,9 +50,15 @@ public final class CreateTenantSuppressionRequest {
      *
      * @param emailAddress email address to suppress
      * @param reason optional suppression reason; one of {@code unsubscribe} or {@code bounce}
+     * @throws IllegalArgumentException if the email address is missing, longer
+     *         than 255 characters, or not a valid mailbox
      */
     @JsonCreator
     public CreateTenantSuppressionRequest(String emailAddress, SuppressionReason reason) {
+        RequestSupport.requireString(emailAddress, "email_address", 255);
+        if (emailAddress.indexOf('@') < 0 || emailAddress.indexOf('\r') >= 0 || emailAddress.indexOf('\n') >= 0) {
+            throw new IllegalArgumentException("email_address must be a valid mailbox");
+        }
         this.emailAddress = emailAddress;
         this.reason = reason;
     }
@@ -97,6 +103,7 @@ public final class CreateTenantSuppressionRequest {
          * Builds the request.
          *
          * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateTenantSuppressionRequest build() {
             return new CreateTenantSuppressionRequest(emailAddress, reason);

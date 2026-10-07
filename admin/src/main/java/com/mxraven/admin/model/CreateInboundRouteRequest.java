@@ -58,9 +58,13 @@ public final class CreateInboundRouteRequest {
      * @param mtaListenerId listener that receives the routed mail
      * @param domainName inbound domain name
      * @param onboardDomainIfMissing when true, atomically onboard an unclaimed inbound-only domain before creating the route
+     * @throws IllegalArgumentException if the listener identifier is missing or
+     *         not a UUID, or the domain name is missing or longer than 255 characters
      */
     @JsonCreator
     public CreateInboundRouteRequest(String mtaListenerId, String domainName, Boolean onboardDomainIfMissing) {
+        RequestSupport.requireUuid(mtaListenerId, "mta_listener_id");
+        RequestSupport.requireString(domainName, "domain_name", 255);
         this.mtaListenerId = mtaListenerId;
         this.domainName = domainName;
         this.onboardDomainIfMissing = onboardDomainIfMissing;
@@ -118,6 +122,7 @@ public final class CreateInboundRouteRequest {
          * Builds the request.
          *
          * @return new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public CreateInboundRouteRequest build() {
             return new CreateInboundRouteRequest(mtaListenerId, domainName, onboardDomainIfMissing);

@@ -43,9 +43,12 @@ public final class UpdateListenerRequest {
      * Creates a new UpdateListenerRequest.
      *
      * @param displayName new human-readable listener name
+     * @throws IllegalArgumentException if the display name is missing or longer
+     *         than 255 characters
      */
     @JsonCreator
     public UpdateListenerRequest(String displayName) {
+        RequestSupport.requireString(displayName, "display_name", 255);
         this.displayName = displayName;
     }
 
@@ -77,6 +80,7 @@ public final class UpdateListenerRequest {
          * Builds the request.
          *
          * @return the update request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public UpdateListenerRequest build() {
             return new UpdateListenerRequest(displayName);

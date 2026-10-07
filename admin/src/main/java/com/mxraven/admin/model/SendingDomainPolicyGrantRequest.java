@@ -50,9 +50,13 @@ public final class SendingDomainPolicyGrantRequest {
      *
      * @param domainId identifier of the granted domain
      * @param subdomainScope {@code exact} or {@code include_subdomains}
+     * @throws IllegalArgumentException if the domain identifier is missing or not
+     *         a UUID, or the subdomain scope is missing
      */
     @JsonCreator
     public SendingDomainPolicyGrantRequest(String domainId, SendingDomainSubdomainScope subdomainScope) {
+        RequestSupport.requireUuid(domainId, "domain_id");
+        RequestSupport.require(subdomainScope, "subdomain_scope");
         this.domainId = domainId;
         this.subdomainScope = subdomainScope;
     }
@@ -97,6 +101,7 @@ public final class SendingDomainPolicyGrantRequest {
          * Builds the request.
          *
          * @return a new request
+         * @throws IllegalArgumentException when a field is missing or invalid
          */
         public SendingDomainPolicyGrantRequest build() {
             return new SendingDomainPolicyGrantRequest(domainId, subdomainScope);

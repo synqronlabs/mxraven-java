@@ -12,7 +12,10 @@ import com.mxraven.mail.model.Path;
 import com.mxraven.mail.model.Recipient;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -227,6 +230,142 @@ class SmtpClientTest {
              SmtpClient client = SmtpClient.connect(config(server))) {
             client.cancel();
             assertThrows(SmtpException.class, () -> client.send(simpleMail()));
+        }
+    }
+
+    @Test
+    void streamsRawMessageOverData() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer()) {
+            Envelope envelope = Envelope.builder()
+                    .from(Path.of("sender@example.com"))
+                    .to(Java8.list(Recipient.of("to@example.com")))
+                    .build();
+            byte[] raw = "Subject: raw\r\n\r\nline1\r\n.line2\r\n".getBytes(StandardCharsets.UTF_8);
+
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                assertTrue(client.sendRaw(envelope, new ByteArrayInputStream(raw)).success());
+            }
+
+            assertNotNull(server.dataPayload);
+            assertTrue(server.dataPayload.contains("line1\r\n..line2"), server.dataPayload);
+        }
+    }
+
+    @Test
+    void streamsRawMessageOverBdat() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, Java8.list("CHUNKING"))) {
+            byte[] raw = "Subject: raw\r\n\r\nstreamed body\r\n".getBytes(StandardCharsets.UTF_8);
+            Envelope envelope = Envelope.builder()
+                    .from(Path.of("sender@example.com"))
+                    .to(Java8.list(Recipient.of("to@example.com")))
+                    .size(raw.length)
+                    .build();
+
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                assertTrue(client.sendRaw(envelope, new ByteArrayInputStream(raw)).success());
+            }
+
+            assertTrue(server.commands.stream().anyMatch(c -> c.startsWith("BDAT")), server.commands.toString());
+            assertNotNull(server.dataPayload);
+            assertTrue(server.dataPayload.contains("streamed body"), server.dataPayload);
+        }
+    }
+
+    @Test
+    void streamsRawMessageOverDataWhenChunkingIsAdvertisedButSizeIsUnknown() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, Java8.list("CHUNKING"))) {
+            byte[] raw = "Subject: raw\r\n\r\nunknown size body\r\n".getBytes(StandardCharsets.UTF_8);
+            Envelope envelope = Envelope.builder()
+                    .from(Path.of("sender@example.com"))
+                    .to(Java8.list(Recipient.of("to@example.com")))
+                    .build();
+
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                assertTrue(client.sendRaw(envelope, new ByteArrayInputStream(raw)).success());
+            }
+
+            assertTrue(server.commands.stream().noneMatch(c -> c.startsWith("BDAT")), server.commands.toString());
+            assertNotNull(server.dataPayload);
+            assertTrue(server.dataPayload.contains("unknown size body"), server.dataPayload);
+        }
+    }
+
+    @Test
+    void doesNotSendRecipientsWhenMailFromIsRejected() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer()) {
+            try (SmtpClient client = SmtpClient.connect(config(server))) {
+                server.mailFromCode = 550;
+                SendResult result = client.send(simpleMail());
+                assertFalse(result.success());
+                assertTrue(result.recipients().isEmpty(), "no recipient was attempted");
+            }
+            assertTrue(server.recipients.isEmpty(), "no RCPT TO should follow a rejected MAIL FROM");
+        }
+    }
+
+    @Test
+    void perSendTimeoutAbortsAStalledServer() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer()) {
+            SmtpClient client = SmtpClient.connect(config(server));
+            try {
+                server.stallOnMail = true;
+                long start = System.nanoTime();
+                assertThrows(SocketTimeoutException.class, () -> client.send(simpleMail(),
+                        SendOptions.builder().timeout(Duration.ofMillis(300)).build()));
+                long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+                assertTrue(elapsedMillis < 5_000, "should abort quickly but took " + elapsedMillis + "ms");
+            } finally {
+                server.releaseStall();
+                client.close();
+            }
+        }
+    }
+
+    @Test
+    void perSendCancellationAbortsAStalledServer() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer()) {
+            SmtpClient client = SmtpClient.connect(config(server));
+            try {
+                server.stallOnMail = true;
+                final Cancellation cancellation = Cancellation.create();
+                Thread canceller = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        cancellation.cancel();
+                    }
+                });
+                canceller.setDaemon(true);
+                canceller.start();
+                assertThrows(SmtpException.class, () -> client.send(simpleMail(),
+                        SendOptions.builder().cancellation(cancellation).build()));
+            } finally {
+                server.releaseStall();
+                client.close();
+            }
+        }
+    }
+
+    @Test
+    void authenticatesWithXoauth2() throws Exception {
+        try (FakeSmtpServer server = new FakeSmtpServer(false, false, false, 250, Java8.list("AUTH XOAUTH2"))) {
+            SmtpConfig config = SmtpConfig.builder()
+                    .host("127.0.0.1")
+                    .port(server.port())
+                    .noTls()
+                    .credentials("user@example.com", "ignored")
+                    .oauthToken("ya29.token")
+                    .build();
+
+            try (SmtpClient client = SmtpClient.connect(config)) {
+                assertTrue(client.isAuthenticated());
+            }
+
+            assertEquals("user@example.com", server.authUser);
         }
     }
 

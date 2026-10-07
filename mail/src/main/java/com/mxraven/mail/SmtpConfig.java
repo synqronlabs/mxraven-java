@@ -3,6 +3,7 @@ package com.mxraven.mail;
 import com.mxraven.mail.internal.Java8;
 
 import javax.net.ssl.SSLContext;
+import java.net.Proxy;
 import java.time.Duration;
 
 /**
@@ -25,6 +26,8 @@ public final class SmtpConfig {
     private final Duration connectTimeout;
     private final Duration readTimeout;
     private final Duration writeTimeout;
+    private final Proxy proxy;
+    private final String oauthToken;
 
     private SmtpConfig(Builder builder) {
         this.host = builder.host;
@@ -37,6 +40,8 @@ public final class SmtpConfig {
         this.connectTimeout = builder.connectTimeout;
         this.readTimeout = builder.readTimeout;
         this.writeTimeout = builder.writeTimeout;
+        this.proxy = builder.proxy;
+        this.oauthToken = builder.oauthToken;
     }
 
     /**
@@ -139,6 +144,25 @@ public final class SmtpConfig {
     }
 
     /**
+     * Returns the proxy used for the connection, when configured.
+     *
+     * @return the proxy, or {@code null} for a direct connection
+     */
+    public Proxy proxy() {
+        return proxy;
+    }
+
+    /**
+     * Returns the OAuth 2.0 bearer token used for {@code XOAUTH2} authentication,
+     * when configured.
+     *
+     * @return the bearer token, or {@code null} when password authentication is used
+     */
+    public String oauthToken() {
+        return oauthToken;
+    }
+
+    /**
      * Builds {@link SmtpConfig} instances.
      */
     public static final class Builder {
@@ -152,6 +176,8 @@ public final class SmtpConfig {
         private Duration connectTimeout = Duration.ofSeconds(30);
         private Duration readTimeout = Duration.ofMinutes(2);
         private Duration writeTimeout = Duration.ofMinutes(2);
+        private Proxy proxy;
+        private String oauthToken;
 
         /**
          * Sets the SMTP host.
@@ -285,6 +311,30 @@ public final class SmtpConfig {
         }
 
         /**
+         * Routes the connection through an HTTP or SOCKS proxy.
+         *
+         * @param proxy the proxy, or {@code null} for a direct connection
+         * @return this builder
+         */
+        public Builder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        /**
+         * Uses OAuth 2.0 {@code XOAUTH2} authentication with the given bearer
+         * token. The username set with {@link #credentials(String, String)} is
+         * used as the authorization identity; the password is ignored.
+         *
+         * @param oauthToken the bearer token
+         * @return this builder
+         */
+        public Builder oauthToken(String oauthToken) {
+            this.oauthToken = oauthToken;
+            return this;
+        }
+
+        /**
          * Creates the configuration.
          *
          * @return the configured {@link SmtpConfig}
@@ -300,6 +350,10 @@ public final class SmtpConfig {
             if (localName.indexOf('\r') >= 0 || localName.indexOf('\n') >= 0
                     || localName.indexOf('\0') >= 0) {
                 throw new IllegalStateException("localName must not contain CR, LF, or NUL characters");
+            }
+            if (oauthToken != null && (username == null || username.isEmpty())) {
+                throw new IllegalStateException(
+                        "oauthToken requires a username (call credentials(username, token))");
             }
             return new SmtpConfig(this);
         }

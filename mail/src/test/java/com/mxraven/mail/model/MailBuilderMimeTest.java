@@ -107,6 +107,24 @@ class MailBuilderMimeTest {
     }
 
     @Test
+    void encodesAsciiTextWithLongLinesAsQuotedPrintable() {
+        String longLine = "<p>" + "a".repeat(1200) + "</p>";
+        Mail mail = MailBuilder.create()
+                .from("a@example.com")
+                .to("b@example.com")
+                .htmlBody(longLine)
+                .build();
+
+        assertEquals("quoted-printable",
+                mail.content().headers().first("Content-Transfer-Encoding").orElseThrow());
+        assertEquals(ContentTransferEncoding.QUOTED_PRINTABLE, mail.content().encoding());
+        assertEquals(longLine, ParsedEmail.parse(mail.content().toRaw()).htmlBody().orElseThrow());
+        for (String line : new String(mail.content().toRaw(), StandardCharsets.US_ASCII).split("\r\n")) {
+            assertTrue(line.length() <= 998, "body lines must not exceed 998 octets");
+        }
+    }
+
+    @Test
     void foldsLongHeadersWithinTheLineLimit() {
         String longValue = "word ".repeat(60).trim();
         Mail mail = MailBuilder.create()

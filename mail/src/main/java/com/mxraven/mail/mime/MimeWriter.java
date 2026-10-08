@@ -70,6 +70,30 @@ public final class MimeWriter {
         return true;
     }
 
+    /** Maximum length of a single body line, excluding the trailing CRLF (RFC 5322 §2.1.1). */
+    private static final int TEXT_LINE_LIMIT = 998;
+
+    /**
+     * Whether any line exceeds the RFC 5322 body line limit.
+     *
+     * @param data the bytes to inspect
+     * @return {@code true} when a line is longer than 998 octets, excluding CRLF
+     */
+    public static boolean hasLongLine(byte[] data) {
+        int lineLength = 0;
+        for (byte value : data) {
+            if (value == '\n') {
+                lineLength = 0;
+            } else if (value != '\r') {
+                lineLength++;
+                if (lineLength > TEXT_LINE_LIMIT) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * Base64-encodes the given bytes with CRLF line breaks every 76 characters
      * (RFC 2045 §6.8).

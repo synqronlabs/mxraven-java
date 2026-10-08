@@ -596,7 +596,7 @@ public final class MailBuilder {
     private static Entity textEntity(String subtype, String text) {
         byte[] raw = normalizeLineEndings(text).getBytes(StandardCharsets.UTF_8);
         String contentType = "text/" + subtype + "; charset=utf-8";
-        if (MimeWriter.isAscii(raw)) {
+        if (MimeWriter.isAscii(raw) && !MimeWriter.hasLongLine(raw)) {
             return new Entity(contentType, ContentTransferEncoding.SEVEN_BIT, raw);
         }
         return new Entity(contentType, ContentTransferEncoding.QUOTED_PRINTABLE,

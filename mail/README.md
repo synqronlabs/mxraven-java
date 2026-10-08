@@ -5,7 +5,7 @@ over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
 messages, verifies and receives webhooks, and submits recipient feedback.
 
 - Group / artifact: `com.mxraven` / `mail-jdk8`
-- Current version: `2.0.2`
+- Current version: `2.0.4`
 - JavaDoc: https://java.mxraven.com/mail/
 - Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
 - Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` (webhook
@@ -46,7 +46,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail-jdk8:2.0.2")
+    implementation("com.mxraven:mail-jdk8:2.0.4")
 }
 ```
 
@@ -56,7 +56,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>mail-jdk8</artifactId>
-    <version>2.0.2</version>
+    <version>2.0.4</version>
 </dependency>
 ```
 
@@ -71,7 +71,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mail-jdk8:2.0.2")
+    implementation("com.github.synqronlabs.mxraven-java:mail-jdk8:2.0.4")
     // Latest main build:  ...:mail-jdk8:main-SNAPSHOT
     // Or pin a commit:    ...:mail-jdk8:<commit-sha>
 }

@@ -54,8 +54,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail-jdk8:2.0.2")    // send & receive mail
-    implementation("com.mxraven:admin-jdk8:2.0.2")   // control-plane API
+    implementation("com.mxraven:mail-jdk8:2.0.4")    // send & receive mail
+    implementation("com.mxraven:admin-jdk8:2.0.4")   // control-plane API
 }
 ```
 
@@ -66,12 +66,12 @@ dependencies {
     <dependency>
         <groupId>com.mxraven</groupId>
         <artifactId>mail-jdk8</artifactId>
-        <version>2.0.2</version>
+        <version>2.0.4</version>
     </dependency>
     <dependency>
         <groupId>com.mxraven</groupId>
         <artifactId>admin-jdk8</artifactId>
-        <version>2.0.2</version>
+        <version>2.0.4</version>
     </dependency>
 </dependencies>
 ```

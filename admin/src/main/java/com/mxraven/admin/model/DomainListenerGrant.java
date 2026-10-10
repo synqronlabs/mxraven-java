@@ -31,7 +31,7 @@ public final class DomainListenerGrant {
         return listenerType;
     }
 
-    /** {@code transactional} or {@code broadcast} */
+    /** {@code transactional} or {@code marketing} */
     public StreamType streamType() {
         return streamType;
     }
@@ -79,7 +79,7 @@ public final class DomainListenerGrant {
      * @param listenerId identifier of the granted listener
      * @param listenerDisplayName human-readable listener name
      * @param listenerType always {@code submission} in v2
-     * @param streamType {@code transactional} or {@code broadcast}
+     * @param streamType {@code transactional} or {@code marketing}
      * @param domainStatus {@code pending}, {@code verified}, or {@code suspended}
      * @param subdomainScope {@code exact} or {@code include_subdomains}
      */

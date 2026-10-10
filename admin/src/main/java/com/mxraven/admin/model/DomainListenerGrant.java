@@ -6,7 +6,7 @@ package com.mxraven.admin.model;
  * @param listenerId          identifier of the granted listener
  * @param listenerDisplayName human-readable listener name
  * @param listenerType        always {@code submission} in v2
- * @param streamType          {@code transactional} or {@code broadcast}
+ * @param streamType          {@code transactional} or {@code marketing}
  * @param domainStatus        {@code pending}, {@code verified}, or {@code suspended}
  * @param subdomainScope      {@code exact} or {@code include_subdomains}
  */

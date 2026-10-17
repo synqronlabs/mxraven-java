@@ -10,8 +10,11 @@ import com.mxraven.admin.model.IssuedAPIKey;
 import java.io.IOException;
 
 /**
- * Submission-listener API keys, obtained from
+ * Listener API keys, obtained from
  * {@link com.mxraven.admin.model.Listener#apiKeys()}.
+ *
+ * <p>A submission listener's key authenticates SMTP submission; an MTA
+ * listener's key authenticates the client notification channel.
  *
  * <p>Listing never returns secret material. {@link #create()} returns the
  * plaintext secret exactly once as an {@link IssuedAPIKey}; it cannot be

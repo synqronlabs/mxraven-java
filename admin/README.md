@@ -571,7 +571,10 @@ Operations: `reload()`, `rename(String)`,
 `updateDefaultTerminalAction(Consumer<UpdateListenerDefaultTerminalActionRequest.Builder>)`,
 `updateDefaultTerminalAction(UpdateListenerDefaultTerminalActionRequest)`,
 `updateRspamdScanning(boolean)`, `updateRspamdScanning(Consumer<...>)`,
-`updateRspamdScanning(UpdateListenerRspamdScanningRequest)`, `delete()`.
+`updateRspamdScanning(UpdateListenerRspamdScanningRequest)`,
+`notificationSetting()`, `updateNotifications(boolean)`,
+`updateNotifications(Consumer<UpdateListenerNotificationsRequest.Builder>)`,
+`updateNotifications(UpdateListenerNotificationsRequest)`, `delete()`.
 Children: `routingRules()`, `apiKeys()`, `sendingDomainPolicy()`, `mtaRateLimit()`.
 
 ```java
@@ -583,6 +586,7 @@ Listener listener = ws.listeners().create(l -> l
 
 listener.rename("Outbound primary");
 listener.updateRspamdScanning(true);
+listener.updateNotifications(true);
 ```
 
 ### Routing rules - `listener.routingRules()`
@@ -629,6 +633,8 @@ for (RoutingRule rule : listener.routingRules().list()) {
 `APIKey` data: `id()`, `tenantId()`, `listenerId()`, `username()`.
 `IssuedAPIKey` additionally carries the one-time `secret()`.
 `APIKey` operations: `delete()`. There is no single-key read.
+A submission listener's key authenticates SMTP submission; an MTA listener's
+key authenticates the client notification channel.
 
 ```java
 IssuedAPIKey key = listener.apiKeys().create();
@@ -995,6 +1001,8 @@ days. `limit` must be 1-20. Violations throw `IllegalArgumentException`.
 | `MailAnalyticsDomainLifecycle getMailAnalyticsDomainLifecycle(QueryParams params)` | `domain-lifecycle` |
 | `MailAnalyticsTaskSizeStatistics getMailAnalyticsTaskSizeStatistics(String startAt, String endAt)` | `task-size-statistics` |
 | `MailAnalyticsTaskSizeStatistics getMailAnalyticsTaskSizeStatistics(QueryParams params)` | `task-size-statistics` |
+| `MailAnalyticsListenerOverview getMailAnalyticsListenerOverview(String startAt, String endAt, String listenerId)` | `listener-overview` |
+| `MailAnalyticsListenerOverview getMailAnalyticsListenerOverview(QueryParams params)` | `listener-overview` |
 
 ```java
 MailAnalyticsSeries series = ws.mailAnalytics().getMailAnalyticsSeries(
@@ -1066,7 +1074,8 @@ records include:
 - Listeners: `Listener`, `ListenerData`, `ListenerType`, `StreamType`,
   `TerminalActionType`, `TerminalActionPayload`, `CreateListenerRequest`,
   `UpdateListenerRequest`, `UpdateListenerDefaultTerminalActionRequest`,
-  `UpdateListenerRspamdScanningRequest`.
+  `UpdateListenerRspamdScanningRequest`, `ListenerNotificationSetting`,
+  `UpdateListenerNotificationsRequest`.
 - Routing: `RoutingRule`, `RoutingRuleData`, `RoutingRuleAction`,
   `RoutingRuleActionKind`, `RoutingRulePayload`, `ModifyHeaderOperation`,
   `ModifyHeaderOp`, `CreateRoutingRuleRequest`, `ReplaceRoutingRuleRequest`,
@@ -1123,7 +1132,8 @@ records include:
 - Governance: `AuditLog`, `AuditActorKind`, `AuditStatus`,
   `TenantResourceSearchResult`, `TenantSearchResourceType`.
 - Mail analytics: the `MailAnalytics*` family, including metrics, dimensions,
-  buckets, breakdowns, series, lifecycle, latency and task-size statistics.
+  buckets, breakdowns, series, lifecycle, listener overviews, latency and
+  task-size statistics.
 - Auth: `TenantLoginContext`.
 - Shared: `Problem`, `ProblemError`, `RequestSupport`.
 

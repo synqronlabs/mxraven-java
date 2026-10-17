@@ -2,8 +2,13 @@ package com.mxraven.admin;
 
 import com.mxraven.admin.exception.ApiException;
 import com.mxraven.admin.model.Domain;
+import com.mxraven.admin.model.Listener;
+import com.mxraven.admin.model.ListenerNotificationSetting;
 import com.mxraven.admin.model.ListenerType;
 import com.mxraven.admin.model.MTARateLimitPolicy;
+import com.mxraven.admin.model.MailAnalyticsBucketGranularity;
+import com.mxraven.admin.model.MailAnalyticsListenerOverview;
+import com.mxraven.admin.model.MailAnalyticsListenerState;
 import com.mxraven.admin.model.SmtpRelay;
 import com.mxraven.admin.model.StreamType;
 import com.mxraven.admin.model.TerminalActionType;
@@ -31,6 +36,7 @@ class AdminClientTest {
     private static final AtomicReference<String> LAST_AUTH = new AtomicReference<>();
     private static final AtomicReference<String> LAST_BODY = new AtomicReference<>();
     private static final AtomicReference<String> LAST_PATH = new AtomicReference<>();
+    private static final AtomicReference<String> LAST_QUERY = new AtomicReference<>();
 
     @BeforeAll
     static void start() throws IOException {
@@ -50,6 +56,7 @@ class AdminClientTest {
         LAST_AUTH.set(exchange.getRequestHeaders().getFirst("Authorization"));
         LAST_BODY.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
         LAST_PATH.set(exchange.getRequestURI().getPath());
+        LAST_QUERY.set(exchange.getRequestURI().getRawQuery());
 
         String path = exchange.getRequestURI().getPath();
         String method = exchange.getRequestMethod();
@@ -61,6 +68,14 @@ class AdminClientTest {
             respond(exchange, 201, domainJSON());
         } else if (path.equals("/v2/tenants/acme/listeners") && method.equals("POST")) {
             respond(exchange, 201, listenerJSON());
+        } else if (path.equals("/v2/tenants/acme/listeners/l1") && method.equals("GET")) {
+            respond(exchange, 200, listenerJSON());
+        } else if (path.equals("/v2/tenants/acme/listeners/l1/notifications") && method.equals("GET")) {
+            respond(exchange, 200, listenerNotificationsJSON(true));
+        } else if (path.equals("/v2/tenants/acme/listeners/l1/notifications") && method.equals("PUT")) {
+            respond(exchange, 200, listenerNotificationsJSON(false));
+        } else if (path.equals("/v2/tenants/acme/mail-analytics/listener-overview") && method.equals("GET")) {
+            respond(exchange, 200, mailAnalyticsListenerOverviewJSON());
         } else if (path.equals("/v2/tenants/acme/mta-rate-limit-override") && method.equals("GET")) {
             respond(exchange, 200, mtaRateLimitOverrideJSON());
         } else if (path.equals("/v2/tenants/acme/mta-rate-limit-override") && method.equals("PUT")) {
@@ -146,6 +161,26 @@ class AdminClientTest {
                 + "\"listener_type\":\"mta\",\"stream_type\":\"marketing\","
                 + "\"default_terminal_action_type\":\"DROP\","
                 + "\"default_terminal_action_payload\":{},\"rspamd_scanning_enabled\":true}";
+    }
+
+    private static String listenerNotificationsJSON(boolean enabled) {
+        return "{\"enabled\":" + enabled + ",\"subject\":\"mxraven.client.events\","
+                + "\"consumer\":\"listener-l1-events\"}";
+    }
+
+    private static String mailAnalyticsListenerOverviewJSON() {
+        String metrics = "{\"accepted_messages\":{\"total\":10,\"submission\":6,\"mta\":4},"
+                + "\"egress_tasks\":7,"
+                + "\"delivery_success_rate\":{\"numerator\":5,\"denominator\":6,\"value\":0.8333},"
+                + "\"smtp_responses\":{\"successful\":5,\"temporary_failure\":1,\"permanent_failure\":0}}";
+        return "{\"start_at\":\"2026-09-01T00:00:00Z\",\"end_at\":\"2026-09-02T00:00:00Z\","
+                + "\"bucket_granularity\":\"hour\",\"queried_at\":\"2026-09-02T00:00:05Z\","
+                + "\"eventual_consistency_notice\":\"ledger data is eventually consistent\","
+                + "\"listener\":{\"listener_id\":\"l1\",\"display_name\":\"Listener\","
+                + "\"listener_state\":\"current\"},"
+                + "\"summary\":" + metrics + ","
+                + "\"time_series\":[{\"bucket_start\":\"2026-09-01T00:00:00Z\","
+                + "\"bucket_end\":\"2026-09-01T01:00:00Z\",\"metrics\":" + metrics + "}]}";
     }
 
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {
@@ -235,6 +270,40 @@ class AdminClientTest {
 
         relay.delete();
         assertEquals("/v2/tenants/acme/smtp-relays/r1", LAST_PATH.get());
+    }
+
+    @Test
+    void readsAndUpdatesListenerNotificationSettings() throws IOException {
+        Listener listener = client().workspace("acme").listeners().get("l1");
+
+        ListenerNotificationSetting setting = listener.notificationSetting();
+        assertEquals("GET", LAST_METHOD.get());
+        assertEquals("/v2/tenants/acme/listeners/l1/notifications", LAST_PATH.get());
+        assertTrue(setting.enabled());
+        assertEquals("mxraven.client.events", setting.subject());
+        assertEquals("listener-l1-events", setting.consumer());
+
+        ListenerNotificationSetting updated = listener.updateNotifications(n -> n.enabled(false));
+        assertEquals("PUT", LAST_METHOD.get());
+        assertEquals("/v2/tenants/acme/listeners/l1/notifications", LAST_PATH.get());
+        assertTrue(LAST_BODY.get().contains("\"enabled\":false"));
+        assertFalse(updated.enabled());
+    }
+
+    @Test
+    void fetchesMailAnalyticsListenerOverview() throws IOException {
+        MailAnalyticsListenerOverview overview = client().workspace("acme").mailAnalytics()
+                .getMailAnalyticsListenerOverview("2026-09-01T00:00:00Z", "2026-09-02T00:00:00Z", "l1");
+        assertEquals("GET", LAST_METHOD.get());
+        assertEquals("/v2/tenants/acme/mail-analytics/listener-overview", LAST_PATH.get());
+        assertTrue(LAST_QUERY.get().contains("listener_id=l1"));
+        assertEquals(MailAnalyticsBucketGranularity.HOUR, overview.bucketGranularity());
+        assertEquals(MailAnalyticsListenerState.CURRENT, overview.listener().listenerState());
+        assertEquals(10, overview.summary().acceptedMessages().total());
+        assertEquals(7, overview.summary().egressTasks());
+        assertEquals(1, overview.timeSeries().size());
+        assertEquals("2026-09-01T01:00:00Z", overview.timeSeries().get(0).bucketEnd());
+        assertEquals(5, overview.timeSeries().get(0).metrics().smtpResponses().successful());
     }
 
     @Test

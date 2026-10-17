@@ -4,9 +4,11 @@ import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Entity;
 
 /**
- * A submission-listener API key without secret material.
+ * A listener API key without secret material.
  *
- * <p>The plaintext secret is only ever returned by the create operation as
+ * <p>A submission listener's key authenticates SMTP submission; an MTA
+ * listener's key authenticates the client notification channel. The plaintext
+ * secret is only ever returned by the create operation as
  * {@link IssuedAPIKey}. There is no per-key read; only deletion.
  */
 public final class APIKey extends Entity<APIKeyData> {

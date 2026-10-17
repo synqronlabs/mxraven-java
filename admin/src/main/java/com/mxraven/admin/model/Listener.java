@@ -13,10 +13,10 @@ import java.util.function.Consumer;
 /**
  * A submission or MTA listener.
  *
- * <p>Listener type, stream, default action, and scanning settings are immutable
- * through the plain update; use the dedicated operations. Reach the listener's
- * strictly-owned children through {@link #routingRules()}, {@link #apiKeys()},
- * {@link #sendingDomainPolicy()}, and {@link #mtaRateLimit()}.
+ * <p>Listener type, stream, default action, scanning, and notification settings
+ * are immutable through the plain update; use the dedicated operations. Reach
+ * the listener's strictly-owned children through {@link #routingRules()},
+ * {@link #apiKeys()}, {@link #sendingDomainPolicy()}, and {@link #mtaRateLimit()}.
  */
 public final class Listener extends Entity<ListenerData> {
     /**
@@ -239,6 +239,58 @@ public final class Listener extends Entity<ListenerData> {
     public Listener updateRspamdScanning(UpdateListenerRspamdScanningRequest request) throws IOException {
         return new Listener(client, path,
                 client.put(path + "/rspamd-scanning", request).as(ListenerData.class), isDeleted());
+    }
+
+    /**
+     * Reads the listener's client notification setting.
+     *
+     * <p>Reports whether the listener publishes client notification events, and
+     * the subject and durable consumer clients use to read them.
+     *
+     * @return the listener's notification setting
+     * @throws IOException if the request fails or is interrupted
+     */
+    public ListenerNotificationSetting notificationSetting() throws IOException {
+        return client.get(path + "/notifications").as(ListenerNotificationSetting.class);
+    }
+
+    /**
+     * Enable or disable client notification publishing for the listener.
+     *
+     * <p>Enabling creates the listener's durable consumer and starts event
+     * publishing; disabling stops publishing and retains the consumer, so events
+     * a client already handled are not replayed if it is enabled again.
+     *
+     * @param enabled {@code true} to publish client notifications, {@code false} to stop
+     * @return the updated notification setting
+     * @throws IOException if the request fails or is interrupted
+     */
+    public ListenerNotificationSetting updateNotifications(boolean enabled) throws IOException {
+        return updateNotifications(new UpdateListenerNotificationsRequest(enabled));
+    }
+
+    /**
+     * Updates the notification setting using a request builder.
+     *
+     * @param configure callback that configures the update request builder
+     * @return the updated notification setting
+     * @throws IOException if the request fails or is interrupted
+     */
+    public ListenerNotificationSetting updateNotifications(Consumer<UpdateListenerNotificationsRequest.Builder> configure) throws IOException {
+        UpdateListenerNotificationsRequest.Builder builder = UpdateListenerNotificationsRequest.builder();
+        configure.accept(builder);
+        return updateNotifications(builder.build());
+    }
+
+    /**
+     * Updates the notification setting with a prepared request.
+     *
+     * @param request the update request
+     * @return the updated notification setting
+     * @throws IOException if the request fails or is interrupted
+     */
+    public ListenerNotificationSetting updateNotifications(UpdateListenerNotificationsRequest request) throws IOException {
+        return client.put(path + "/notifications", request).as(ListenerNotificationSetting.class);
     }
 
     // --- children ------------------------------------------------------------

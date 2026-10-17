@@ -35,6 +35,7 @@ public final class ManageListenersExample {
 
             listener.rename("Outbound primary");
             listener.updateRspamdScanning(true);
+            listener.updateNotifications(true);
 
             // Child clients scoped to this listener:
             listener.routingRules().list();

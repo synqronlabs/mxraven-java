@@ -5,7 +5,7 @@ over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
 messages, verifies and receives webhooks, and submits recipient feedback.
 
 - Group / artifact: `com.mxraven` / `mail`
-- Current version: `2.0.4`
+- Current version: `2.1.0`
 - JavaDoc: https://java.mxraven.com/mail/
 - Requirements: **Java 17+** (this `main` branch). For Java 8+, use the
   [`jdk8` branch](https://github.com/synqronlabs/mxraven-java/tree/jdk8) and the
@@ -47,7 +47,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail:2.0.4")
+    implementation("com.mxraven:mail:2.1.0")
 }
 ```
 
@@ -57,7 +57,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>mail</artifactId>
-    <version>2.0.4</version>
+    <version>2.1.0</version>
 </dependency>
 ```
 
@@ -72,7 +72,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mail:2.0.4")
+    implementation("com.github.synqronlabs.mxraven-java:mail:2.1.0")
     // Latest main build:  ...:mail:main-SNAPSHOT
     // Or pin a commit:    ...:mail:<commit-sha>
 }

@@ -382,14 +382,14 @@ detail).
 
 ```java
 Envelope envelope = Envelope.builder()
-        .from(Path.of("sender@example.com"))
+        .from("sender@example.com")
         .to(List.of(Recipient.of("to@example.com")))
         .build();
 
 client.sendRaw(envelope, rawMessageBytes);
 
 // Stream from a file or socket instead of buffering the whole message:
-try (InputStream message = Files.newInputStream(Path.of("big-message.eml"))) {
+try (InputStream message = Files.newInputStream(Path.of("big-message.eml"))) {   // java.nio.file.Path
     client.sendRaw(envelope, message);
 }
 ```
@@ -881,6 +881,9 @@ Transport failures (SMTP I/O, raw message download, feedback HTTP) surface as
   `Recipient`, `MailboxAddress`, `Headers`, `Header`, `Content`, `BodyType`,
   `DeliveryBy`, `DeliveryByMode`, `DSNEnvelopeParams`, `DSNRecipientParams`,
   `Extension`, `TraceField`.
+
+`com.mxraven.mail.model.Path` shares its simple name with `java.nio.file.Path`;
+qualify one of them when both are in scope.
 - `com.mxraven.mail.mime` — `MimeParser`, `MimePart`, `ParsedEmail`, `Attachment`,
   `MimeWriter`, `MimeType`, `ContentTransferEncoding`.
 - `com.mxraven.mail.webhook` — `WebhookVerifier`, `WebhookEvent`, `InboundEmail`,

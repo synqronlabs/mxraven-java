@@ -756,7 +756,7 @@ client.consume(new NotificationCallbacks() {
 
 | Member | Description |
 | --- | --- |
-| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://nats.mxraven.com`. |
+| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://nats.mxraven.com`; a missing port defaults to 443 for `wss://` and 80 for `ws://`. |
 | `.username(String)` / `.secret(String)` | The listener API key prefix and secret, the same values used for SMTP submission. |
 | `.listener(String)` | Required listener ID; derives the durable consumer name and inbox prefix. |
 | `.consumer(String)` | Overrides the durable consumer name. Defaults to `notify-<listener>`. |

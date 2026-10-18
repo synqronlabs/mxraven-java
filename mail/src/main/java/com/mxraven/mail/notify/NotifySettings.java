@@ -43,6 +43,16 @@ record NotifySettings(
                 throw new NotificationException(
                         "notify: URL \"" + url + "\" must use the ws or wss scheme");
             }
+            if (parsed.getHost() == null || parsed.getHost().isBlank()) {
+                throw new NotificationException("notify: URL \"" + url + "\" must include a host");
+            }
+            // The NATS client defaults a missing port to 4222, the plain TCP
+            // port, so fill in the WebSocket defaults by scheme.
+            if (parsed.getPort() == -1) {
+                int port = scheme.equals("wss") ? 443 : 80;
+                url = new URI(scheme, parsed.getUserInfo(), parsed.getHost(), port,
+                        parsed.getPath(), parsed.getQuery(), parsed.getFragment()).toString();
+            }
         } catch (URISyntaxException e) {
             throw new NotificationException("notify: invalid URL \"" + url + "\"", e);
         }

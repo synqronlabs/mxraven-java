@@ -82,9 +82,27 @@ class NotificationClientTest {
                         .listener("listener-1")
                         .build(), factory);
 
-        assertEquals(NotificationClient.DEFAULT_URL, factory.settings.url());
-        assertEquals("wss://nats.mxraven.com", factory.settings.url());
+        assertEquals("wss://nats.mxraven.com", NotificationClient.DEFAULT_URL);
+        assertEquals("wss://nats.mxraven.com:443", factory.settings.url());
         client.close();
+    }
+
+    @Test
+    void fillsInTheWebSocketDefaultPortByScheme() {
+        NotificationClient secure = NotificationClient.connect(
+                baseOptions().url("wss://nats.example").build(), factory);
+        assertEquals("wss://nats.example:443", factory.settings.url());
+        secure.close();
+
+        NotificationClient plain = NotificationClient.connect(
+                baseOptions().url("ws://nats.example").build(), factory);
+        assertEquals("ws://nats.example:80", factory.settings.url());
+        plain.close();
+
+        NotificationClient explicit = NotificationClient.connect(
+                baseOptions().url("wss://nats.example:8443").build(), factory);
+        assertEquals("wss://nats.example:8443", factory.settings.url());
+        explicit.close();
     }
 
     @Test

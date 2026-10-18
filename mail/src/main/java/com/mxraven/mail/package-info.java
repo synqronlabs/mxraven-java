@@ -8,7 +8,8 @@
  *
  * <p>Message building and modeling live in {@code com.mxraven.mail.model},
  * MIME parsing and generation in {@code com.mxraven.mail.mime}, recipient
- * feedback in {@code com.mxraven.mail.feedback}, and webhook handling in
- * {@code com.mxraven.mail.webhook}.
+ * feedback in {@code com.mxraven.mail.feedback}, webhook handling in
+ * {@code com.mxraven.mail.webhook}, and client notification consumption in
+ * {@code com.mxraven.mail.notify}.
  */
 package com.mxraven.mail;

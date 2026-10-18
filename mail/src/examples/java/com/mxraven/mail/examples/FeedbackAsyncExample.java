@@ -22,7 +22,6 @@ public final class FeedbackAsyncExample {
 
     public static void main(String[] args) throws Exception {
         FeedbackClient feedback = FeedbackClient.builder()
-                .baseUrl("https://feedback.mxraven.example")
                 .credentials("feedback-key", "feedback-secret")
                 .requestTimeout(Duration.ofSeconds(30))
                 .maxRequestBytes(64L * 1024 * 1024)   // cap on a streamed raw message

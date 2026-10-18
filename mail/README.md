@@ -813,14 +813,15 @@ so events are distributed between them rather than duplicated to each.
 
 Teach the mxRaven spam filter by submitting misclassified messages. The service
 matches a message by SHA-256, so submit the exact raw RFC 822 bytes mxRaven
-processed.
+processed. The client targets the mxRaven service base URL by default
+(`https://api.mxraven.com`), where the feedback routes are served under
+`/v1/feedback`; use `.baseUrl(...)` to target another environment.
 
 ```java
 import com.mxraven.mail.feedback.FeedbackClient;
 import com.mxraven.mail.feedback.LearningResult;
 
 FeedbackClient feedback = FeedbackClient.builder()
-        .baseUrl("https://feedback.mxraven.com")
         .credentials("mxr_tx_ab12cd34ef56", apiKeySecret)   // submission API key
         .build();
 
@@ -834,7 +835,7 @@ feedback.unsubscribe(token);   // unauthenticated RFC 8058 one-click
 
 | Member | Description |
 | --- | --- |
-| `.baseUrl(String)` | Required feedback service base URL. |
+| `.baseUrl(String)` | Overrides the feedback service base URL. Defaults to `https://api.mxraven.com`; feedback is served under `/v1/feedback`. |
 | `.credentials(username, secret)` | Submission API key used by the learning methods. |
 | `.httpClient(HttpClient)` | Custom client. |
 | `.requestTimeout(Duration)` | Per-request timeout. Default 30s. |

@@ -18,7 +18,12 @@ public enum StatusOutcome {
     /** The delivery deadline passed before success. */
     EXPIRED("expired"),
     /** Delivery was skipped by a suppression rule (SMTP deliveries only). */
-    SUPPRESSED("suppressed");
+    SUPPRESSED("suppressed"),
+    /**
+     * The delivery task was rejected before an attempt was made, for example
+     * because its destination was invalid. Reported by webhook egress.
+     */
+    INVALID("invalid");
 
     private final String wire;
 

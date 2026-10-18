@@ -66,6 +66,45 @@ class WebhookDecodeTest {
     }
 
     @Test
+    void decodesTheSmtpReasonClassification() {
+        String body = """
+                {
+                  "task_id": "task-1",
+                  "tenant_id": "tenant-1",
+                  "listener_id": "listener-1",
+                  "status": "deferred",
+                  "attempt": 2,
+                  "accepted_at_utc": 1700000000,
+                  "occurred_at_utc": 1700000001,
+                  "reason": "smtp_transient"
+                }""";
+
+        WebhookEvent event = WebhookEvent.decode(bytes(body));
+
+        DeliveryStatus status = assertInstanceOf(DeliveryStatus.class, event);
+        assertEquals("smtp_transient", status.reason());
+    }
+
+    @Test
+    void decodesAnInvalidWebhookEgressStatus() {
+        String body = """
+                {
+                  "event_type": "webhook_egress_status",
+                  "channel": "webhook",
+                  "task_id": "task-1",
+                  "status": "invalid",
+                  "attempt": 1,
+                  "occurred_at_utc": 1700000001,
+                  "status_code": 0
+                }""";
+
+        WebhookEvent event = WebhookEvent.decode(bytes(body));
+
+        DeliveryStatus status = assertInstanceOf(DeliveryStatus.class, event);
+        assertEquals(StatusOutcome.INVALID, status.status());
+    }
+
+    @Test
     void rejectsUnrecognizedPayloads() {
         assertThrows(WebhookException.class, () -> WebhookEvent.decode(bytes("{")));
         assertThrows(WebhookException.class, () -> WebhookEvent.decode(bytes("")));

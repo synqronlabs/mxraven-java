@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * @param remoteHost         the remote MTA hostname, when known
  * @param smtpCode           the remote SMTP reply code
  * @param enhancedStatusCode the RFC 3463 enhanced status code
+ * @param reason             the bounded, machine-readable delivery classification
  * @param remoteResponse     the remote reply text, truncated to 512 bytes
  * @param nextRetryAtUtc     Unix time, in seconds, of the next attempt for a deferred status
  * @param correlationTaskId  links a generated DSN back to its original task
@@ -39,6 +40,7 @@ public record DeliveryStatus(
         String remoteHost,
         int smtpCode,
         String enhancedStatusCode,
+        String reason,
         String remoteResponse,
         Long nextRetryAtUtc,
         String correlationTaskId) implements WebhookEvent {

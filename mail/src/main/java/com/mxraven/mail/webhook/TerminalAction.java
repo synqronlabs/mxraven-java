@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
  * literals.
  */
 public enum TerminalAction {
+    /** The server did not record a terminal action. */
+    UNSPECIFIED("TERMINAL_ACTION_TYPE_UNSPECIFIED"),
     /** Delivers through a dedicated IP pool. */
     DELIVER_DEDICATED("TERMINAL_ACTION_TYPE_DELIVER_DEDICATED"),
     /** Relays through the configured smarthost. */

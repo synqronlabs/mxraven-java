@@ -2,15 +2,17 @@
 
 The `mail` module is the Java client for the mxRaven email service. It sends mail
 over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
-messages, verifies and receives webhooks, and submits recipient feedback.
+messages, verifies and receives webhooks, consumes client notification events
+over NATS, and submits recipient feedback.
 
 - Group / artifact: `com.mxraven` / `mail-jdk8`
 - Current version: `2.0.4`
 - JavaDoc: https://java.mxraven.com/mail/
 - Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
-- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` (webhook
-  and feedback JSON) and `com.squareup.okhttp3:okhttp` (feedback submissions and
-  raw-message downloads); SMTP and MIME are pure JDK
+- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` (webhook,
+  notification, and feedback JSON), `com.squareup.okhttp3:okhttp` (feedback
+  submissions and raw-message downloads), and `io.nats:jnats` (the client
+  notification consumer); SMTP and MIME are pure JDK
 
 What it covers:
 
@@ -25,6 +27,9 @@ What it covers:
 - **MIME parsing** — a part tree plus a convenience `ParsedEmail` view.
 - **Webhooks** — HMAC verification, decoding, typed callbacks, and an optional
   standalone server.
+- **Client notifications** — a NATS JetStream consumer for the per-listener
+  accepted-message and delivery-attempt events, with automatic acknowledgement
+  and exponential-backoff redelivery.
 - **Feedback** — spam/ham learning and one-click unsubscribe.
 
 ---
@@ -712,6 +717,98 @@ ResponseEntity<Void> receive(@RequestBody byte[] body, HttpServletRequest req) t
 
 ---
 
+## Client notifications
+
+Enable notifications for a listener with the administrative API, then consume
+that listener's accepted-message and delivery-attempt events over NATS. The
+client authenticates with the same API key used for SMTP submission and manages
+the WebSocket transport, acknowledgement, and redelivery.
+
+```java
+import com.mxraven.mail.notify.AttemptEvent;
+import com.mxraven.mail.notify.HandlerResult;
+import com.mxraven.mail.notify.NotificationCallbacks;
+import com.mxraven.mail.notify.NotificationClient;
+import com.mxraven.mail.notify.NotificationClientOptions;
+import com.mxraven.mail.webhook.InboundEmail;
+
+NotificationClient client = NotificationClient.connect(
+        NotificationClientOptions.builder()
+                .username("mxr_tx_ab12cd34ef56")
+                .secret(System.getenv("MXRAVEN_SECRET"))
+                .listener(listenerId)
+                .build());
+
+client.consume(new NotificationCallbacks() {
+    @Override
+    public HandlerResult onAccepted(InboundEmail email) {
+        System.out.println("accepted " + email.taskId());
+        return HandlerResult.CONTINUE;
+    }
+
+    @Override
+    public HandlerResult onAttempt(AttemptEvent event) {
+        System.out.println(event.channel() + " " + event.status() + " " + event.reason());
+        return HandlerResult.CONTINUE;
+    }
+});
+```
+
+| Member | Description |
+| --- | --- |
+| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://nats.mxraven.com`; a missing port defaults to 443 for `wss://` and 80 for `ws://`. |
+| `.username(String)` / `.secret(String)` | The listener API key prefix and secret, the same values used for SMTP submission. |
+| `.listener(String)` | Required listener ID; derives the durable consumer name and inbox prefix. |
+| `.consumer(String)` | Overrides the durable consumer name. Defaults to `notify-<listener>`. |
+| `.connectTimeout(Duration)` | Deadline for establishing the connection. Default 10s. |
+| `.sslContext(SSLContext)` | TLS configuration for a `wss://` connection. |
+| `.onError(Consumer<NotificationException>)` | Receives non-fatal connection errors and, when set, takes responsibility for undecodable events so consumption continues. |
+| `consume(handler[, Cancellation])` | Consumes events until the handler stops, the client closes, or the cancellation fires. |
+| `events([Cancellation])` | Iterates deliveries for manual `ack()`, `nak(Duration)`, and `term()` handling. |
+| `close()` | Releases the connection. Idempotent. |
+
+A handler that returns `HandlerResult.CONTINUE` acknowledges the event. A
+handler that throws leaves it unacknowledged, and the server redelivers it with
+a delay that doubles with each attempt up to 30 seconds. Return
+`HandlerResult.STOP` to acknowledge the current event and stop. Cancelling
+through a `Cancellation` and calling `close()` are normal stops.
+
+`NotificationCallbacks` receives the payload directly: `onAccepted(InboundEmail)`
+and `onAttempt(AttemptEvent)`; branch on `event.channel()` for `smtp`, `s3`, or
+`webhook`. Prefer the functional `NotificationHandler`
+when a single lambda is enough: `client.consume(event -> HandlerResult.CONTINUE);`
+
+An accepted event is the same payload a `DELIVER_WEBHOOK` delivery carries, so
+`email.parse()` downloads and parses the raw message. An attempt event carries
+the egress channel (`smtp`, `s3`, or `webhook`) and the delivery status;
+`correlationId()` joins it back to the accepted event's `task_id`.
+
+For manual acknowledgement, iterate with `client.events()`. Each delivery
+exposes `ack()`, `nak(Duration)`, and `term()`:
+
+```java
+import com.mxraven.mail.notify.NotificationDelivery;
+import com.mxraven.mail.notify.NotificationIterator;
+
+try (NotificationIterator iterator = client.events()) {
+    for (NotificationDelivery delivery : iterator) {
+        try {
+            process(delivery.event());
+            delivery.ack();
+        } catch (Exception e) {
+            delivery.nak(Duration.ofSeconds(5));
+        }
+    }
+}
+```
+
+The stream keeps events for 24 hours from creation regardless of
+acknowledgement. A client that is offline longer than the retention window
+cannot recover the gap. Connections that share one API key share one consumer,
+so events are distributed between them rather than duplicated to each.
+
+---
+
 ## Feedback
 
 Teach the mxRaven spam filter by submitting misclassified messages. The service
@@ -767,6 +864,8 @@ A `404` means no stored evidence matched the submitted bytes.
 | `com.mxraven.mail.SmtpException` | SMTP failures: auth rejected, STARTTLS unavailable, etc. |
 | `com.mxraven.mail.webhook.WebhookException` | Webhook verification or decoding failures. |
 | `com.mxraven.mail.webhook.InvalidSignatureException` | Webhook HMAC did not match; respond `401`. |
+| `com.mxraven.mail.notify.NotificationException` | Notification connection or consume failures. |
+| `com.mxraven.mail.notify.NotificationDecodeException` | A notification body did not match the model; the event is terminated rather than retried. |
 | `com.mxraven.mail.feedback.FeedbackException` | Feedback service errors; `statusCode()`, `detail()`, `retryable()`. |
 
 Transport failures (SMTP I/O, raw message download, feedback HTTP) surface as
@@ -791,6 +890,11 @@ Transport failures (SMTP I/O, raw message download, feedback HTTP) surface as
   `WebhookServer`, and the verification exceptions.
 - `com.mxraven.mail.feedback` — `FeedbackClient`, `Disposition`, `LearningResult`,
   `FeedbackException`.
+- `com.mxraven.mail.notify` — `NotificationClient`, `NotificationClientOptions`,
+  `NotificationHandler`, `NotificationCallbacks`, `NotificationEvent`
+  (`AcceptedNotification` / `AttemptNotification`), `AttemptEvent`,
+  `AttemptChannel`, `NotificationIterator`, `NotificationDelivery`,
+  `HandlerResult`, `NotificationException`, `NotificationDecodeException`.
 
 Contract enums expose `wire()` and `fromWire(String)` (`MimeType.fromWire` returns
 `Optional<MimeType>`). E-mail addresses use `MailboxAddress` (`localPart`, `domain`, `displayName`).
@@ -818,6 +922,7 @@ them with `./gradlew :mail:compileExamplesJava` and run one with
 | `OAuthAndProxyExample` | `XOAUTH2` and SOCKS proxy configuration. |
 | `ParseMimeExample` | Parsing a raw MIME message. |
 | `ReceiveWebhookExample` | Verifying and serving webhooks. |
+| `NotificationsExample` | Consuming client notification events over NATS. |
 | `FeedbackExample` / `FeedbackAsyncExample` | Feedback learning, sync and async. |
 
 The `Driver` class under `mail/src/test/java/com/mxraven/mail` is a larger

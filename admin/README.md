@@ -11,7 +11,7 @@ It mirrors the same `/v2` surface the customer dashboard uses, with typed
 request/response models and a small dependency footprint (Jackson and OkHttp).
 
 - Group / artifact: `com.mxraven` / `admin-jdk8`
-- Current version: `2.0.4`
+- Current version: `2.1.0`
 - JavaDoc: https://java.mxraven.com/admin/
 - Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
 - Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` and
@@ -36,7 +36,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:admin-jdk8:2.0.4")
+    implementation("com.mxraven:admin-jdk8:2.1.0")
 }
 ```
 
@@ -46,7 +46,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>admin-jdk8</artifactId>
-    <version>2.0.4</version>
+    <version>2.1.0</version>
 </dependency>
 ```
 
@@ -61,7 +61,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:admin-jdk8:2.0.4")
+    implementation("com.github.synqronlabs.mxraven-java:admin-jdk8:2.1.0")
     // Latest main build:  ...:admin-jdk8:main-SNAPSHOT
     // Or pin a commit:    ...:admin-jdk8:<commit-sha>
 }

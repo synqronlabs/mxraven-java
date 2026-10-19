@@ -10,6 +10,7 @@ import com.mxraven.admin.model.MailAnalyticsComparison;
 import com.mxraven.admin.model.MailAnalyticsDimension;
 import com.mxraven.admin.model.MailAnalyticsDomainLifecycle;
 import com.mxraven.admin.model.MailAnalyticsLifecycle;
+import com.mxraven.admin.model.MailAnalyticsListenerOverview;
 import com.mxraven.admin.model.MailAnalyticsMetric;
 import com.mxraven.admin.model.MailAnalyticsOverview;
 import com.mxraven.admin.model.MailAnalyticsSeries;
@@ -424,6 +425,47 @@ public final class MailAnalyticsClient {
         validateInterval(value(params, "start_at"), value(params, "end_at"));
         return client.get(base() + "/task-size-statistics", params == null ? null : params.toMap())
                 .as(MailAnalyticsTaskSizeStatistics.class);
+    }
+
+    /**
+     * Fixed per-listener analytics catalog with a zero-filled UTC time series.
+     *
+     * <p>The server selects hourly buckets for intervals up to 72 hours and
+     * daily buckets for longer intervals.
+     *
+     * @param startAt    inclusive UTC start of the analytics interval
+     * @param endAt      exclusive UTC end of the analytics interval
+     * @param listenerId tenant listener to report
+     * @return the listener overview for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
+     */
+    public MailAnalyticsListenerOverview getMailAnalyticsListenerOverview(String startAt, String endAt,
+                                                                          String listenerId) throws IOException {
+        return getMailAnalyticsListenerOverview(QueryParams.create()
+                .put("start_at", startAt)
+                .put("end_at", endAt)
+                .put("listener_id", listenerId));
+    }
+
+    /**
+     * Fixed per-listener analytics catalog with a zero-filled UTC time series.
+     *
+     * @param params required {@code start_at}, {@code end_at}, and
+     *               {@code listener_id}
+     * @return the listener overview for the interval
+     * @throws IOException if the request fails or is interrupted
+     * @throws IllegalArgumentException if the interval is missing, malformed,
+     *                                  non-UTC, reversed, longer than 31 days, or
+     *                                  not aligned to the required boundary
+     */
+    public MailAnalyticsListenerOverview getMailAnalyticsListenerOverview(QueryParams params)
+            throws IOException {
+        validateInterval(value(params, "start_at"), value(params, "end_at"));
+        return client.get(base() + "/listener-overview", params == null ? null : params.toMap())
+                .as(MailAnalyticsListenerOverview.class);
     }
 
     private static final Duration MAX_INTERVAL = Duration.ofDays(31);

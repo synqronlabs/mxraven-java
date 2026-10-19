@@ -59,7 +59,7 @@ public final class AdminClient implements AutoCloseable {
      * Default mxRaven control-plane base URL. Used by the constructors that omit
      * a base URL; pass an explicit URL to target another environment.
      */
-    public static final String DEFAULT_BASE_URL = "https://api.mxraven.email";
+    public static final String DEFAULT_BASE_URL = "https://api.mxraven.com";
 
     private static final ObjectMapper DEFAULT_MAPPER = new ObjectMapper()
             .registerModule(new ParameterNamesModule())

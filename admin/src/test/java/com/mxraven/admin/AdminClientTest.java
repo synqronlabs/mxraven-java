@@ -255,7 +255,7 @@ class AdminClientTest {
     @Test
     void defaultsToTheProductionBaseUrl() {
         AdminClient client = new AdminClient("token");
-        assertEquals("https://api.mxraven.email", client.baseUrl());
+        assertEquals("https://api.mxraven.com", client.baseUrl());
         assertEquals(AdminClient.DEFAULT_BASE_URL, client.baseUrl());
         assertEquals("v2", client.apiVersion());
     }

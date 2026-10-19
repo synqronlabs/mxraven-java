@@ -20,7 +20,6 @@ public final class FeedbackExample {
 
     public static void main(String[] args) throws Exception {
         FeedbackClient feedback = FeedbackClient.builder()
-                .baseUrl("https://feedback.mxraven.example")
                 .credentials("feedback-key", "feedback-secret")
                 .build();
 

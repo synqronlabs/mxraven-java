@@ -30,7 +30,6 @@ import okhttp3.ResponseBody;
  *
  * <pre>
  * FeedbackClient feedback = FeedbackClient.builder()
- *         .baseUrl("https://feedback.mxraven.com")
  *         .credentials("mxr_tx_ab12cd34ef56", apiKeySecret)
  *         .build();
  *
@@ -53,6 +52,12 @@ public final class FeedbackClient {
 
     /** Default maximum number of request bytes read from an input stream. */
     public static final long DEFAULT_MAX_REQUEST_BYTES = 64L * 1024 * 1024;
+
+    /**
+     * Default mxRaven service base URL. The feedback routes are served from the
+     * control-plane host under {@code /v1/feedback}.
+     */
+    public static final String DEFAULT_BASE_URL = "https://api.mxraven.com";
 
     /** Maximum number of response bytes accepted from the service. */
     private static final long MAX_RESPONSE_BYTES = 64 * 1024;
@@ -435,7 +440,7 @@ public final class FeedbackClient {
 
     /** Builds a {@link FeedbackClient}. */
     public static final class Builder {
-        private String baseUrl;
+        private String baseUrl = DEFAULT_BASE_URL;
         private String username;
         private String secret;
         private OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -448,9 +453,9 @@ public final class FeedbackClient {
         }
 
         /**
-         * Sets the feedback service base URL, for example {@code "https://feedback.mxraven.com"}.
+         * Overrides the feedback service base URL.
          *
-         * @param baseUrl the base URL
+         * @param baseUrl the base URL; defaults to {@link FeedbackClient#DEFAULT_BASE_URL}
          * @return this builder
          * @throws IllegalArgumentException when {@code baseUrl} is {@code null} or blank
          */
@@ -531,15 +536,12 @@ public final class FeedbackClient {
         }
 
         /**
-         * Builds the client. A base URL is required.
+         * Builds the client. The base URL defaults to
+         * {@link FeedbackClient#DEFAULT_BASE_URL}.
          *
          * @return the configured client
-         * @throws IllegalStateException when the base URL has not been set
          */
         public FeedbackClient build() {
-            if (baseUrl == null || Java8.isBlank(baseUrl)) {
-                throw new IllegalStateException("base URL is required (call baseUrl(...))");
-            }
             return new FeedbackClient(this);
         }
     }

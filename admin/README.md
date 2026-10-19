@@ -117,7 +117,7 @@ access token) issued by ZITADEL. The token is sent as
 `Authorization: Bearer <token>` on every request.
 
 ```java
-// Uses the default base URL (https://api.mxraven.email).
+// Uses the default base URL (https://api.mxraven.com).
 AdminClient admin = new AdminClient(accessToken);
 
 // Or point at another environment:
@@ -144,7 +144,7 @@ allowed to perform fails with `403` and a `PermissionDeniedException`.
 | `AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json)` | Custom transport and codecs |
 
 `baseUrl` is normalised by stripping trailing slashes; when omitted it defaults
-to `AdminClient.DEFAULT_BASE_URL` (`"https://api.mxraven.email"`). A blank or
+to `AdminClient.DEFAULT_BASE_URL` (`"https://api.mxraven.com"`). A blank or
 missing `apiVersion` falls back to `AdminClient.DEFAULT_API_VERSION` (`"v2"`).
 
 ### API version

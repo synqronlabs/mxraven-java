@@ -53,7 +53,7 @@ class FeedbackClientTest {
 
     @Test
     void builderValidatesConfiguration() {
-        assertThrows(IllegalStateException.class, () -> FeedbackClient.builder().build());
+        assertEquals(FeedbackClient.DEFAULT_BASE_URL, FeedbackClient.builder().build().baseUrl());
         assertThrows(IllegalArgumentException.class, () -> FeedbackClient.builder().baseUrl(""));
         assertThrows(IllegalArgumentException.class, () -> FeedbackClient.builder().credentials("", SECRET));
         assertThrows(IllegalArgumentException.class, () -> FeedbackClient.builder().credentials(USERNAME, ""));

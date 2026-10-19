@@ -171,6 +171,17 @@ public final class Envelope {
         }
 
         /**
+         * Sets the reverse path from an address string, with no source route.
+         * A blank address yields the null path.
+         *
+         * @param from the reverse-path address, parsed with {@link Path#of(String)}
+         * @return this builder
+         */
+        public Builder from(String from) {
+            return from(Path.of(from));
+        }
+
+        /**
          * Sets the forward paths.
          *
          * @param to the recipients

@@ -28,6 +28,7 @@ public final class DeliveryStatus implements WebhookEvent {
     private final String remoteHost;
     private final int smtpCode;
     private final String enhancedStatusCode;
+    private final String reason;
     private final String remoteResponse;
     private final Long nextRetryAtUtc;
     private final String correlationTaskId;
@@ -92,6 +93,11 @@ public final class DeliveryStatus implements WebhookEvent {
         return enhancedStatusCode;
     }
 
+    /** the bounded, machine-readable delivery classification */
+    public String reason() {
+        return reason;
+    }
+
     /** the remote reply text, truncated to 512 bytes */
     public String remoteResponse() {
         return remoteResponse;
@@ -128,6 +134,7 @@ public final class DeliveryStatus implements WebhookEvent {
                 && Objects.equals(this.remoteHost, that.remoteHost)
                 && this.smtpCode == that.smtpCode
                 && Objects.equals(this.enhancedStatusCode, that.enhancedStatusCode)
+                && Objects.equals(this.reason, that.reason)
                 && Objects.equals(this.remoteResponse, that.remoteResponse)
                 && Objects.equals(this.nextRetryAtUtc, that.nextRetryAtUtc)
                 && Objects.equals(this.correlationTaskId, that.correlationTaskId);
@@ -135,12 +142,12 @@ public final class DeliveryStatus implements WebhookEvent {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.taskId, this.tenantId, this.listenerId, this.status, this.attempt, this.acceptedAtUtc, this.occurredAtUtc, this.sourceIp, this.destinationDomain, this.remoteHost, this.smtpCode, this.enhancedStatusCode, this.remoteResponse, this.nextRetryAtUtc, this.correlationTaskId);
+        return Objects.hash(this.taskId, this.tenantId, this.listenerId, this.status, this.attempt, this.acceptedAtUtc, this.occurredAtUtc, this.sourceIp, this.destinationDomain, this.remoteHost, this.smtpCode, this.enhancedStatusCode, this.reason, this.remoteResponse, this.nextRetryAtUtc, this.correlationTaskId);
     }
 
     @Override
     public String toString() {
-        return "DeliveryStatus[" + "taskId=" + this.taskId + ", " + "tenantId=" + this.tenantId + ", " + "listenerId=" + this.listenerId + ", " + "status=" + this.status + ", " + "attempt=" + this.attempt + ", " + "acceptedAtUtc=" + this.acceptedAtUtc + ", " + "occurredAtUtc=" + this.occurredAtUtc + ", " + "sourceIp=" + this.sourceIp + ", " + "destinationDomain=" + this.destinationDomain + ", " + "remoteHost=" + this.remoteHost + ", " + "smtpCode=" + this.smtpCode + ", " + "enhancedStatusCode=" + this.enhancedStatusCode + ", " + "remoteResponse=" + this.remoteResponse + ", " + "nextRetryAtUtc=" + this.nextRetryAtUtc + ", " + "correlationTaskId=" + this.correlationTaskId + "]";
+        return "DeliveryStatus[" + "taskId=" + this.taskId + ", " + "tenantId=" + this.tenantId + ", " + "listenerId=" + this.listenerId + ", " + "status=" + this.status + ", " + "attempt=" + this.attempt + ", " + "acceptedAtUtc=" + this.acceptedAtUtc + ", " + "occurredAtUtc=" + this.occurredAtUtc + ", " + "sourceIp=" + this.sourceIp + ", " + "destinationDomain=" + this.destinationDomain + ", " + "remoteHost=" + this.remoteHost + ", " + "smtpCode=" + this.smtpCode + ", " + "enhancedStatusCode=" + this.enhancedStatusCode + ", " + "reason=" + this.reason + ", " + "remoteResponse=" + this.remoteResponse + ", " + "nextRetryAtUtc=" + this.nextRetryAtUtc + ", " + "correlationTaskId=" + this.correlationTaskId + "]";
     }
 
     /**
@@ -158,12 +165,13 @@ public final class DeliveryStatus implements WebhookEvent {
      * @param remoteHost the remote MTA hostname, when known
      * @param smtpCode the remote SMTP reply code
      * @param enhancedStatusCode the RFC 3463 enhanced status code
+     * @param reason the bounded, machine-readable delivery classification
      * @param remoteResponse the remote reply text, truncated to 512 bytes
      * @param nextRetryAtUtc Unix time, in seconds, of the next attempt for a deferred status
      * @param correlationTaskId links a generated DSN back to its original task
      */
     @JsonCreator
-    public DeliveryStatus(String taskId, String tenantId, String listenerId, StatusOutcome status, long attempt, long acceptedAtUtc, long occurredAtUtc, String sourceIp, String destinationDomain, String remoteHost, int smtpCode, String enhancedStatusCode, String remoteResponse, Long nextRetryAtUtc, String correlationTaskId) {
+    public DeliveryStatus(String taskId, String tenantId, String listenerId, StatusOutcome status, long attempt, long acceptedAtUtc, long occurredAtUtc, String sourceIp, String destinationDomain, String remoteHost, int smtpCode, String enhancedStatusCode, String reason, String remoteResponse, Long nextRetryAtUtc, String correlationTaskId) {
         this.taskId = taskId;
         this.tenantId = tenantId;
         this.listenerId = listenerId;
@@ -176,6 +184,7 @@ public final class DeliveryStatus implements WebhookEvent {
         this.remoteHost = remoteHost;
         this.smtpCode = smtpCode;
         this.enhancedStatusCode = enhancedStatusCode;
+        this.reason = reason;
         this.remoteResponse = remoteResponse;
         this.nextRetryAtUtc = nextRetryAtUtc;
         this.correlationTaskId = correlationTaskId;

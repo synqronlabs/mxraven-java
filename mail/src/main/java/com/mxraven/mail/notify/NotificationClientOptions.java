@@ -42,7 +42,7 @@ public final class NotificationClientOptions {
 
     /**
      * The client notification tier WebSocket URL, for example
-     * {@code wss://nats.mxraven.com}. Only the {@code ws:} and {@code wss:}
+     * {@code wss://notifications.mxraven.com}. Only the {@code ws:} and {@code wss:}
      * schemes are accepted. A missing port defaults to {@code 443} for
      * {@code wss:} and {@code 80} for {@code ws:}.
      *

@@ -156,10 +156,10 @@ place. Client code never hardcodes the version. `"/tenants/acme/domains"` become
 left untouched.
 
 ```java
-AdminClient admin = new AdminClient("https://api.mxraven.com", token, "v3");
+AdminClient admin = new AdminClient("https://api.mxraven.com", token, "v2");
 
 admin.baseUrl();        // https://api.mxraven.com
-admin.apiVersion();     // v3
+admin.apiVersion();     // v2
 admin.json();           // the Jackson ObjectMapper in use
 admin.rateLimitConfig();
 ```

@@ -30,6 +30,7 @@ public final class NotificationsExample {
 
         try (NotificationClient client = NotificationClient.connect(
                 NotificationClientOptions.builder()
+                        .url("wss://notifications.mxraven.com")
                         .username(username)
                         .secret(secret)
                         .listener(listenerId)

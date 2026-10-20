@@ -49,7 +49,7 @@ public final class NotificationClient implements AutoCloseable {
      * {@link NotificationClientOptions.Builder#url(String)} for staging or
      * self-hosted tiers.
      */
-    public static final String DEFAULT_URL = "wss://nats.mxraven.com";
+    public static final String DEFAULT_URL = "wss://notifications.mxraven.com";
 
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(500);
 

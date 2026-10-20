@@ -82,8 +82,8 @@ class NotificationClientTest {
                         .listener("listener-1")
                         .build(), factory);
 
-        assertEquals("wss://nats.mxraven.com", NotificationClient.DEFAULT_URL);
-        assertEquals("wss://nats.mxraven.com:443", factory.settings.url());
+        assertEquals("wss://notifications.mxraven.com", NotificationClient.DEFAULT_URL);
+        assertEquals("wss://notifications.mxraven.com:443", factory.settings.url());
         client.close();
     }
 

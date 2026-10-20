@@ -259,7 +259,7 @@ Rules of thumb:
 | `host(String)` | `smtp.mxraven.email` | Server hostname. |
 | `port(int)` | `587` | Server port. |
 | `startTls()` | default | STARTTLS (typically 587). |
-| `implicitTls()` | | Implicit TLS (typically 465). |
+| `implicitTls()` | | Implicit TLS (typically 465; not published on `smtp.mxraven.email`). |
 | `noTls()` | | No TLS (testing only). |
 | `security(SecurityMode)` | `STARTTLS` | Explicit security mode. |
 | `credentials(username, password)` | | Enables SMTP AUTH (`PLAIN` / `LOGIN`). |
@@ -276,8 +276,10 @@ SmtpConfig startTls = SmtpConfig.builder()
         .host("smtp.mxraven.email").port(587).startTls()
         .credentials("user", "pass").build();
 
+// Implicit TLS for servers that publish it on 465; mxRaven production
+// publishes STARTTLS on smtp.mxraven.email:587 instead.
 SmtpConfig implicit = SmtpConfig.builder()
-        .host("smtp.mxraven.email").port(465).implicitTls()
+        .host("smtp.example.com").port(465).implicitTls()
         .credentials("user", "pass").build();
 
 SmtpConfig oauth = SmtpConfig.builder()
@@ -756,7 +758,7 @@ client.consume(new NotificationCallbacks() {
 
 | Member | Description |
 | --- | --- |
-| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://nats.mxraven.com`; a missing port defaults to 443 for `wss://` and 80 for `ws://`. |
+| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://notifications.mxraven.com`; a missing port defaults to 443 for `wss://` and 80 for `ws://`. |
 | `.username(String)` / `.secret(String)` | The listener API key prefix and secret, the same values used for SMTP submission. |
 | `.listener(String)` | Required listener ID; derives the durable consumer name and inbox prefix. |
 | `.consumer(String)` | Overrides the durable consumer name. Defaults to `notify-<listener>`. |

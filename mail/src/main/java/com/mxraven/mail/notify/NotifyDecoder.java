@@ -105,6 +105,7 @@ final class NotifyDecoder {
                 requiredText(source, "task_id", subject),
                 requiredText(source, "tenant_id", subject),
                 requiredText(source, "listener_id", subject),
+                optionalText(source, "message_ref", subject),
                 optionalText(source, "correlation_id", subject),
                 status,
                 requiredLong(source, "attempt", subject),

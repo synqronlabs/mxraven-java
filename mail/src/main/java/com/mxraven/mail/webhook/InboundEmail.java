@@ -17,6 +17,9 @@ import java.util.List;
  * @param taskId          identifies the delivery task; stable across retries
  * @param tenantId        the owning tenant
  * @param listenerId      the listener that accepted the message
+ * @param messageRef      the mxRaven message reference; for an outbound listener it is
+ *                        the value a submission reply reports as {@code message_ref=},
+ *                        so an event can be joined to the send that produced it
  * @param attempt         the delivery attempt number, starting at 1
  * @param acceptedAtUtc   Unix time, in seconds, when mxRaven accepted the message
  * @param occurredAtUtc   Unix time, in seconds, when this delivery was built
@@ -32,6 +35,7 @@ public record InboundEmail(
         String taskId,
         String tenantId,
         String listenerId,
+        String messageRef,
         long attempt,
         long acceptedAtUtc,
         long occurredAtUtc,

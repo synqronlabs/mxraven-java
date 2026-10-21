@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * @param taskId         identifies the storage task
  * @param tenantId       the owning tenant
  * @param listenerId     the source listener
+ * @param messageRef     the mxRaven message reference of the message this attempt belongs to
  * @param status         the storage outcome
  * @param attempt        the delivery attempt number, starting at 1
  * @param acceptedAtUtc  Unix time, in seconds, when mxRaven accepted the message
@@ -28,6 +29,7 @@ public record StorageStatus(
         String taskId,
         String tenantId,
         String listenerId,
+        String messageRef,
         StatusOutcome status,
         long attempt,
         Long acceptedAtUtc,

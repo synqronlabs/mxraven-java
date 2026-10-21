@@ -20,6 +20,7 @@ class NotificationDecodeTest {
               "task_id": "task-1",
               "tenant_id": "tenant-1",
               "listener_id": "listener-1",
+              "message_ref": "message-ref-1",
               "attempt": 1,
               "accepted_at_utc": 1700000000,
               "occurred_at_utc": 1700000001,
@@ -46,6 +47,7 @@ class NotificationDecodeTest {
               "task_id": "task-1",
               "tenant_id": "tenant-1",
               "listener_id": "listener-1",
+              "message_ref": "message-ref-1",
               "correlation_id": "accepted-1",
               "status": "deferred",
               "attempt": 3,
@@ -69,6 +71,7 @@ class NotificationDecodeTest {
               "task_id": "task-1",
               "tenant_id": "tenant-1",
               "listener_id": "listener-1",
+              "message_ref": "message-ref-1",
               "correlation_id": "accepted-1",
               "status": "delivered",
               "attempt": 2,
@@ -88,6 +91,7 @@ class NotificationDecodeTest {
               "task_id": "task-1",
               "tenant_id": "tenant-1",
               "listener_id": "listener-1",
+              "message_ref": "message-ref-1",
               "correlation_id": "accepted-1",
               "status": "invalid",
               "attempt": 1,
@@ -108,6 +112,7 @@ class NotificationDecodeTest {
         AcceptedNotification notification = assertInstanceOf(AcceptedNotification.class, event);
         assertEquals(NotificationKind.ACCEPTED, notification.kind());
         assertEquals("task-1", notification.email().taskId());
+        assertEquals("message-ref-1", notification.email().messageRef());
         assertEquals("sender@example.com", notification.email().envelope().mailFrom());
         assertEquals("secret-token", notification.email().rawEmail().accessToken());
         assertEquals(1, notification.email().headers().size());
@@ -120,6 +125,7 @@ class NotificationDecodeTest {
         assertEquals(AttemptChannel.SMTP, smtp.channel());
         assertEquals(StatusOutcome.DEFERRED, smtp.status());
         assertEquals("accepted-1", smtp.correlationId());
+        assertEquals("message-ref-1", smtp.messageRef());
 
         AttemptEvent s3 = assertInstanceOf(AttemptNotification.class,
                 NotifyDecoder.decode(ATTEMPT_SUBJECT, bytes(S3_ATTEMPT_BODY))).attempt();
@@ -145,6 +151,7 @@ class NotificationDecodeTest {
         assertEquals("tenant-1", attempt.tenantId());
         assertEquals("listener-1", attempt.listenerId());
         assertEquals("accepted-1", attempt.correlationId());
+        assertEquals("message-ref-1", attempt.messageRef());
         assertEquals(StatusOutcome.DEFERRED, attempt.status());
         assertEquals(3, attempt.attempt());
         assertEquals(1700000000L, attempt.acceptedAtUtc());

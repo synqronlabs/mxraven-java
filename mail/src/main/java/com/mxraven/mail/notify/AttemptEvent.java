@@ -20,6 +20,9 @@ import com.mxraven.mail.webhook.StatusOutcome;
  * @param taskId             the delivery task; for a submission listener this equals the accepted event's task id
  * @param tenantId           the owning tenant
  * @param listenerId         the source listener
+ * @param messageRef         the mxRaven message reference of the message this attempt belongs to; it
+ *                           joins attempts and acceptance events for the same message, including
+ *                           every recipient a single send fanned out to
  * @param correlationId      the task id of the accepted event for the message, when one was recorded
  * @param status             the attempt outcome
  * @param attempt            the delivery attempt number, starting at 1
@@ -53,6 +56,7 @@ public record AttemptEvent(
         String taskId,
         String tenantId,
         String listenerId,
+        String messageRef,
         String correlationId,
         StatusOutcome status,
         long attempt,

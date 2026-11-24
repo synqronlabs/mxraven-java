@@ -8,10 +8,10 @@ package com.mxraven.admin.model;
  * @param domains number of domains
  * @param inboundRoutes number of inbound routes
  * @param apiKeys number of API keys
- * @param routingRules number of routing rules
+ * @param scriptSourceBytes total routing-script source bytes
  * @param smtpRelays number of SMTP relays
  * @param storageIntegrations number of storage integrations
- * @param webhookEndpoints number of webhook endpoints
+ * @param httpEndpoints number of webhook endpoints available to mx.http
  * @param autoReplyTemplates number of auto-reply templates
  * @param identityProviders number of identity providers
  * @param manualTenantSuppressions number of manual tenant suppressions
@@ -26,10 +26,10 @@ public record TenantQuotaUsage(
         long domains,
         long inboundRoutes,
         long apiKeys,
-        long routingRules,
+        long scriptSourceBytes,
         long smtpRelays,
         long storageIntegrations,
-        long webhookEndpoints,
+        long httpEndpoints,
         long autoReplyTemplates,
         long identityProviders,
         long manualTenantSuppressions,

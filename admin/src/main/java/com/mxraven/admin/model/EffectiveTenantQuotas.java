@@ -14,11 +14,11 @@ package com.mxraven.admin.model;
  * @param maxInboundRoutes maximum inbound routes allowed
  * @param maxApiKeys maximum API keys allowed
  * @param maxApiKeysPerListener maximum API keys per listener
- * @param maxRoutingRules maximum routing rules allowed
- * @param maxRoutingRulesPerListener maximum routing rules per listener
+ * @param maxScriptSourceBytes maximum total routing-script source bytes allowed
+ * @param maxScriptRevisionsPerListener maximum retained routing-script revisions per listener
  * @param maxSmtpRelays maximum SMTP relays allowed
  * @param maxStorageIntegrations maximum storage integrations allowed
- * @param maxWebhookEndpoints maximum webhook endpoints allowed
+ * @param maxHttpEndpoints maximum webhook endpoints available to mx.http allowed
  * @param maxAutoReplyTemplates maximum auto-reply templates allowed
  * @param maxIdentityProviders maximum identity providers allowed
  * @param maxManualTenantSuppressions maximum manual tenant suppressions allowed
@@ -70,11 +70,11 @@ public record EffectiveTenantQuotas(
         Integer maxInboundRoutes,
         Integer maxApiKeys,
         Integer maxApiKeysPerListener,
-        Integer maxRoutingRules,
-        Integer maxRoutingRulesPerListener,
+        Integer maxScriptSourceBytes,
+        Integer maxScriptRevisionsPerListener,
         Integer maxSmtpRelays,
         Integer maxStorageIntegrations,
-        Integer maxWebhookEndpoints,
+        Integer maxHttpEndpoints,
         Integer maxAutoReplyTemplates,
         Integer maxIdentityProviders,
         Integer maxManualTenantSuppressions,

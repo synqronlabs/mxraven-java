@@ -1,7 +1,7 @@
 package com.mxraven.mail.webhook;
 
 /**
- * The HMAC signature of a webhook request did not match the configured secret.
+ * The HMAC signature of an mxRaven endpoint call did not match the configured secret.
  *
  * <p>Return a {@code 401} to the sender when this is thrown; do not process the
  * payload. The message includes the method, host, and request target the

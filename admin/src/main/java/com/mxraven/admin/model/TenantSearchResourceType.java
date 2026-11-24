@@ -11,8 +11,6 @@ public enum TenantSearchResourceType {
     INBOUND_ROUTE("inbound_route"),
     /** A listener. */
     LISTENER("listener"),
-    /** A routing rule. */
-    ROUTING_RULE("routing_rule"),
     /** An API key. */
     API_KEY("api_key"),
     /** An SMTP relay. */

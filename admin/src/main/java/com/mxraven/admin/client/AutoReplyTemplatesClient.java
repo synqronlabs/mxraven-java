@@ -4,6 +4,7 @@ import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Paged;
 import com.mxraven.admin.QueryParams;
 import com.mxraven.admin.model.AutoReplyTemplate;
+import com.mxraven.admin.model.AutoReplyTemplateContent;
 import com.mxraven.admin.model.AutoReplyTemplateData;
 import com.mxraven.admin.model.CreateAutoReplyTemplateRequest;
 
@@ -94,6 +95,17 @@ public final class AutoReplyTemplatesClient {
     public AutoReplyTemplate get(String templateId) throws IOException {
         String resourcePath = one(templateId);
         return new AutoReplyTemplate(client, resourcePath, client.get(resourcePath).as(AutoReplyTemplateData.class));
+    }
+
+    /**
+     * Reads the stored content a listener renders for the template.
+     *
+     * @param templateId template identifier
+     * @return the stored subject, bodies, and headers
+     * @throws IOException if the request fails or is interrupted
+     */
+    public AutoReplyTemplateContent getContent(String templateId) throws IOException {
+        return client.get(one(templateId) + "/content").as(AutoReplyTemplateContent.class);
     }
 
     /**

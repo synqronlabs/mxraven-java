@@ -1,7 +1,6 @@
 package com.mxraven.mail.notify;
 
 import com.mxraven.mail.Cancellation;
-import com.mxraven.mail.webhook.InboundEmail;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -24,13 +23,16 @@ class NotificationClientTest {
 
     private static final String ACCEPTED_BODY = """
             {
-              "event_type": "inbound_email",
               "task_id": "task-1",
               "tenant_id": "tenant-1",
               "listener_id": "listener-1",
               "attempt": 1,
               "accepted_at_utc": 1700000000,
               "occurred_at_utc": 1700000001,
+              "routing_decision": {
+                "terminal_action": "TERMINAL_ACTION_TYPE_DELIVER",
+                "used_listener_default": false
+              },
               "envelope": {"mail_from": "sender@example.com", "rcpt_to": ["rcpt@example.com"]},
               "message": {"subject": "hi"},
               "headers": [{"name": "Subject", "value": "hi"}],
@@ -199,8 +201,8 @@ class NotificationClientTest {
 
         client.consume(new NotificationCallbacks() {
             @Override
-            public HandlerResult onAccepted(InboundEmail email) {
-                seen.add("accepted " + email.taskId());
+            public HandlerResult onAccepted(AcceptedMessage message) {
+                seen.add("accepted " + message.taskId());
                 return HandlerResult.CONTINUE;
             }
 

@@ -15,23 +15,10 @@ final class WebhookTestSupport {
     static final String SECRET = "whsec_dGVzdHNlY3JldA";
     static final String OTHER_SECRET = "whsec_other";
     static final String KID = "whk_test";
-    static final URI URI = java.net.URI.create("https://hooks.example.com/mxraven?tenant=acme");
+    static final URI URI = java.net.URI.create("https://hooks.example.com/mxraven/risk-check?tenant=acme");
 
-    static final String INBOUND_BODY = """
-            {
-              "event_type": "inbound_email",
-              "task_id": "task-123",
-              "tenant_id": "tenant-1",
-              "listener_id": "listener-1",
-              "attempt": 1,
-              "accepted_at_utc": 1789302600,
-              "occurred_at_utc": 1789302601,
-              "routing_decision": {"terminal_action": "TERMINAL_ACTION_TYPE_RELAY", "used_listener_default": false},
-              "envelope": {"mail_from": "sender@example.net", "rcpt_to": ["support@example.com"]},
-              "message": {"subject": "Hello"},
-              "headers": [{"name": "From", "value": "sender@example.net"}],
-              "raw_email": {"url": "https://raw.example.com/messages/task-123.eml", "token_type": "Bearer", "access_token": "token"}
-            }""";
+    static final String PAYLOAD = """
+            {"decision":"allow","risk":0.02,"reason":"known-sender"}""";
 
     private WebhookTestSupport() {
     }
@@ -47,6 +34,8 @@ final class WebhookTestSupport {
         headers.put(WebhookVerifier.HEADER_TIMESTAMP, timestamp);
         headers.put(WebhookVerifier.HEADER_SIGNATURE_KID, KID);
         headers.put(WebhookVerifier.HEADER_SIGNATURE, sign(secret, method, uri, body, timestamp, webhookId));
+        headers.put(WebhookVerifier.HEADER_LISTENER, "listener-1");
+        headers.put(WebhookVerifier.HEADER_REVISION, "revision-1");
         return headers;
     }
 

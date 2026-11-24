@@ -8,9 +8,11 @@ package com.mxraven.admin.model;
  * @param id unique pool identifier
  * @param name human-readable pool name
  * @param streamType mail stream the pool serves
+ * @param ref tenant-scoped lease reference routing scripts use under {@code deps.pool}
  */
 public record TenantDedicatedIPPool(
         String id,
         String name,
-        StreamType streamType) {
+        StreamType streamType,
+        String ref) {
 }

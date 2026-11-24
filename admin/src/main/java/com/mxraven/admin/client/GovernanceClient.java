@@ -4,6 +4,7 @@ import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Paged;
 import com.mxraven.admin.QueryParams;
 import com.mxraven.admin.model.AuditLog;
+import com.mxraven.admin.model.InboundRoutingOutcome;
 import com.mxraven.admin.model.TenantDedicatedIPPool;
 import com.mxraven.admin.model.TenantResourceSearchResult;
 
@@ -51,6 +52,15 @@ public final class GovernanceClient {
     }
 
     /**
+     * Starts a typed query over inbound recipient routing outcomes.
+     *
+     * @return a new inbound-routing-outcome query
+     */
+    public InboundRoutingOutcomeQuery inboundRoutingOutcomeQuery() {
+        return new InboundRoutingOutcomeQuery(this);
+    }
+
+    /**
      * List the tenant audit log (first page fetched eagerly, remaining pages
      * lazy).
      *
@@ -63,6 +73,24 @@ public final class GovernanceClient {
 
     Paged<AuditLog> listAuditLog(QueryParams params) throws IOException {
         return client.paged(tenantPath("/audit-log"), params == null ? null : params.toMap(), AuditLog.class);
+    }
+
+    /**
+     * Lists inbound recipient routing outcomes, newest first.
+     *
+     * <p>These are the recipient outcomes that were rejected synchronously or
+     * suppressed in a mixed-recipient SMTP transaction.
+     *
+     * @return a lazily paginating collection of inbound routing outcomes
+     * @throws IOException if the first page request fails or is interrupted
+     */
+    public Paged<InboundRoutingOutcome> listInboundRoutingOutcomes() throws IOException {
+        return listInboundRoutingOutcomes(null);
+    }
+
+    Paged<InboundRoutingOutcome> listInboundRoutingOutcomes(QueryParams params) throws IOException {
+        return client.paged(tenantPath("/inbound-routing-outcomes"), params == null ? null : params.toMap(),
+                InboundRoutingOutcome.class);
     }
 
     /**

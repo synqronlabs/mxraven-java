@@ -1,6 +1,7 @@
 package com.mxraven.admin;
 
 import com.mxraven.admin.client.AutoReplyTemplatesClient;
+import com.mxraven.admin.client.ConnectedAppsClient;
 import com.mxraven.admin.client.DomainsClient;
 import com.mxraven.admin.client.GovernanceClient;
 import com.mxraven.admin.client.IdentityProvidersClient;
@@ -151,6 +152,15 @@ public final class Workspace {
      */
     public WebhookEndpointsClient webhookEndpoints() {
         return new WebhookEndpointsClient(client, tenantSlug);
+    }
+
+    /**
+     * Accesses the connected-application resource family.
+     *
+     * @return a client for connected-application operations in this workspace
+     */
+    public ConnectedAppsClient connectedApps() {
+        return new ConnectedAppsClient(client, tenantSlug);
     }
 
     /**

@@ -9,9 +9,9 @@ package com.mxraven.admin.model;
  * @param displayName human-readable listener name
  * @param listenerType whether this is a submission or MTA listener
  * @param streamType message stream handled by the listener
- * @param defaultTerminalActionType terminal action applied when no rule matches
- * @param defaultTerminalActionPayload action-specific payload for the default action
  * @param rspamdScanningEnabled whether inbound Rspamd scanning is enabled
+ * @param activeScriptRevisionId the published routing-script revision, when one exists
+ * @param scriptBodyAccess whether the routing script may read the text/plain body (MTA only)
  */
 public record ListenerData(
         String id,
@@ -19,7 +19,7 @@ public record ListenerData(
         String displayName,
         ListenerType listenerType,
         StreamType streamType,
-        TerminalActionType defaultTerminalActionType,
-        TerminalActionPayload defaultTerminalActionPayload,
-        boolean rspamdScanningEnabled) {
+        boolean rspamdScanningEnabled,
+        String activeScriptRevisionId,
+        boolean scriptBodyAccess) {
 }

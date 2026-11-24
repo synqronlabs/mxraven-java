@@ -5,7 +5,6 @@ import com.mxraven.admin.Workspace;
 import com.mxraven.admin.model.Listener;
 import com.mxraven.admin.model.ListenerType;
 import com.mxraven.admin.model.StreamType;
-import com.mxraven.admin.model.TerminalActionType;
 
 /**
  * Creates and manages listeners, and reaches the child clients that hang off a
@@ -26,8 +25,7 @@ public final class ManageListenersExample {
             Listener listener = ws.listeners().create(l -> l
                     .displayName("Outbound transactional")
                     .listenerType(ListenerType.SUBMISSION)
-                    .streamType(StreamType.TRANSACTIONAL)
-                    .defaultTerminalAction(TerminalActionType.DELIVER));
+                    .streamType(StreamType.TRANSACTIONAL));
 
             for (Listener l : ws.listeners().list()) {
                 System.out.println(l.id() + " " + l.displayName() + " " + l.listenerType());
@@ -38,7 +36,7 @@ public final class ManageListenersExample {
             listener.updateNotifications(true);
 
             // Child clients scoped to this listener:
-            listener.routingRules().list();
+            listener.routingScripts().listRevisions();
             listener.apiKeys().list();
 
             listener.delete();

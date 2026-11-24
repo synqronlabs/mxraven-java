@@ -12,7 +12,8 @@ The official Java client for the [mxRaven](https://mxraven.email) email platform
 It has two modules:
 
 - **`mail`**: send mail over SMTP, build and parse MIME messages, receive signed
-  inbound webhooks, and submit feedback.
+  accepted-message notifications, signed routing-script endpoint calls, and
+  submit feedback.
 - **`admin`**: drive the control-plane REST API: domains, listeners, routing
   rules, suppressions, recipient sets, analytics, and the rest of your workspace.
 
@@ -27,8 +28,8 @@ It has two modules:
 | `admin` guide | [`admin/README.md`](admin/README.md) |
 
 Both modules on this `main` branch target **Java 17+**. The only runtime
-dependency they bring in is Jackson (webhook/feedback and REST JSON); SMTP and
-MIME use just the JDK.
+dependency they bring in is Jackson (notification/endpoint/feedback and REST
+JSON); SMTP and MIME use just the JDK.
 
 > **Java 8+?** Use the [`jdk8` branch](https://github.com/synqronlabs/mxraven-java/tree/jdk8).
 > It builds on a JDK 8 toolchain and publishes the `-jdk8` artifacts
@@ -38,7 +39,7 @@ MIME use just the JDK.
 
 | Module | Artifact | Guide | Use it when |
 | --- | --- | --- | --- |
-| `mail` | `com.mxraven:mail` | [`mail/README.md`](mail/README.md) | You need to **send** mail, **build/parse** MIME, or **receive** inbound webhooks and feedback. |
+| `mail` | `com.mxraven:mail` | [`mail/README.md`](mail/README.md) | You need to **send** mail, **build/parse** MIME, consume notifications, or submit feedback. |
 | `admin` | `com.mxraven:admin` | [`admin/README.md`](admin/README.md) | You need to **manage** your mxRaven workspace through the control-plane API. |
 
 ## Installation
@@ -57,8 +58,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail:2.1.0")    // send & receive mail
-    implementation("com.mxraven:admin:2.1.0")   // control-plane API
+    implementation("com.mxraven:mail:3.0.0")    // send & receive mail
+    implementation("com.mxraven:admin:3.0.0")   // control-plane API
 }
 ```
 
@@ -69,12 +70,12 @@ dependencies {
     <dependency>
         <groupId>com.mxraven</groupId>
         <artifactId>mail</artifactId>
-        <version>2.1.0</version>
+        <version>3.0.0</version>
     </dependency>
     <dependency>
         <groupId>com.mxraven</groupId>
         <artifactId>admin</artifactId>
-        <version>2.1.0</version>
+        <version>3.0.0</version>
     </dependency>
 </dependencies>
 ```
@@ -172,64 +173,56 @@ Mail mail = MailBuilder.create()
         .build();
 ```
 
-Receiving mail is webhook-driven: verify the signature, then decode and parse
-the inbound MIME. See
-[`mail/README.md` → Webhooks](mail/README.md#webhooks) for the full handler and
-standalone-server setup.
+Receiving mail is notification-driven: enable notifications for a listener, then
+consume its accepted-message, delivery-attempt, and fault events over NATS. See
+[`mail/README.md` → Client notifications](mail/README.md#client-notifications).
 
 The `mail` guide covers the rest: implicit TLS, raw RFC 5322 sends, DSN/extension
-parameters, MIME parsing, and feedback. See
-[`mail/README.md`](mail/README.md).
+parameters, MIME parsing, signed `mx.http` endpoint verification, and feedback.
+See [`mail/README.md`](mail/README.md).
 
-## Quick start: receive mail (webhooks)
+## Quick start: receive mail (notifications)
 
-Inbound mail is delivered to your webhook endpoint as a signed event. Verify the
-signature, decode it, then download and parse the raw MIME:
+An accepted notification carries the parsed message summary, the SMTP envelope,
+the routing-script decision, and (for MTA listeners) time-limited raw-message
+access. Delivery attempts and sampled routing-script faults arrive on the same
+consumer:
 
 ```java
-import com.mxraven.mail.mime.Attachment;
 import com.mxraven.mail.mime.ParsedEmail;
-import com.mxraven.mail.webhook.*;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import com.mxraven.mail.notify.AcceptedMessage;
+import com.mxraven.mail.notify.HandlerResult;
+import com.mxraven.mail.notify.NotificationCallbacks;
+import com.mxraven.mail.notify.NotificationClient;
+import com.mxraven.mail.notify.NotificationClientOptions;
 
-WebhookVerifier verifier = WebhookVerifier.builder().secret(signingSecret).build();
-
-WebhookListener listener = new WebhookCallbacks() {
-    @Override
-    public void onInboundEmail(InboundEmail email) {
-        try {
-            ParsedEmail parsed = email.parse();            // download + parse the raw MIME
-            System.out.println("subject=" + parsed.subject());
-            parsed.textBody().ifPresent(System.out::println);
-            for (Attachment file : parsed.attachments()) {
-                System.out.println(file.filename() + " (" + file.size() + " bytes)");
+try (NotificationClient client = NotificationClient.connect(
+        NotificationClientOptions.builder()
+                .username(apiKeyPrefix)
+                .secret(apiKeySecret)
+                .listener(listenerId)
+                .build())) {
+    client.consume(new NotificationCallbacks() {
+        @Override
+        public HandlerResult onAccepted(AcceptedMessage message) throws Exception {
+            System.out.println(message.taskId() + " " + message.message().subject()
+                    + " terminal=" + message.routingDecision().terminalAction());
+            if (message.rawEmail() != null) {
+                ParsedEmail parsed = message.parse();    // download + parse the raw MIME
+                System.out.println(parsed.subject());
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            return HandlerResult.CONTINUE;
         }
-    }
-};
-
-WebhookHandler handler = WebhookHandler.builder()
-        .verifier(verifier)
-        .listener(listener)
-        .build();
-
-try (WebhookServer server = WebhookServer.builder()
-        .port(8080)
-        .path("/mxraven/webhook")
-        .handler(handler)
-        .build()) {
-    server.start();   // standalone receiver for local development
+    });
 }
 ```
 
-`WebhookServer` is a small standalone receiver for local development and simple
-deployments. To run inside an existing service, wire the `WebhookHandler` into
-your HTTP framework instead. See [`mail/README.md` → Webhooks](mail/README.md#webhooks)
-covers the handler, typed callbacks (bounces, status changes, feedback), and
-framework integration.
+A routing script that calls your own service with `mx.http` signs the request;
+verify it with `mail/webhook` and then decode the payload your endpoint defines.
+For a third-party API that authenticates with its own key, store a write-only
+endpoint credential with the `admin` module instead; those calls carry the
+credential header and no mxRaven signature. See
+[`mail/README.md` → Signed endpoint calls](mail/README.md#signed-endpoint-calls).
 
 ## Quick start: manage your workspace
 
@@ -241,7 +234,6 @@ import com.mxraven.admin.model.Listener;
 import com.mxraven.admin.model.ListenerType;
 import com.mxraven.admin.model.StreamType;
 import com.mxraven.admin.model.Tenant;
-import com.mxraven.admin.model.TerminalActionType;
 
 public class ManageWorkspace {
     public static void main(String[] args) throws Exception {
@@ -265,8 +257,7 @@ public class ManageWorkspace {
         Listener listener = ws.listeners().create(l -> l
                 .displayName("Outbound transactional")
                 .listenerType(ListenerType.SUBMISSION)
-                .streamType(StreamType.TRANSACTIONAL)
-                .defaultTerminalAction(TerminalActionType.DELIVER));
+                .streamType(StreamType.TRANSACTIONAL));
 
         for (Listener l : ws.listeners().list()) {
             System.out.println(l.id() + " " + l.displayName() + " " + l.listenerType());
@@ -320,7 +311,7 @@ jars or the normal build, so they never affect the published artifacts.
 ```
 
 The `mail` examples cover sending (text/HTML, attachments, raw messages),
-receiving webhooks, MIME parsing, and feedback. The `admin` examples cover
+consuming notifications, endpoint-call verification, MIME parsing, and feedback. The `admin` examples cover
 domains, listeners, pagination and filters, error handling, and workspace
 identity.
 

@@ -1,6 +1,5 @@
 package com.mxraven.mail.notify;
 
-import com.mxraven.mail.webhook.StatusOutcome;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -9,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NotificationDecodeTest {
     private static final String ACCEPTED_SUBJECT = "tenant.tenant-1.listener.listener-1.events.accepted";
@@ -25,9 +25,19 @@ class NotificationDecodeTest {
               "accepted_at_utc": 1700000000,
               "occurred_at_utc": 1700000001,
               "routing_decision": {
-                "terminal_action": "TERMINAL_ACTION_TYPE_DELIVER_WEBHOOK",
-                "used_listener_default": false
+                "terminal_action": "TERMINAL_ACTION_TYPE_DELIVER",
+                "used_listener_default": false,
+                "script_revision_id": "11111111-1111-1111-1111-111111111111",
+                "script_revision": 3,
+                "intents": [{"kind": "header.set", "header": "X-Test", "value": "1"}],
+                "skipped": [{"intent": {"kind": "forward.smtp", "ref": "fwd-1"}, "reason": "cover"}],
+                "log": ["checked"],
+                "http_calls": [{"endpoint": "risk", "status": 200, "duration_ms": 4,
+                                "request_bytes": 2, "response_bytes": 8}]
               },
+              "verdicts": {"action": "no action", "score": 1.5, "required_score": 5,
+                           "is_spam": false, "has_malware": false, "malware_names": [],
+                           "is_skipped": false, "error": ""},
               "envelope": {"mail_from": "sender@example.com", "rcpt_to": ["rcpt@example.com"]},
               "message": {"subject": "hi", "message_id": "<1@example.com>"},
               "headers": [{"name": "Subject", "value": "hi"}],
@@ -64,6 +74,24 @@ class NotificationDecodeTest {
               "correlation_task_id": "corr-1"
             }""";
 
+    private static final String FAULT_BODY = """
+            {
+              "tenant_id": "tenant-1",
+              "listener_id": "listener-1",
+              "message_ref": "message-ref-1",
+              "occurred_at_utc": 1700000002,
+              "script_revision_id": "rev-1",
+              "script_revision": 4,
+              "mail_from": "sender@example.com",
+              "recipient": "rcpt@example.com",
+              "smtp_response": "451 4.3.0 routing script fault",
+              "fault": {"reason": "runtime_error", "message": "boom", "line": 7},
+              "log": ["started"],
+              "http_calls": [{"endpoint": "risk", "status": 200, "duration_ms": 3,
+                              "request_bytes": 1, "response_bytes": 2, "cached": true}],
+              "suppressed_faults": 5
+            }""";
+
     private static final String S3_ATTEMPT_BODY = """
             {
               "event_type": "s3_egress_status",
@@ -84,42 +112,31 @@ class NotificationDecodeTest {
               "status_code": 200
             }""";
 
-    private static final String WEBHOOK_ATTEMPT_BODY = """
-            {
-              "event_type": "webhook_egress_status",
-              "channel": "webhook",
-              "task_id": "task-1",
-              "tenant_id": "tenant-1",
-              "listener_id": "listener-1",
-              "message_ref": "message-ref-1",
-              "correlation_id": "accepted-1",
-              "status": "invalid",
-              "attempt": 1,
-              "status_code": 500,
-              "message": "boom",
-              "retry_after_ms": 1000,
-              "occurred_at_utc": 1700000001,
-              "target_url_host": "hooks.example.com",
-              "webhook_ref": "hook-1",
-              "signing_key_kid": "kid-1",
-              "raw_token_ttl_seconds": 90000
-            }""";
-
     @Test
-    void decodesAnAcceptedEventAsTheWebhookPayload() {
+    void decodesAnAcceptedEventWithTheRoutingDecision() {
         NotificationEvent event = NotifyDecoder.decode(ACCEPTED_SUBJECT, bytes(ACCEPTED_BODY));
 
         AcceptedNotification notification = assertInstanceOf(AcceptedNotification.class, event);
         assertEquals(NotificationKind.ACCEPTED, notification.kind());
-        assertEquals("task-1", notification.email().taskId());
-        assertEquals("message-ref-1", notification.email().messageRef());
-        assertEquals("sender@example.com", notification.email().envelope().mailFrom());
-        assertEquals("secret-token", notification.email().rawEmail().accessToken());
-        assertEquals(1, notification.email().headers().size());
+        AcceptedMessage message = notification.message();
+        assertEquals("task-1", message.taskId());
+        assertEquals("message-ref-1", message.messageRef());
+        assertEquals("sender@example.com", message.envelope().mailFrom());
+        assertEquals("secret-token", message.rawEmail().accessToken());
+        assertEquals(1, message.headers().size());
+
+        RoutingDecision decision = message.routingDecision();
+        assertEquals(TerminalAction.DELIVER, decision.terminalAction());
+        assertEquals(3, decision.scriptRevision());
+        assertEquals(RoutingIntentKind.HEADER_SET, decision.intents().get(0).kind());
+        assertEquals(RoutingIntentKind.FORWARD_SMTP, decision.skipped().get(0).intent().kind());
+        assertEquals("checked", decision.log().get(0));
+        assertEquals(200, decision.httpCalls().get(0).status());
+        assertEquals(1.5, message.verdicts().score());
     }
 
     @Test
-    void decodesSmtpS3AndWebhookAttempts() {
+    void decodesSmtpAndS3Attempts() {
         AttemptEvent smtp = assertInstanceOf(AttemptNotification.class,
                 NotifyDecoder.decode(ATTEMPT_SUBJECT, bytes(SMTP_ATTEMPT_BODY))).attempt();
         assertEquals(AttemptChannel.SMTP, smtp.channel());
@@ -132,12 +149,6 @@ class NotificationDecodeTest {
         assertEquals(AttemptChannel.S3, s3.channel());
         assertEquals(StatusOutcome.DELIVERED, s3.status());
         assertEquals("bucket", s3.bucketName());
-
-        AttemptEvent webhook = assertInstanceOf(AttemptNotification.class,
-                NotifyDecoder.decode(ATTEMPT_SUBJECT, bytes(WEBHOOK_ATTEMPT_BODY))).attempt();
-        assertEquals(AttemptChannel.WEBHOOK, webhook.channel());
-        assertEquals(StatusOutcome.INVALID, webhook.status());
-        assertEquals("hook-1", webhook.webhookRef());
     }
 
     @Test
@@ -145,7 +156,6 @@ class NotificationDecodeTest {
         AttemptEvent attempt = assertInstanceOf(AttemptNotification.class,
                 NotifyDecoder.decode("x.events.attempt", bytes(SMTP_ATTEMPT_BODY))).attempt();
 
-        assertNull(attempt.eventType());
         assertEquals(AttemptChannel.SMTP, attempt.channel());
         assertEquals("task-1", attempt.taskId());
         assertEquals("tenant-1", attempt.tenantId());
@@ -169,20 +179,45 @@ class NotificationDecodeTest {
     }
 
     @Test
-    void mapsEveryWebhookAttemptField() {
-        AttemptEvent attempt = assertInstanceOf(AttemptNotification.class,
-                NotifyDecoder.decode("x.events.attempt", bytes(WEBHOOK_ATTEMPT_BODY))).attempt();
+    void toleratesTheLegacyEventTypeField() {
+        assertInstanceOf(AcceptedNotification.class,
+                NotifyDecoder.decode(ACCEPTED_SUBJECT, bytes(ACCEPTED_BODY)));
+        assertInstanceOf(AttemptNotification.class,
+                NotifyDecoder.decode(ATTEMPT_SUBJECT, bytes(S3_ATTEMPT_BODY)));
+    }
 
-        assertEquals("webhook_egress_status", attempt.eventType());
-        assertEquals(AttemptChannel.WEBHOOK, attempt.channel());
-        assertEquals(StatusOutcome.INVALID, attempt.status());
-        assertEquals(500, attempt.statusCode());
-        assertEquals("boom", attempt.message());
-        assertEquals(1000L, attempt.retryAfterMs());
-        assertEquals("hooks.example.com", attempt.targetUrlHost());
-        assertEquals("hook-1", attempt.webhookRef());
-        assertEquals("kid-1", attempt.signingKeyKid());
-        assertEquals(90000L, attempt.rawTokenTtlSeconds());
+    @Test
+    void decodesSampledFaultEvents() {
+        NotificationEvent event = NotifyDecoder.decode(
+                "tenant.tenant-1.listener.listener-1.events.fault", bytes(FAULT_BODY));
+
+        FaultNotification notification = assertInstanceOf(FaultNotification.class, event);
+        assertEquals(NotificationKind.FAULT, notification.kind());
+        FaultEvent fault = notification.fault();
+        assertEquals("message-ref-1", fault.messageRef());
+        assertEquals(4, fault.scriptRevision());
+        assertEquals("rcpt@example.com", fault.recipient());
+        assertEquals("451 4.3.0 routing script fault", fault.smtpResponse());
+        assertEquals("runtime_error", fault.fault().reason());
+        assertEquals(5, fault.suppressedFaults());
+        assertEquals(1, fault.log().size());
+        assertTrue(fault.httpCalls().get(0).cached());
+    }
+
+    @Test
+    void faultEventsFallBackToTheBodyShapeAndRequireTheirFields() {
+        assertInstanceOf(FaultNotification.class,
+                NotifyDecoder.decode("", bytes(FAULT_BODY)));
+        assertInstanceOf(FaultNotification.class,
+                NotifyDecoder.decode("unknown", bytes(FAULT_BODY)));
+
+        String noReason = FAULT_BODY.replace("\"reason\": \"runtime_error\", ", "");
+        assertThrows(NotificationDecodeException.class,
+                () -> NotifyDecoder.decode("x.events.fault", bytes(noReason)));
+
+        String noRecipient = FAULT_BODY.replace("\"recipient\": \"rcpt@example.com\",", "");
+        assertThrows(NotificationDecodeException.class,
+                () -> NotifyDecoder.decode("x.events.fault", bytes(noRecipient)));
     }
 
     @Test
@@ -235,6 +270,17 @@ class NotificationDecodeTest {
         String unknownStatus = SMTP_ATTEMPT_BODY.replace("\"deferred\"", "\"exploded\"");
         assertThrows(NotificationDecodeException.class,
                 () -> NotifyDecoder.decode("x.events.attempt", bytes(unknownStatus)));
+    }
+
+    @Test
+    void requiresARoutingDecisionAndEnvelopeOnAcceptedEvents() {
+        String noDecision = ACCEPTED_BODY.replace("\"routing_decision\":", "\"decision_removed\":");
+        assertThrows(NotificationDecodeException.class,
+                () -> NotifyDecoder.decode(ACCEPTED_SUBJECT, bytes(noDecision)));
+
+        String noEnvelope = ACCEPTED_BODY.replace("\"envelope\":", "\"envelope_removed\":");
+        assertThrows(NotificationDecodeException.class,
+                () -> NotifyDecoder.decode(ACCEPTED_SUBJECT, bytes(noEnvelope)));
     }
 
     private static byte[] bytes(String value) {

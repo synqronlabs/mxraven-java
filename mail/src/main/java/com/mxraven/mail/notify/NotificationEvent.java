@@ -8,13 +8,15 @@ package com.mxraven.mail.notify;
  *
  * <pre>{@code
  * if (event instanceof AcceptedNotification notification) {
- *     // a full inbound message, same payload as a DELIVER_WEBHOOK delivery
+ *     // a message, its routing-script decision, and raw-message access
  * } else if (event instanceof AttemptNotification attempt) {
- *     // one delivery attempt on the smtp, s3, or webhook channel
+ *     // one delivery attempt on the smtp or s3 channel
+ * } else if (event instanceof FaultNotification fault) {
+ *     // an MTA script faulted and deferred the transaction
  * }
  * }</pre>
  */
-public sealed interface NotificationEvent permits AcceptedNotification, AttemptNotification {
+public sealed interface NotificationEvent permits AcceptedNotification, AttemptNotification, FaultNotification {
 
     /**
      * Identifies which kind of notification the event carries.

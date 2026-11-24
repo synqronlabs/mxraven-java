@@ -1,6 +1,5 @@
 package com.mxraven.mail.notify;
 
-import com.mxraven.mail.webhook.InboundEmail;
 
 /**
  * Typed {@link NotificationHandler} for when you handle specific event kinds.
@@ -10,7 +9,7 @@ import com.mxraven.mail.webhook.InboundEmail;
  * <pre>{@code
  * NotificationHandler handler = new NotificationCallbacks() {
  *     @Override
- *     public HandlerResult onAccepted(InboundEmail email) {
+ *     public HandlerResult onAccepted(AcceptedMessage message) {
  *         app.processInbound(email);
  *         return HandlerResult.CONTINUE;
  *     }
@@ -39,10 +38,13 @@ public interface NotificationCallbacks extends NotificationHandler {
     @Override
     default HandlerResult handle(NotificationEvent event) throws Exception {
         if (event instanceof AcceptedNotification notification) {
-            return onAccepted(notification.email());
+            return onAccepted(notification.message());
         }
         if (event instanceof AttemptNotification attempt) {
             return onAttempt(attempt.attempt());
+        }
+        if (event instanceof FaultNotification fault) {
+            return onFault(fault.fault());
         }
         throw new NotificationException("notify: unsupported event kind " + event.kind());
     }
@@ -51,20 +53,19 @@ public interface NotificationCallbacks extends NotificationHandler {
      * Handles a message the listener accepted. Acknowledges and continues by
      * default.
      *
-     * @param email the accepted message; the same payload a
-     *              {@code DELIVER_WEBHOOK} delivery carries
+     * @param message the accepted message and its routing-script decision
      * @return whether consumption should continue or stop
      * @throws Exception when the event cannot be processed; the event is
      *                   negatively acknowledged for redelivery
      */
-    default HandlerResult onAccepted(InboundEmail email) throws Exception {
+    default HandlerResult onAccepted(AcceptedMessage message) throws Exception {
         return HandlerResult.CONTINUE;
     }
 
     /**
      * Handles one delivery attempt. Acknowledges and continues by default.
      * Branch on {@link AttemptEvent#channel()} to distinguish the
-     * {@code smtp}, {@code s3}, and {@code webhook} egress workers.
+     * {@code smtp} and {@code s3} egress workers.
      *
      * @param event the attempt details
      * @return whether consumption should continue or stop
@@ -72,6 +73,19 @@ public interface NotificationCallbacks extends NotificationHandler {
      *                   negatively acknowledged for redelivery
      */
     default HandlerResult onAttempt(AttemptEvent event) throws Exception {
+        return HandlerResult.CONTINUE;
+    }
+
+    /**
+     * Handles a sampled MTA routing-script fault. Acknowledges and continues by
+     * default.
+     *
+     * @param event the fault details
+     * @return whether consumption should continue or stop
+     * @throws Exception when the event cannot be processed; the event is
+     *                   negatively acknowledged for redelivery
+     */
+    default HandlerResult onFault(FaultEvent event) throws Exception {
         return HandlerResult.CONTINUE;
     }
 }

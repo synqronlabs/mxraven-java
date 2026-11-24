@@ -11,7 +11,6 @@ import com.mxraven.admin.model.MailAnalyticsListenerOverview;
 import com.mxraven.admin.model.MailAnalyticsListenerState;
 import com.mxraven.admin.model.SmtpRelay;
 import com.mxraven.admin.model.StreamType;
-import com.mxraven.admin.model.TerminalActionType;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
@@ -229,12 +228,10 @@ class AdminClientTest {
         client().workspace("acme").listeners().create(listener -> listener
                 .displayName("Inbound")
                 .listenerType(ListenerType.MTA)
-                .streamType(StreamType.MARKETING)
-                .defaultTerminalAction(TerminalActionType.DROP));
+                .streamType(StreamType.MARKETING));
         assertEquals("POST", LAST_METHOD.get());
         assertTrue(LAST_BODY.get().contains("\"display_name\":\"Inbound\""));
         assertTrue(LAST_BODY.get().contains("\"listener_type\":\"mta\""));
-        assertTrue(LAST_BODY.get().contains("\"default_terminal_action_type\":\"DROP\""));
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.mxraven.admin.client;
 
 import com.mxraven.admin.Paged;
 import com.mxraven.admin.QueryParams;
-import com.mxraven.admin.model.TerminalActionType;
 import com.mxraven.admin.model.Listener;
 import com.mxraven.admin.model.StreamType;
 import com.mxraven.admin.model.ListenerType;
@@ -50,17 +49,6 @@ public final class ListenerQuery {
      */
     public ListenerQuery streamType(StreamType type) {
         params.put("stream_type", type == null ? null : type.wire());
-        return this;
-    }
-
-    /**
-     * Filter by default terminal action type.
-     *
-     * @param type terminal action type; ignored when {@code null}
-     * @return this query
-     */
-    public ListenerQuery defaultTerminalActionType(TerminalActionType type) {
-        params.put("default_terminal_action_type", type == null ? null : type.wire());
         return this;
     }
 

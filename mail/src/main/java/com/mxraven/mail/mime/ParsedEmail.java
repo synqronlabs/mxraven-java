@@ -271,15 +271,30 @@ public final class ParsedEmail {
             } else if (!quoted && c == '>') {
                 angleDepth = Math.max(0, angleDepth - 1);
                 current.append(c);
-            } else if (!quoted && angleDepth == 0 && c == ',') {
-                out.add(current.toString());
+            } else if (!quoted && angleDepth == 0 && c == ':') {
+                // A group display name. Its members follow until ';'; the name
+                // itself is not an address.
                 current.setLength(0);
+            } else if (!quoted && angleDepth == 0 && c == ',') {
+                addAddressToken(out, current);
+            } else if (!quoted && angleDepth == 0 && c == ';') {
+                // End of a group. An empty group contributes no mailbox.
+                addAddressToken(out, current);
             } else {
                 current.append(c);
             }
         }
-        out.add(current.toString());
+        addAddressToken(out, current);
         return out;
+    }
+
+    /** Adds one non-empty address token and clears the builder. */
+    private static void addAddressToken(List<String> out, StringBuilder current) {
+        String token = current.toString().trim();
+        if (!token.isEmpty()) {
+            out.add(token);
+        }
+        current.setLength(0);
     }
 
     @Override

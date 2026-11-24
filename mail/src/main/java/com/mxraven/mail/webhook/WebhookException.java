@@ -3,7 +3,7 @@ package com.mxraven.mail.webhook;
 import com.mxraven.mail.exception.MxRavenException;
 
 /**
- * A webhook delivery could not be verified or decoded.
+ * A signed mxRaven endpoint call could not be verified.
  */
 public class WebhookException extends MxRavenException {
     /**

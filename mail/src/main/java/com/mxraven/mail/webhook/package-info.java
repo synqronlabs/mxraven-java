@@ -1,23 +1,29 @@
 /**
- * Verifies and decodes mxRaven webhook deliveries.
+ * Verifies signed mxRaven endpoint calls.
  *
- * <p>mxRaven signs every webhook delivery with HMAC-SHA256 over a canonical
- * request string and sends the signature in the {@code X-MxRaven-*} headers.
- * A server that exposes a webhook endpoint verifies the request with a
- * {@link com.mxraven.mail.webhook.WebhookVerifier} and decodes the JSON body with
- * {@link com.mxraven.mail.webhook.WebhookEvent#decode(byte[])}.
+ * <p>Routing scripts call tenant-registered endpoints with {@code mx.http}, and
+ * mxRaven signs each request with the endpoint's HMAC-SHA256 key. The signature
+ * covers the method, host, request target, timestamp, request ID, and raw body,
+ * and is sent in the {@code X-MxRaven-*} headers. A receiver verifies the
+ * request with {@link com.mxraven.mail.webhook.WebhookVerifier} and then parses
+ * the payload its endpoint defines:
  *
- * <p>{@link com.mxraven.mail.webhook.WebhookHandler} bundles verification,
- * idempotency, and dispatch into one framework-agnostic handler. Adapt any HTTP
- * stack to it, or let {@link com.mxraven.mail.webhook.WebhookServer} serve it
- * over the JDK HTTP server.
+ * <pre>{@code
+ * verifier.verify(method, requestUri, headers, body);
+ * MyPayload payload = json.readValue(body, MyPayload.class);
+ * }</pre>
  *
- * <p>Two webhook actions are supported:
- * <ul>
- *   <li>{@code DELIVER_WEBHOOK} &mdash; a durable delivery carrying a complete
- *       inbound message ({@link com.mxraven.mail.webhook.InboundEmail}).</li>
- *   <li>{@code NOTIFY_WEBHOOK} &mdash; a best-effort delivery-status callback from
- *       the SMTP or object-storage workers.</li>
- * </ul>
+ * <p>The {@code X-MxRaven-Listener} and {@code X-MxRaven-Revision} headers
+ * identify the script call but are not signed; use them as context, not for
+ * authorization.
+ *
+ * <p>An endpoint configured with a stored credential is called with that
+ * credential header and no {@code X-MxRaven-*} signature headers. Those calls
+ * are not verifiable with this package; validate the credential with your own
+ * authentication middleware.
+ *
+ * <p>Webhook deliveries no longer exist. Accepted messages, delivery attempts,
+ * and sampled routing-script faults arrive on the client notification stream in
+ * {@link com.mxraven.mail.notify}.
  */
 package com.mxraven.mail.webhook;

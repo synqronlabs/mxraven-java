@@ -35,8 +35,8 @@ import java.time.Duration;
  *                 .build())) {
  *     client.consume(new NotificationCallbacks() {
  *         @Override
- *         public HandlerResult onAccepted(InboundEmail email) {
- *             System.out.println("accepted " + email.taskId());
+ *         public HandlerResult onAccepted(AcceptedMessage message) {
+ *             System.out.println("accepted " + message.taskId());
  *             return HandlerResult.CONTINUE;
  *         }
  *     });

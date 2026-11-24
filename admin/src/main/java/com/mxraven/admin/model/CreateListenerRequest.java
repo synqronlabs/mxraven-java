@@ -3,33 +3,31 @@ package com.mxraven.admin.model;
 /**
  * Request body for {@code POST /v2/tenants/{slug}/listeners}.
  *
- * @param displayName                human-readable listener name
- * @param listenerType               {@code submission} or {@code mta}
- * @param streamType                 {@code transactional} or {@code marketing}
- * @param defaultTerminalActionType  terminal action type; must be valid for the listener type
- * @param defaultTerminalActionPayload action-specific payload; use {@link TerminalActionPayload}
- *                                     factories, or {@code null} when the action takes none
- * @param rspamdScanningEnabled      enables inbound scanning; defaults by listener type
+ * <p>A new listener has no routing script and uses the listener-type default:
+ * submission listeners deliver through the shared pool, and MTA listeners drop
+ * after acceptance. Publish a script through
+ * {@link com.mxraven.admin.client.RoutingScriptsClient} to replace the default.
+ *
+ * @param displayName human-readable listener name
+ * @param listenerType {@code submission} or {@code mta}
+ * @param streamType {@code transactional} or {@code marketing}
+ * @param rspamdScanningEnabled enables inbound scanning; defaults by listener type
  */
 public record CreateListenerRequest(
         String displayName,
         ListenerType listenerType,
         StreamType streamType,
-        TerminalActionType defaultTerminalActionType,
-        TerminalActionPayload defaultTerminalActionPayload,
         Boolean rspamdScanningEnabled) {
 
     /**
-     * Creates a request without a terminal-action payload or Rspamd override.
+     * Creates a request without a Rspamd override.
      *
      * @param displayName human-readable listener name
      * @param listenerType {@code submission} or {@code mta}
      * @param streamType {@code transactional} or {@code marketing}
-     * @param defaultTerminalActionType terminal action type valid for the listener type
      */
-    public CreateListenerRequest(String displayName, ListenerType listenerType, StreamType streamType,
-                                 TerminalActionType defaultTerminalActionType) {
-        this(displayName, listenerType, streamType, defaultTerminalActionType, null, null);
+    public CreateListenerRequest(String displayName, ListenerType listenerType, StreamType streamType) {
+        this(displayName, listenerType, streamType, null);
     }
 
     /**
@@ -46,9 +44,10 @@ public record CreateListenerRequest(
         private String displayName;
         private ListenerType listenerType;
         private StreamType streamType;
-        private TerminalActionType defaultTerminalActionType;
-        private TerminalActionPayload defaultTerminalActionPayload;
         private Boolean rspamdScanningEnabled;
+
+        private Builder() {
+        }
 
         /**
          * Sets the human-readable listener name.
@@ -84,54 +83,6 @@ public record CreateListenerRequest(
         }
 
         /**
-         * Sets the default terminal action type.
-         *
-         * @param defaultTerminalActionType terminal action type
-         * @return this builder
-         */
-        public Builder defaultTerminalActionType(TerminalActionType defaultTerminalActionType) {
-            this.defaultTerminalActionType = defaultTerminalActionType;
-            return this;
-        }
-
-        /**
-         * Set the terminal action and an empty payload, for actions that take none.
-         *
-         * @param defaultTerminalActionType terminal action type
-         * @return this builder
-         */
-        public Builder defaultTerminalAction(TerminalActionType defaultTerminalActionType) {
-            this.defaultTerminalActionType = defaultTerminalActionType;
-            this.defaultTerminalActionPayload = TerminalActionPayload.empty();
-            return this;
-        }
-
-        /**
-         * Set the terminal action and its action-specific payload together.
-         *
-         * @param defaultTerminalActionType terminal action type
-         * @param defaultTerminalActionPayload action-specific payload
-         * @return this builder
-         */
-        public Builder defaultTerminalAction(TerminalActionType defaultTerminalActionType,
-                                             TerminalActionPayload defaultTerminalActionPayload) {
-            this.defaultTerminalActionType = defaultTerminalActionType;
-            this.defaultTerminalActionPayload = defaultTerminalActionPayload;
-            return this;
-        }
-
-        /**
-         * Sets the terminal-action payload.
-         *
-         * @param defaultTerminalActionPayload action-specific payload
-         * @return this builder
-         */
-        public Builder defaultTerminalActionPayload(TerminalActionPayload defaultTerminalActionPayload) {
-            this.defaultTerminalActionPayload = defaultTerminalActionPayload;
-            return this;
-        }
-
-        /**
          * Sets whether Rspamd scanning is enabled.
          *
          * @param rspamdScanningEnabled Rspamd scanning flag
@@ -150,7 +101,7 @@ public record CreateListenerRequest(
          */
         public CreateListenerRequest build() {
             validate();
-            return new CreateListenerRequest(displayName, listenerType, streamType, defaultTerminalActionType, defaultTerminalActionPayload, rspamdScanningEnabled);
+            return new CreateListenerRequest(displayName, listenerType, streamType, rspamdScanningEnabled);
         }
 
         private void validate() {
@@ -169,30 +120,9 @@ public record CreateListenerRequest(
             if (streamType == StreamType.SYSTEM) {
                 throw new IllegalArgumentException("stream_type 'system' cannot be used to create a listener");
             }
-            if (defaultTerminalActionType == null) {
-                throw new IllegalArgumentException("default_terminal_action_type is required");
-            }
-            if (!validTerminalAction(listenerType, defaultTerminalActionType)) {
-                throw new IllegalArgumentException("default_terminal_action_type " + defaultTerminalActionType
-                        + " is not valid for listener_type " + listenerType);
-            }
             if (Boolean.TRUE.equals(rspamdScanningEnabled) && listenerType != ListenerType.MTA) {
                 throw new IllegalArgumentException("rspamd_scanning_enabled is only valid for mta listeners");
             }
-        }
-
-        private static boolean validTerminalAction(ListenerType listenerType, TerminalActionType action) {
-            return switch (listenerType) {
-                case SUBMISSION -> action == TerminalActionType.DELIVER_DEDICATED
-                        || action == TerminalActionType.DELIVER
-                        || action == TerminalActionType.SMARTHOST_RELAY
-                        || action == TerminalActionType.DROP
-                        || action == TerminalActionType.REJECT;
-                case MTA -> action == TerminalActionType.RELAY
-                        || action == TerminalActionType.AUTO_REPLY
-                        || action == TerminalActionType.DROP
-                        || action == TerminalActionType.REJECT;
-            };
         }
     }
 }

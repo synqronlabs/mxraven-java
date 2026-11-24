@@ -64,6 +64,37 @@ class MimeParserTest {
     }
 
     @Test
+    void expandsAddressGroupsAndIgnoresEmptyGroups() {
+        ParsedEmail email = parse("""
+                To: Friends: a@example.com, "Doe, John" <john@example.com>;
+                Cc: undisclosed-recipients:;
+                Content-Type: text/plain
+
+                body
+                """);
+
+        assertEquals(2, email.to().size());
+        assertEquals("a@example.com", email.to().get(0).toString());
+        assertEquals("Doe, John", email.to().get(1).displayName());
+        assertEquals("john@example.com", email.to().get(1).toString());
+        assertTrue(email.cc().isEmpty());
+    }
+
+    @Test
+    void salvagesObsoleteAddressLists() {
+        ParsedEmail email = parse("""
+                To: a@example.com,, b@example.com,
+                Content-Type: text/plain
+
+                body
+                """);
+
+        assertEquals(2, email.to().size());
+        assertEquals("a@example.com", email.to().get(0).toString());
+        assertEquals("b@example.com", email.to().get(1).toString());
+    }
+
+    @Test
     void extractsTextAndHtmlBodies() {
         ParsedEmail email = parse(ALTERNATIVE_WITH_ATTACHMENT);
 

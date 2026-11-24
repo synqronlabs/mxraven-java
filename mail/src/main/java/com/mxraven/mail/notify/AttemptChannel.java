@@ -8,9 +8,7 @@ public enum AttemptChannel {
     /** An SMTP delivery attempt. */
     SMTP("smtp"),
     /** An object-storage write attempt. */
-    S3("s3"),
-    /** A webhook delivery attempt. */
-    WEBHOOK("webhook");
+    S3("s3");
 
     private final String wire;
 

@@ -16,23 +16,36 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Verifies the HMAC-SHA256 signature of an mxRaven webhook request.
+ * Verifies the HMAC-SHA256 signature of an mxRaven endpoint call.
  *
- * <p>mxRaven signs every delivery over a canonical request string and sends the
- * signature in the {@code X-MxRaven-*} headers. Configure a verifier with the
- * signing secret, then verify each request:
+ * <p>Routing scripts call tenant-registered endpoints with {@code mx.http}, and
+ * mxRaven signs each call with the endpoint's signing secret. The signature
+ * scheme is the one mxRaven used for webhook deliveries, so this package is
+ * still published as {@code mail/webhook}. The script decides the request body,
+ * so verification stops at the signature: parse the body your endpoint defines.
  *
  * <pre>{@code
  * WebhookVerifier verifier = WebhookVerifier.builder()
  *         .secret(signingSecret)
  *         .build();
  *
- * WebhookEvent event = verifier.verifyAndDecode(method, requestUri, headers, body);
+ * verifier.verify(method, requestUri, headers, body);
  * }</pre>
  *
- * <p>The signing secret is shown only once, when the webhook endpoint is created
- * or its secret is rotated. It is used as literal key bytes; do not base64-decode
- * it.
+ * <p>Pass the public, absolute request URL, including any proxy-forwarded
+ * scheme and host: the signature covers the host the sender called.
+ *
+ * <p>The signing secret is shown only once, when the endpoint is created or its
+ * secret is rotated. It is used as literal key bytes; do not base64-decode it.
+ *
+ * <p>The {@value #HEADER_LISTENER} and {@value #HEADER_REVISION} headers
+ * identify the script call but are not part of the signed canonical request.
+ * Treat them as context, not as an authorization decision.
+ *
+ * <p>An endpoint configured with a stored credential is called with that
+ * credential header and no {@code X-MxRaven-*} signature headers. Those calls
+ * are not verifiable with this class; validate the credential with your own
+ * authentication middleware.
  *
  * <p>A configured {@code WebhookVerifier} is immutable and safe for concurrent
  * use.
@@ -46,6 +59,10 @@ public final class WebhookVerifier {
     public static final String HEADER_SIGNATURE = "X-MxRaven-Signature";
     /** Carries the signing key ID. */
     public static final String HEADER_SIGNATURE_KID = "X-MxRaven-Signature-Kid";
+    /** Identifies the listener whose routing script made the call; not signed. */
+    public static final String HEADER_LISTENER = "X-MxRaven-Listener";
+    /** Identifies the script revision that made the call; not signed. */
+    public static final String HEADER_REVISION = "X-MxRaven-Revision";
 
     private static final Duration DEFAULT_TOLERANCE = Duration.ofMinutes(5);
     private static final long DEFAULT_MAX_BODY_BYTES = 1L << 20;
@@ -87,15 +104,16 @@ public final class WebhookVerifier {
      * @param headers the request headers; looked up case-insensitively
      * @param body    the exact raw request body bytes
      * @throws InvalidSignatureException when the signature does not match
-     * @throws WebhookException          when required headers are missing or the
-     *                                   request is otherwise unusable
+     * @throws PayloadTooLargeException   when the body exceeds the configured limit
+     * @throws WebhookException           when required headers are missing or the
+     *                                    request is otherwise unusable
      */
     public void verify(String method, URI uri, Map<String, String> headers, byte[] body) {
         if (body == null) {
             throw new WebhookException("request body is missing");
         }
         if (body.length > maxBodyBytes) {
-            throw new WebhookException("request body exceeds " + maxBodyBytes + " bytes");
+            throw new PayloadTooLargeException("request body exceeds " + maxBodyBytes + " bytes");
         }
         if (uri == null) {
             throw new WebhookException("request URL is missing");
@@ -144,24 +162,6 @@ public final class WebhookVerifier {
             throw new InvalidSignatureException("method=" + (method == null ? "" : method)
                     + " host=" + host(uri) + " target=" + requestTarget(uri));
         }
-    }
-
-    /**
-     * Verifies the request signature and decodes its payload in one step.
-     *
-     * @param method  the HTTP method, for example {@code "POST"}
-     * @param uri     the full request URI, including scheme, host, path, and query
-     * @param headers the request headers; looked up case-insensitively
-     * @param body    the exact raw request body bytes
-     * @return the decoded event
-     * @throws InvalidSignatureException when the signature does not match
-     * @throws WebhookException          when the request is unusable or the body is
-     *                                   not a recognized payload
-     * @see #verify(String, URI, Map, byte[])
-     */
-    public WebhookEvent verifyAndDecode(String method, URI uri, Map<String, String> headers, byte[] body) {
-        verify(method, uri, headers, body);
-        return WebhookEvent.decode(body);
     }
 
     private String secretFor(String kid) {
@@ -272,7 +272,7 @@ public final class WebhookVerifier {
 
         /**
          * Registers a signing secret for a specific signature key ID. Use it to
-         * accept deliveries from more than one key, for example during rotation.
+         * accept calls signed by more than one key, for example during rotation.
          *
          * @param kid    the signature key ID
          * @param secret the signing secret for the key

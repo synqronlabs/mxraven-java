@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
  *
  * @param webhookRef  immutable human-readable webhook reference
  * @param displayName human-readable endpoint name
- * @param targetUrl   HTTPS URL that deliveries are sent to
+ * @param targetUrl   HTTPS URL that routing scripts call with mx.http
  */
 public record CreateWebhookEndpointRequest(
         String webhookRef,
@@ -52,7 +52,7 @@ public record CreateWebhookEndpointRequest(
         }
 
         /**
-         * Sets the HTTPS URL that deliveries are sent to.
+         * Sets the HTTPS URL that routing scripts call with mx.http.
          *
          * @param targetUrl target URL
          * @return this builder

@@ -4,7 +4,7 @@ package com.mxraven.admin.model;
  * Request body for {@code PUT /v2/tenants/{slug}/webhook-endpoints/{endpoint_id}}.
  *
  * @param displayName human-readable endpoint name
- * @param targetUrl   HTTPS URL that deliveries are sent to
+ * @param targetUrl   HTTPS URL that routing scripts call with mx.http
  */
 public record UpdateWebhookEndpointRequest(
         String displayName,
@@ -36,7 +36,7 @@ public record UpdateWebhookEndpointRequest(
         }
 
         /**
-         * Sets the HTTPS URL that deliveries are sent to.
+         * Sets the HTTPS URL that routing scripts call with mx.http.
          *
          * @param targetUrl HTTPS delivery target URL
          * @return this builder

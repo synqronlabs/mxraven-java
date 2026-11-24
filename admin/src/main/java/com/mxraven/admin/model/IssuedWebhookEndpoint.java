@@ -11,6 +11,7 @@ package com.mxraven.admin.model;
  * @param targetUrl URL webhooks are delivered to
  * @param signingKid identifier of the active signing key
  * @param hasSigningSecret whether a signing secret is configured
+ * @param credentialHeader header carrying the stored credential, when one is set
  * @param isActive whether the endpoint is active
  * @param createdAt creation timestamp
  * @param updatedAt timestamp of the last update
@@ -24,6 +25,7 @@ public record IssuedWebhookEndpoint(
         String targetUrl,
         String signingKid,
         boolean hasSigningSecret,
+        String credentialHeader,
         boolean isActive,
         String createdAt,
         String updatedAt,

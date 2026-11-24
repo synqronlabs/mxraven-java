@@ -1,59 +1,32 @@
 package com.mxraven.mail.notify;
 
-import com.mxraven.mail.webhook.InboundEmail;
-
-import java.util.Objects;
-
 /**
- * A message the listener accepted.
+ * A message the listener accepted and whose routing-script decision was
+ * resolved.
  */
 public final class AcceptedNotification implements NotificationEvent {
-    private final InboundEmail email;
+    private final AcceptedMessage message;
 
     /**
-     * The accepted-message payload, the same payload a
-     * {@code DELIVER_WEBHOOK} delivery carries; download the raw message with
-     * {@link InboundEmail#parse()} when needed.
+     * Creates an accepted notification.
+     *
+     * @param message the accepted-message payload
+     */
+    public AcceptedNotification(AcceptedMessage message) {
+        this.message = message;
+    }
+
+    /**
+     * Returns the accepted-message payload.
      *
      * @return the accepted message
      */
-    public InboundEmail email() {
-        return email;
+    public AcceptedMessage message() {
+        return message;
     }
 
     @Override
     public NotificationKind kind() {
         return NotificationKind.ACCEPTED;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        AcceptedNotification that = (AcceptedNotification) o;
-        return Objects.equals(this.email, that.email);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(this.email);
-    }
-
-    @Override
-    public String toString() {
-        return "AcceptedNotification[" + "email=" + this.email + "]";
-    }
-
-    /**
-     * Creates a new AcceptedNotification.
-     *
-     * @param email the accepted message
-     */
-    public AcceptedNotification(InboundEmail email) {
-        this.email = email;
     }
 }

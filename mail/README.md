@@ -2,17 +2,17 @@
 
 The `mail` module is the Java client for the mxRaven email service. It sends mail
 over SMTP, builds RFC 5322 / MIME messages (text, HTML, attachments), parses raw
-messages, verifies and receives webhooks, consumes client notification events
-over NATS, and submits recipient feedback.
+messages, verifies signed routing-script endpoint calls, consumes client
+notification events over NATS, and submits recipient feedback.
 
 - Group / artifact: `com.mxraven` / `mail-jdk8`
-- Current version: `2.1.0`
+- Current version: `3.0.0-jdk8`
 - JavaDoc: https://java.mxraven.com/mail/
-- Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
-- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` (webhook,
-  notification, and feedback JSON), `com.squareup.okhttp3:okhttp` (feedback
-  submissions and raw-message downloads), and `io.nats:jnats` (the client
-  notification consumer); SMTP and MIME are pure JDK
+- Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain).
+- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` (endpoint,
+  feedback, and notification JSON), `com.squareup.okhttp3:okhttp` (feedback and
+  raw-message downloads), and `io.nats:jnats` (the client notification
+  consumer); SMTP and MIME are pure JDK
 
 What it covers:
 
@@ -25,10 +25,10 @@ What it covers:
 - **Message building** — a fluent builder producing `multipart/alternative` and
   `multipart/mixed`, transfer encodings, and RFC 2047 header encoding.
 - **MIME parsing** — a part tree plus a convenience `ParsedEmail` view.
-- **Webhooks** — HMAC verification, decoding, typed callbacks, and an optional
-  standalone server.
+- **Signed endpoint calls** — HMAC verification for routing-script `mx.http`
+  calls. The script decides the body, so you verify and then decode your schema.
 - **Client notifications** — a NATS JetStream consumer for the per-listener
-  accepted-message and delivery-attempt events, with automatic acknowledgement
+  accepted-message, delivery-attempt, and fault events, with automatic acknowledgement
   and exponential-backoff redelivery.
 - **Feedback** — spam/ham learning and one-click unsubscribe.
 
@@ -51,7 +51,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:mail-jdk8:2.1.0")
+    implementation("com.mxraven:mail-jdk8:3.0.0-jdk8")
 }
 ```
 
@@ -61,7 +61,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>mail-jdk8</artifactId>
-    <version>2.1.0</version>
+    <version>3.0.0-jdk8</version>
 </dependency>
 ```
 
@@ -76,9 +76,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:mail-jdk8:2.1.0")
-    // Latest main build:  ...:mail-jdk8:main-SNAPSHOT
-    // Or pin a commit:    ...:mail-jdk8:<commit-sha>
+    implementation("com.github.synqronlabs.mxraven-java:mail:3.0.0-jdk8")
+    // Latest main build:  ...:mail:main-SNAPSHOT
+    // Or pin a commit:    ...:mail:<commit-sha>
 }
 ```
 
@@ -178,46 +178,32 @@ your next send:
 - Sends are **not** retried: a failed transaction may already be partially
   delivered, so resending is the caller's decision.
 
-Receive and parse an inbound webhook:
+Receive, verify, and parse an inbound message from the notification stream:
 
 ```java
 import com.mxraven.mail.mime.Attachment;
 import com.mxraven.mail.mime.ParsedEmail;
-import com.mxraven.mail.webhook.*;
+import com.mxraven.mail.notify.AcceptedMessage;
+import com.mxraven.mail.notify.HandlerResult;
+import com.mxraven.mail.notify.NotificationCallbacks;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 
-WebhookVerifier verifier = WebhookVerifier.builder().secret(signingSecret).build();
-
-WebhookListener listener = new WebhookCallbacks() {
+NotificationCallbacks callbacks = new NotificationCallbacks() {
     @Override
-    public void onInboundEmail(InboundEmail email) {
-        try {
-            ParsedEmail parsed = email.parse();          // download + parse the raw MIME
-            System.out.println(parsed.subject());
-            parsed.textBody().ifPresent(System.out::println);
-            for (Attachment file : parsed.attachments()) {
-                System.out.println(file.filename() + " (" + file.size() + " bytes)");
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+    public HandlerResult onAccepted(AcceptedMessage message) throws IOException {
+        ParsedEmail parsed = message.parse();           // download + parse the raw MIME
+        System.out.println(parsed.subject());
+        parsed.textBody().ifPresent(System.out::println);
+        for (Attachment file : parsed.attachments()) {
+            System.out.println(file.filename() + " (" + file.size() + " bytes)");
         }
+        return HandlerResult.CONTINUE;
     }
 };
-
-WebhookHandler handler = WebhookHandler.builder()
-        .verifier(verifier)
-        .listener(listener)
-        .build();
-
-try (WebhookServer server = WebhookServer.builder()
-        .port(8080)
-        .path("/mxraven/webhook")
-        .handler(handler)
-        .build()) {
-    server.start();       // prints a development-server banner to stderr
-}
 ```
+
+A routing script that calls your own service with `mx.http` is verified with
+`mail/webhook`; see [Signed endpoint calls](#signed-endpoint-calls).
 
 ---
 
@@ -258,7 +244,7 @@ Rules of thumb:
 | `host(String)` | `smtp.mxraven.email` | Server hostname. |
 | `port(int)` | `587` | Server port. |
 | `startTls()` | default | STARTTLS (typically 587). |
-| `implicitTls()` | | Implicit TLS (typically 465). |
+| `implicitTls()` | | Implicit TLS (typically 465; not published on `smtp.mxraven.email`). |
 | `noTls()` | | No TLS (testing only). |
 | `security(SecurityMode)` | `STARTTLS` | Explicit security mode. |
 | `credentials(username, password)` | | Enables SMTP AUTH (`PLAIN` / `LOGIN`). |
@@ -275,8 +261,10 @@ SmtpConfig startTls = SmtpConfig.builder()
         .host("smtp.mxraven.email").port(587).startTls()
         .credentials("user", "pass").build();
 
+// Implicit TLS for servers that publish it on 465; mxRaven production
+// publishes STARTTLS on smtp.mxraven.email:587 instead.
 SmtpConfig implicit = SmtpConfig.builder()
-        .host("smtp.mxraven.email").port(465).implicitTls()
+        .host("smtp.example.com").port(465).implicitTls()
         .credentials("user", "pass").build();
 
 SmtpConfig oauth = SmtpConfig.builder()
@@ -381,25 +369,24 @@ detail).
 
 ```java
 Envelope envelope = Envelope.builder()
-        .from(Path.of("sender@example.com"))
-        .to(List.of(Recipient.of("to@example.com")))
+        .from("sender@example.com")
+        .to(java.util.Arrays.asList(Recipient.of("to@example.com")))
         .build();
 
 client.sendRaw(envelope, rawMessageBytes);
 
 // Stream from a file or socket instead of buffering the whole message:
-try (InputStream message = Files.newInputStream(Paths.get("big-message.eml"))) {
+try (InputStream message = Files.newInputStream(Path.of("big-message.eml"))) {   // java.nio.file.Path
     client.sendRaw(envelope, message);
 }
 ```
 
 Unlike `send(Mail)`, `sendRaw` does **not** add `Date`, `Message-ID`, or `MIME-Version`; the bytes must
 already be a valid RFC 5322 message (at minimum `From`, `To`, and `Date`), and
-they are not CRLF-normalized. The `InputStream` overload streams the body in
-64 KiB chunks: a single `BDAT … LAST` when `CHUNKING` is advertised **and**
-`Envelope.size()` is set, otherwise dot-stuffed `DATA`. It does not close the
-stream and derives no `SIZE` parameter, so set `Envelope.size()` if the server
-requires one (and to enable BDAT).
+they are not CRLF-normalized. The `InputStream` overload streams the body
+(`BDAT` chunks when `CHUNKING` is advertised, otherwise `DATA` with dot-stuffing),
+does not close the stream, and derives no `SIZE` parameter — set
+`Envelope.size()` if the server requires one.
 
 ### SMTP extension parameters
 
@@ -420,8 +407,8 @@ import com.mxraven.mail.model.*;
 
 Envelope envelope = Envelope.builder()
         .from(Path.of("sender@example.com"))
-        .to(List.of(new Recipient(Path.of("to@example.com"),
-                new DSNRecipientParams(List.of("SUCCESS", "FAILURE"), "rfc822;orig@example.com"))))
+        .to(java.util.Arrays.asList(new Recipient(Path.of("to@example.com"),
+                new DSNRecipientParams(java.util.Arrays.asList("SUCCESS", "FAILURE"), "rfc822;orig@example.com"))))
         .size(raw.length)
         .bodyType(BodyType.EIGHT_BIT_MIME)
         .smtpUtf8(true)
@@ -576,22 +563,24 @@ for (MimePart part : root.parts()) {
 `filename()`, `contentId()`, `disposition()`, `isMultipart()`, `parts()`,
 `rawBody()`, `decodedBody()`, `text()`, `isAttachment()`, `isTextBody()`.
 
-From a webhook, `InboundEmail.parse()` downloads (verifying size and SHA-256) and
-parses in one call; `RawEmail.fetch()` / `parse()` are available too.
+From an accepted notification, `AcceptedMessage.parse()` downloads (verifying
+size and SHA-256) and parses in one call; `RawEmail.fetch()` / `parse()` are
+available too.
 
 ---
 
-## Webhooks
+## Signed endpoint calls
 
-mxRaven signs every webhook delivery with HMAC-SHA256 over a canonical request
-string and sends the signature in `X-MxRaven-*` headers. Two actions are
-supported: `DELIVER_WEBHOOK` (a full inbound message) and `NOTIFY_WEBHOOK`
-(best-effort SMTP / object-storage status).
+Routing scripts call tenant-registered endpoints with `mx.http`, and mxRaven
+signs every call with the endpoint's HMAC-SHA256 key. The signature scheme is
+the one mxRaven used for webhook deliveries, so this package is still published
+as `mail/webhook`. The script decides the request body, so this package verifies
+the signature and stops there: decode the schema your endpoint defines.
 
-### Verifying a delivery
+### Verifying a call
 
 ```java
-import com.mxraven.mail.webhook.WebhookEvent;
+import com.mxraven.mail.webhook.InvalidSignatureException;
 import com.mxraven.mail.webhook.WebhookVerifier;
 
 WebhookVerifier verifier = WebhookVerifier.builder()
@@ -599,13 +588,22 @@ WebhookVerifier verifier = WebhookVerifier.builder()
         .build();
 
 // Pass the exact raw body bytes and the request headers (case-insensitive Map):
-WebhookEvent event = verifier.verifyAndDecode(method, requestUri, headers, rawBody);
+try {
+    verifier.verify(method, requestUri, headers, rawBody);
+} catch (InvalidSignatureException e) {
+    response.setStatus(401);
+    return;
+}
+MyPayload payload = json.readValue(rawBody, MyPayload.class);
 ```
 
-`headers` is any `Map<String, String>`. `verifyAndDecode` throws
-`InvalidSignatureException` when the HMAC does not match, and `WebhookException`
-for missing headers, a stale timestamp, or an unrecognized payload. Use
-`verify(...)` alone when you only need authentication.
+`headers` is any `Map<String, String>`, and `requestUri` must be the public,
+absolute request URL, including any proxy-forwarded scheme and host: the
+signature covers the host the sender called. `verify` throws
+`InvalidSignatureException` when the HMAC does not match
+`PayloadTooLargeException` for an oversized body, and `WebhookException` for
+missing headers or a stale timestamp. Map those to `401`, `413`, and `400`
+respectively.
 
 | Builder | Description |
 | --- | --- |
@@ -615,122 +613,42 @@ for missing headers, a stale timestamp, or an unrecognized payload. Use
 | `.maxBodyBytes(long)` | Maximum body size accepted. Default 1 MiB. |
 | `.clock(Clock)` | Clock used for timestamp checks. |
 
-### Decoding
+The canonical string is six newline-separated fields: timestamp, request ID,
+method, lowercase host, escaped path plus raw query, and the lowercase hex
+SHA-256 of the raw body. `X-MxRaven-Listener` and `X-MxRaven-Revision` identify
+the script call but are **not** signed; treat them as context, not as an
+authorization decision.
 
-`WebhookEvent` is a sealed interface over `InboundEmail`, `DeliveryStatus`, and
-`StorageStatus`, so dispatch is exhaustive.
+### Stored credentials
 
-```java
-if (event instanceof InboundEmail email) {
-    System.out.println(email.taskId() + " " + email.message().subject());
-    byte[] raw = email.rawEmail().fetch();    // verified against declared size + SHA-256
-} else if (event instanceof DeliveryStatus status) {
-    System.out.println(status.status() + " smtp=" + status.smtpCode());
-} else if (event instanceof StorageStatus storage) {
-    System.out.println(storage.status() + " " + storage.bucketName() + "/" + storage.objectKey());
-}
-```
+An endpoint can instead store a write-only credential for a third-party API that
+authenticates with its own key. While a credential is set, `mx.http` calls carry
+that header and the script's headers, but no signature and no
+`X-MxRaven-*` signing headers. This package cannot verify those calls; validate
+the credential with your own authentication middleware. Configure and remove it
+with the `admin` module's `WebhookEndpoint.setCredential(...)` and
+`deleteCredential()`.
 
-`WebhookEvent.decode(byte[])` decodes without verifying; only use it for
-already-verified input.
-
-### Receiving: handler, listener, callbacks
-
-`WebhookHandler` is the framework-agnostic seam. It verifies, deduplicates, and
-dispatches, and returns a `WebhookResult` to map into your response.
-
-```java
-import com.mxraven.mail.webhook.WebhookHandler;
-import com.mxraven.mail.webhook.WebhookResult;
-
-WebhookHandler handler = WebhookHandler.builder()
-        .verifier(verifier)
-        .listener(event -> app.handle(event))    // or a WebhookCallbacks
-        .store(store)                            // optional idempotency
-        .build();
-
-WebhookResult result = handler.handle(method, requestUri, headers, body);
-response.setStatus(result.status());             // 204 / 200 / 401 / 400
-```
-
-| Result | Status | Meaning |
-| --- | --- | --- |
-| `ACCEPTED` | `204` | Verified and dispatched. |
-| `DUPLICATE` | `200` | Already processed; acknowledged without dispatching. |
-| `INVALID_SIGNATURE` | `401` | Missing or mismatched signature. |
-| `BAD_REQUEST` | `400` | Missing headers, stale, oversized, or not decodable. |
-
-A listener is either a single lambda, or typed callbacks:
-
-```java
-import com.mxraven.mail.webhook.WebhookCallbacks;
-
-WebhookListener byType = new WebhookCallbacks() {
-    @Override
-    public void onInboundEmail(InboundEmail email) { app.processInbound(email); }
-
-    @Override
-    public void onDeliveryStatus(DeliveryStatus status) { app.recordStatus(status); }
-};
-```
-
-`WebhookCallbacks` extends `WebhookListener`, so it plugs in anywhere a listener
-is accepted. A runtime exception from the listener propagates unchanged (mapped
-to `500` by `WebhookServer`) so the sender retries.
-
-Idempotency (at-least-once `DELIVER_WEBHOOK`) uses a `WebhookStore`; a task is
-marked processed only after the listener returns normally.
-
-### Standalone server
-
-`WebhookServer` serves a handler over the JDK HTTP server (no extra dependency).
-
-```java
-WebhookServer server = WebhookServer.builder()
-        .port(8080)
-        .path("/mxraven/webhook")
-        .handler(handler)
-        .build();
-
-server.start();
-```
-
-`start()` prints a development-server banner and warning to `System.err` (like
-Flask/Werkzeug); disable it with `.banner(false)` for production. No threads
-start until `start()` and they stop on `close()`. Behind a TLS-terminating proxy
-set `X-Forwarded-Proto` so the signed request target is reconstructed correctly.
-
-### In a framework
-
-Skip `WebhookServer` and call the handler directly.
-
-```java
-@PostMapping("/mxraven/webhook")
-ResponseEntity<Void> receive(@RequestBody byte[] body, HttpServletRequest req) throws IOException {
-    Map<String, String> headers = Collections.list(req.getHeaderNames()).stream()
-            .collect(Collectors.toMap(n -> n, req::getHeader));
-    WebhookResult result = handler.handle(req.getMethod(),
-            URI.create(req.getRequestURL().toString()), headers, body);
-    return ResponseEntity.status(result.status()).build();
-}
-```
+Webhook deliveries no longer exist. Accepted messages, delivery attempts, and
+sampled routing-script faults arrive on the client notification stream below.
 
 ---
 
 ## Client notifications
 
 Enable notifications for a listener with the administrative API, then consume
-that listener's accepted-message and delivery-attempt events over NATS. The
-client authenticates with the same API key used for SMTP submission and manages
-the WebSocket transport, acknowledgement, and redelivery.
+that listener's accepted-message, delivery-attempt, and sampled fault events
+over NATS. The client authenticates with the same API key used for SMTP
+submission and manages the WebSocket transport, acknowledgement, and
+redelivery.
 
 ```java
+import com.mxraven.mail.notify.AcceptedMessage;
 import com.mxraven.mail.notify.AttemptEvent;
 import com.mxraven.mail.notify.HandlerResult;
 import com.mxraven.mail.notify.NotificationCallbacks;
 import com.mxraven.mail.notify.NotificationClient;
 import com.mxraven.mail.notify.NotificationClientOptions;
-import com.mxraven.mail.webhook.InboundEmail;
 
 NotificationClient client = NotificationClient.connect(
         NotificationClientOptions.builder()
@@ -741,8 +659,9 @@ NotificationClient client = NotificationClient.connect(
 
 client.consume(new NotificationCallbacks() {
     @Override
-    public HandlerResult onAccepted(InboundEmail email) {
-        System.out.println("accepted " + email.taskId());
+    public HandlerResult onAccepted(AcceptedMessage message) {
+        System.out.println("accepted " + message.taskId()
+                + " terminal=" + message.routingDecision().terminalAction());
         return HandlerResult.CONTINUE;
     }
 
@@ -751,12 +670,19 @@ client.consume(new NotificationCallbacks() {
         System.out.println(event.channel() + " " + event.status() + " " + event.reason());
         return HandlerResult.CONTINUE;
     }
+
+    @Override
+    public HandlerResult onFault(FaultEvent event) {
+        System.out.println("script fault " + event.scriptRevision()
+                + " " + event.fault().reason());
+        return HandlerResult.CONTINUE;
+    }
 });
 ```
 
 | Member | Description |
 | --- | --- |
-| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://nats.mxraven.com`; a missing port defaults to 443 for `wss://` and 80 for `ws://`. |
+| `.url(String)` | Overrides the notification tier URL. Defaults to `wss://notifications.mxraven.com`; a missing port defaults to 443 for `wss://` and 80 for `ws://`. |
 | `.username(String)` / `.secret(String)` | The listener API key prefix and secret, the same values used for SMTP submission. |
 | `.listener(String)` | Required listener ID; derives the durable consumer name and inbox prefix. |
 | `.consumer(String)` | Overrides the durable consumer name. Defaults to `notify-<listener>`. |
@@ -773,15 +699,29 @@ a delay that doubles with each attempt up to 30 seconds. Return
 `HandlerResult.STOP` to acknowledge the current event and stop. Cancelling
 through a `Cancellation` and calling `close()` are normal stops.
 
-`NotificationCallbacks` receives the payload directly: `onAccepted(InboundEmail)`
-and `onAttempt(AttemptEvent)`; branch on `event.channel()` for `smtp`, `s3`, or
-`webhook`. Prefer the functional `NotificationHandler`
-when a single lambda is enough: `client.consume(event -> HandlerResult.CONTINUE);`
+`NotificationCallbacks` receives the payload directly:
+`onAccepted(AcceptedMessage)`, `onAttempt(AttemptEvent)`, and
+`onFault(FaultEvent)`; branch on `event.channel()` for `smtp` or `s3`. Prefer
+the functional `NotificationHandler` when a single lambda is enough:
+`client.consume(event -> HandlerResult.CONTINUE);`
 
-An accepted event is the same payload a `DELIVER_WEBHOOK` delivery carries, so
-`email.parse()` downloads and parses the raw message. An attempt event carries
-the egress channel (`smtp`, `s3`, or `webhook`) and the delivery status;
+An accepted message carries the parsed summary and headers, the SMTP envelope,
+the routing-script decision (`terminalAction()`, `scriptRevision()`,
+`deps`-checked `intents()`, `skipped()`, `log()`, `fault()`, `httpCalls()`), and
+raw-message access. `message.parse()` downloads and parses the raw message for
+an MTA listener; a submission listener's `rawEmail()` is empty. An attempt event
+carries the egress channel (`smtp` or `s3`) and the delivery status;
 `correlationId()` joins it back to the accepted event's `task_id`.
+
+An MTA listener's routing-script fault defers the transaction with a `451`
+reply, so no accepted event exists. A sampled `FaultEvent` carries the deferred
+transaction's `messageRef()`, envelope `mailFrom()`, faulted `recipient()`, the
+`smtpResponse()` the sender received, the script revision, the `fault()` reason
+and message, the script's `log()` lines, and every `httpCalls()` audit record.
+Faults are sampled at most once per script revision per minute per smtp-mta
+replica; `suppressedFaults()` counts the same-revision faults that were not
+reported. An `httpCalls()` entry's `cached()` is true when an identical earlier
+call in the same MTA transaction answered it, so the endpoint was called once.
 
 For manual acknowledgement, iterate with `client.events()`. Each delivery
 exposes `ack()`, `nak(Duration)`, and `term()`:
@@ -862,8 +802,9 @@ A `404` means no stored evidence matched the submitted bytes.
 | --- | --- |
 | `com.mxraven.mail.exception.MxRavenException` | Base exception for mail SDK errors (runtime). |
 | `com.mxraven.mail.SmtpException` | SMTP failures: auth rejected, STARTTLS unavailable, etc. |
-| `com.mxraven.mail.webhook.WebhookException` | Webhook verification or decoding failures. |
-| `com.mxraven.mail.webhook.InvalidSignatureException` | Webhook HMAC did not match; respond `401`. |
+| `com.mxraven.mail.webhook.WebhookException` | Signed endpoint-call verification failed. |
+| `com.mxraven.mail.webhook.InvalidSignatureException` | The HMAC did not match; respond `401`. |
+| `com.mxraven.mail.webhook.PayloadTooLargeException` | The body exceeded the verifier limit; respond `413`. |
 | `com.mxraven.mail.notify.NotificationException` | Notification connection or consume failures. |
 | `com.mxraven.mail.notify.NotificationDecodeException` | A notification body did not match the model; the event is terminated rather than retried. |
 | `com.mxraven.mail.feedback.FeedbackException` | Feedback service errors; `statusCode()`, `detail()`, `retryable()`. |
@@ -882,18 +823,22 @@ Transport failures (SMTP I/O, raw message download, feedback HTTP) surface as
   `Recipient`, `MailboxAddress`, `Headers`, `Header`, `Content`, `BodyType`,
   `DeliveryBy`, `DeliveryByMode`, `DSNEnvelopeParams`, `DSNRecipientParams`,
   `Extension`, `TraceField`.
+
+`com.mxraven.mail.model.Path` shares its simple name with `java.nio.file.Path`;
+qualify one of them when both are in scope.
 - `com.mxraven.mail.mime` — `MimeParser`, `MimePart`, `ParsedEmail`, `Attachment`,
   `MimeWriter`, `MimeType`, `ContentTransferEncoding`.
-- `com.mxraven.mail.webhook` — `WebhookVerifier`, `WebhookEvent`, `InboundEmail`,
-  `DeliveryStatus`, `StorageStatus`, `RawEmail`, `WebhookListener`,
-  `WebhookCallbacks`, `WebhookHandler`, `WebhookResult`, `WebhookStore`,
-  `WebhookServer`, and the verification exceptions.
+- `com.mxraven.mail.webhook` — `WebhookVerifier` and the verification
+  exceptions for signed `mx.http` endpoint calls.
 - `com.mxraven.mail.feedback` — `FeedbackClient`, `Disposition`, `LearningResult`,
   `FeedbackException`.
 - `com.mxraven.mail.notify` — `NotificationClient`, `NotificationClientOptions`,
   `NotificationHandler`, `NotificationCallbacks`, `NotificationEvent`
-  (`AcceptedNotification` / `AttemptNotification`), `AttemptEvent`,
-  `AttemptChannel`, `NotificationIterator`, `NotificationDelivery`,
+  (`AcceptedNotification` / `AttemptNotification` / `FaultNotification`),
+  `AcceptedMessage`, `FaultEvent`,
+  `RoutingDecision`, `RoutingIntent`, `RoutingSkip`, `RoutingFault`,
+  `RoutingHTTPCall`, `Verdicts`, `RawEmail`, `AttemptEvent`, `AttemptChannel`,
+  `StatusOutcome`, `NotificationIterator`, `NotificationDelivery`,
   `HandlerResult`, `NotificationException`, `NotificationDecodeException`.
 
 Contract enums expose `wire()` and `fromWire(String)` (`MimeType.fromWire` returns
@@ -921,7 +866,7 @@ them with `./gradlew :mail:compileExamplesJava` and run one with
 | `EnvelopeParametersExample` | DSN, ORCPT, DELIVERBY, BODY. |
 | `OAuthAndProxyExample` | `XOAUTH2` and SOCKS proxy configuration. |
 | `ParseMimeExample` | Parsing a raw MIME message. |
-| `ReceiveWebhookExample` | Verifying and serving webhooks. |
+| `VerifyEndpointCallExample` | Verifying a signed `mx.http` endpoint call. |
 | `NotificationsExample` | Consuming client notification events over NATS. |
 | `FeedbackExample` / `FeedbackAsyncExample` | Feedback learning, sync and async. |
 

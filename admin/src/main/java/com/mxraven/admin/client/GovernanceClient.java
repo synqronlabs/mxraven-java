@@ -6,6 +6,7 @@ import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Paged;
 import com.mxraven.admin.QueryParams;
 import com.mxraven.admin.model.AuditLog;
+import com.mxraven.admin.model.InboundRoutingOutcome;
 import com.mxraven.admin.model.TenantDedicatedIPPool;
 import com.mxraven.admin.model.TenantResourceSearchResult;
 
@@ -32,6 +33,15 @@ public final class GovernanceClient {
     public GovernanceClient(AdminClient client, String tenantSlug) {
         this.client = client;
         this.tenantSlug = tenantSlug;
+    }
+
+    /**
+     * Starts a typed query over inbound recipient routing outcomes.
+     *
+     * @return a new inbound-routing-outcome query
+     */
+    public InboundRoutingOutcomeQuery inboundRoutingOutcomeQuery() {
+        return new InboundRoutingOutcomeQuery(this);
     }
 
     /**
@@ -74,6 +84,21 @@ public final class GovernanceClient {
      * @return a lazily paginating collection of dedicated IP pools
      * @throws IOException if the first page request fails or is interrupted
      */
+    /**
+     * Lists inbound recipient routing outcomes, newest first.
+     *
+     * @return a lazily paginating collection of inbound routing outcomes
+     * @throws IOException if the first page request fails or is interrupted
+     */
+    public Paged<InboundRoutingOutcome> listInboundRoutingOutcomes() throws IOException {
+        return listInboundRoutingOutcomes(null);
+    }
+
+    Paged<InboundRoutingOutcome> listInboundRoutingOutcomes(QueryParams params) throws IOException {
+        return client.paged(tenantPath("/inbound-routing-outcomes"),
+                params == null ? null : params.toMap(), InboundRoutingOutcome.class);
+    }
+
     public Paged<TenantDedicatedIPPool> listDedicatedIPPools() throws IOException {
         return listDedicatedIPPools(null);
     }

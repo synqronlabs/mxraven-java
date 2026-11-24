@@ -1,21 +1,20 @@
 # mxRaven Admin SDK (Java)
 
 The `admin` module is the Java client for the mxRaven **control-plane REST API**. It
-manages a workspace end to end: domains, listeners, routing rules, API keys,
-suppressions, recipient sets, auto-reply templates, forwarding destinations,
-inbound routes, relays, storage integrations, webhook endpoints, identity
-providers, quotas, rate limits, governance, mail analytics, plus the public auth
-login context.
+manages a workspace end to end: domains, listeners, per-listener routing scripts,
+connected applications, API keys, suppressions, recipient sets, auto-reply
+templates, forwarding destinations, inbound routes, relays, storage
+integrations, webhook endpoints, identity providers, quotas, rate limits,
+governance, mail analytics, plus the public auth login context.
 
 It mirrors the same `/v2` surface the customer dashboard uses, with typed
-request/response models and a small dependency footprint (Jackson and OkHttp).
+request/response models and a small dependency footprint (Jackson only).
 
 - Group / artifact: `com.mxraven` / `admin-jdk8`
-- Current version: `2.1.0`
+- Current version: `3.0.0-jdk8`
 - JavaDoc: https://java.mxraven.com/admin/
-- Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain)
-- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` and
-  `com.squareup.okhttp3:okhttp`
+- Requirements: **Java 8+** (Gradle compiles, tests, and documents on a JDK 8 toolchain).
+- Runtime dependencies: `com.fasterxml.jackson.core:jackson-databind` and `com.squareup.okhttp3:okhttp`
 
 ---
 
@@ -36,7 +35,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.mxraven:admin-jdk8:2.1.0")
+    implementation("com.mxraven:admin-jdk8:3.0.0-jdk8")
 }
 ```
 
@@ -46,7 +45,7 @@ dependencies {
 <dependency>
     <groupId>com.mxraven</groupId>
     <artifactId>admin-jdk8</artifactId>
-    <version>2.1.0</version>
+    <version>3.0.0-jdk8</version>
 </dependency>
 ```
 
@@ -61,9 +60,9 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.synqronlabs.mxraven-java:admin-jdk8:2.1.0")
-    // Latest main build:  ...:admin-jdk8:main-SNAPSHOT
-    // Or pin a commit:    ...:admin-jdk8:<commit-sha>
+    implementation("com.github.synqronlabs.mxraven-java:admin:3.0.0-jdk8")
+    // Latest main build:  ...:admin:main-SNAPSHOT
+    // Or pin a commit:    ...:admin:<commit-sha>
 }
 ```
 
@@ -136,12 +135,12 @@ allowed to perform fails with `403` and a `PermissionDeniedException`.
 | --- | --- |
 | `AdminClient(String token)` | Default base URL, API version, and rate limits |
 | `AdminClient(String token, RateLimitConfig rateLimitConfig)` | Default base URL, custom retry behaviour |
-| `AdminClient(String token, HttpClient http, ObjectMapper json)` | Default base URL, custom transport and codecs |
+| `AdminClient(String token, OkHttpClient http, ObjectMapper json)` | Default base URL, custom transport and codecs |
 | `AdminClient(String baseUrl, String token)` | Explicit base URL |
 | `AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig)` | Custom retry behaviour |
 | `AdminClient(String baseUrl, String token, String apiVersion)` | Custom API version prefix |
 | `AdminClient(String baseUrl, String token, RateLimitConfig rateLimitConfig, String apiVersion)` | Both |
-| `AdminClient(String baseUrl, String token, HttpClient http, ObjectMapper json)` | Custom transport and codecs |
+| `AdminClient(String baseUrl, String token, OkHttpClient http, ObjectMapper json)` | Custom transport and codecs |
 
 `baseUrl` is normalised by stripping trailing slashes; when omitted it defaults
 to `AdminClient.DEFAULT_BASE_URL` (`"https://api.mxraven.com"`). A blank or
@@ -155,10 +154,10 @@ place. Client code never hardcodes the version. `"/tenants/acme/domains"` become
 left untouched.
 
 ```java
-AdminClient admin = new AdminClient("https://api.mxraven.com", token, "v3");
+AdminClient admin = new AdminClient("https://api.mxraven.com", token, "v2");
 
 admin.baseUrl();        // https://api.mxraven.com
-admin.apiVersion();     // v3
+admin.apiVersion();     // v2
 admin.json();           // the Jackson ObjectMapper in use
 admin.rateLimitConfig();
 ```
@@ -191,10 +190,13 @@ RateLimitConfig.disabled();   // surface 429 immediately
 ### Custom HTTP client and ObjectMapper
 
 ```java
-import java.net.http.HttpClient;
+import okhttp3.OkHttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.TimeUnit;
 
-HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+OkHttpClient http = new OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .build();
 ObjectMapper mapper = new ObjectMapper();
 
 AdminClient admin = new AdminClient("https://api.mxraven.com", token, http, mapper);
@@ -221,11 +223,12 @@ This constructor uses the default API version and rate-limit config.
 | `Workspace` | `inboundRoutes()` | `InboundRoutesClient` | Recipient-domain routing to MTA listeners |
 | `Workspace` | `smtpRelays()` | `SmtpRelaysClient` | Tenant SMTP relay integrations |
 | `Workspace` | `storageIntegrations()` | `StorageIntegrationsClient` | Tenant object-storage integrations |
-| `Workspace` | `webhookEndpoints()` | `WebhookEndpointsClient` | Webhook endpoints, secrets and deliveries |
+| `Workspace` | `webhookEndpoints()` | `WebhookEndpointsClient` | Webhook endpoints, signing secrets, and stored credentials for `mx.http` |
+| `Workspace` | `connectedApps()` | `ConnectedAppsClient` | Connected-application installs and consent previews |
 | `Workspace` | `identityProviders()` | `IdentityProvidersClient` | Tenant external identity providers |
 | `Workspace` | `quotas()` | `QuotasClient` | Effective tenant quotas and usage |
 | `Workspace` | `mtaRateLimits()` | `MtaRateLimitsClient` | Tenant MTA rate-limit override |
-| `Workspace` | `governance()` | `GovernanceClient` | Audit log, dedicated IP pools, resource search |
+| `Workspace` | `governance()` | `GovernanceClient` | Audit log, inbound routing outcomes, dedicated IP pools, resource search |
 | `Workspace` | `mailAnalytics()` | `MailAnalyticsClient` | Mail activity and delivery aggregates |
 | `AdminClient` | `auth()` | `AuthClient` | Public tenant login context |
 
@@ -267,9 +270,9 @@ Every entity exposes three things:
 - **operations** - `reload()`, mutations (`replace`, `update`, `setActive`,
   `rotateSecret`, ...), and `delete()`.
 - **children** - strictly-owned collections and singletons:
-  `listener.routingRules()`, `listener.apiKeys()`,
+  `listener.routingScripts()`, `listener.apiKeys()`,
   `listener.sendingDomainPolicy()`, `listener.mtaRateLimit()`,
-  `set.members()`, `endpoint.deliveries()`, `domain.listenerGrants()`.
+  `set.members()`, `domain.listenerGrants()`.
 
 `Entity<D>` (base class) provides:
 
@@ -351,8 +354,8 @@ Paged<Domain> verified = ws.domains().query()
 | Query | Filters |
 | --- | --- |
 | `ws.domains().query()` | `search`, `status(DomainStatus)`, `spfVerified`, `dkimVerified`, `dmarcVerified`, `sendingEnabled` |
-| `ws.listeners().query()` | `search`, `listenerType(ListenerType)`, `streamType(StreamType)`, `defaultTerminalActionType(TerminalActionType)`, `rspamdScanningEnabled` |
-| `listener.routingRules().query()` | `search`, `actionType(RoutingRuleActionKind)`, `active` |
+| `ws.listeners().query()` | `search`, `listenerType(ListenerType)`, `streamType(StreamType)`, `rspamdScanningEnabled` |
+| `listener.routingScripts().query()` | `pageSize`, `pageToken` |
 | `ws.suppressions().query()` | `search`, `reason(SuppressionReason)` |
 | `ws.recipientSets().query()` | `search` |
 | `set.members().query()` | `search`, `addedFrom`, `addedTo` |
@@ -434,68 +437,6 @@ Every exception carries `status()`, `code()` (stable, branch on this), `title()`
   also accept a `Consumer<Builder>` configurator. `build()` fails fast on missing
   or invalid required fields.
 
-### Terminal action payloads
-
-`defaultTerminalActionPayload` (create) and `actionPayload` (update) are typed as
-`TerminalActionPayload`, and reads return the same type. Each factory matches the
-control plane shape for the corresponding `TerminalActionType`.
-
-| Action | Factory |
-| --- | --- |
-| `DELIVER` | `TerminalActionPayload.deliver()` |
-| `DELIVER_DEDICATED` | `TerminalActionPayload.deliverDedicated(poolId)` |
-| `SMARTHOST_RELAY` | `TerminalActionPayload.smartHostRelay(relayRef)` |
-| `RELAY` | `TerminalActionPayload.relay(relayRef)` |
-| `AUTO_REPLY` | `TerminalActionPayload.autoReply(templateRef)` |
-| `DROP` | `TerminalActionPayload.drop()` / `drop(auditReason)` |
-| `REJECT` | `TerminalActionPayload.reject(smtpStatusCode, enhancedStatusCode, message[, auditReason])` |
-
-Typed getters: `isEmpty()`, `poolId()`, `relayRef()`, `templateRef()`,
-`auditReason()`, `smtpStatusCode()`, `enhancedStatusCode()`, `message()`,
-`values()`. `TerminalActionPayload.of(Map)` is the escape hatch.
-
-```java
-ws.listeners().create(listener -> listener
-        .displayName("Inbound")
-        .listenerType(ListenerType.MTA)
-        .streamType(StreamType.TRANSACTIONAL)
-        .defaultTerminalAction(TerminalActionType.RELAY, TerminalActionPayload.relay("primary")));
-```
-
-### Routing rule actions
-
-`CreateRoutingRuleRequest` / `ReplaceRoutingRuleRequest` take a `RoutingRuleAction`
-built from a factory or `builder()`. Payload shapes are validated locally.
-
-| Action | Factory | Listener |
-| --- | --- | --- |
-| `DELIVER_DEDICATED` | `RoutingRuleAction.deliverDedicated(poolId)` | submission |
-| `DELIVER` | `deliver()` | submission |
-| `SMARTHOST_RELAY` | `smartHostRelay(relayRef)` | submission |
-| `DROP` | `drop()` / `drop(auditReason)` | both |
-| `REJECT` | `reject(smtpStatusCode, enhancedStatusCode, message[, auditReason])` | both |
-| `MODIFY_HEADER` | `modifyHeader(List<ModifyHeaderOperation>)` | submission |
-| `ADD_RECIPIENT` | `addRecipient(List<String>)` | submission |
-| `NOTIFY_WEBHOOK` | `notifyWebhook(webhookRef)` | both |
-| `RELAY` | `relay(relayRef)` | mta |
-| `AUTO_REPLY` | `autoReply(templateRef)` | mta |
-| `DELIVER_WEBHOOK` | `deliverWebhook(webhookRef)` | mta |
-| `SMTP_FORWARD` | `smtpForward(destinationRef)` | mta |
-| `S3_STORE` | `s3Store(storageRef, objectKeyPrefix, objectKeyTemplate)` | mta |
-
-`ModifyHeaderOperation.append(header[, value])`, `set(header, value)` and
-`remove(header)` build header operations. For generic construction use
-`RoutingRuleAction.builder().payload(...)` or
-`RoutingRuleAction.of(actionType, payload)`. `build()` fails fast on
-`priority < 1`, a missing or oversized `expression_text`, or a missing action.
-
-```java
-listener.routingRules().create(rule -> rule
-        .priority(1)
-        .expressionText("from == 'billing@example.com'")
-        .action(RoutingRuleAction.smtpForward("billing-dest")));
-```
-
 ---
 
 ## API reference
@@ -556,67 +497,106 @@ for (DomainListenerGrant grant : d.listenerGrants()) {
 | `List<Listener> listSubmissionListeners()` | all pages, filtered to submission |
 
 `ListenerQuery`: `search(String)`, `listenerType(ListenerType)`,
-`streamType(StreamType)`, `defaultTerminalActionType(TerminalActionType)`,
-`rspamdScanningEnabled(boolean)`, `pageSize(int)`, `pageToken(String)`, `list()`.
+`streamType(StreamType)`, `rspamdScanningEnabled(boolean)`, `pageSize(int)`,
+`pageToken(String)`, `list()`.
 
 `Listener` data: `id()`, `tenantId()`, `displayName()`, `listenerType()`,
-`streamType()`, `defaultTerminalActionType()`, `defaultTerminalActionPayload()`,
-`rspamdScanningEnabled()`.
+`streamType()`, `rspamdScanningEnabled()`, `activeScriptRevisionId()`,
+`scriptBodyAccess()`.
 Operations: `reload()`, `rename(String)`,
 `update(Consumer<UpdateListenerRequest.Builder>)`,
 `update(UpdateListenerRequest)`,
-`updateDefaultTerminalAction(TerminalActionType)`,
-`updateDefaultTerminalAction(TerminalActionType, TerminalActionPayload)`,
-`updateDefaultTerminalAction(Consumer<UpdateListenerDefaultTerminalActionRequest.Builder>)`,
-`updateDefaultTerminalAction(UpdateListenerDefaultTerminalActionRequest)`,
 `updateRspamdScanning(boolean)`, `updateRspamdScanning(Consumer<...>)`,
-`updateRspamdScanning(UpdateListenerRspamdScanningRequest)`, `delete()`.
-Children: `routingRules()`, `apiKeys()`, `sendingDomainPolicy()`, `mtaRateLimit()`.
+`updateRspamdScanning(UpdateListenerRspamdScanningRequest)`,
+`notificationSetting()`, `updateNotifications(boolean)`,
+`updateNotifications(Consumer<UpdateListenerNotificationsRequest.Builder>)`,
+`updateNotifications(UpdateListenerNotificationsRequest)`, `delete()`.
+Children: `routingScripts()`, `apiKeys()`, `sendingDomainPolicy()`, `mtaRateLimit()`.
+
+A new listener has no routing script and uses the listener-type default:
+submission listeners deliver through the shared pool, and MTA listeners drop
+after acceptance. The listener record reports the published revision in
+`activeScriptRevisionId()` and whether the script may read the message body in
+`scriptBodyAccess()`.
 
 ```java
 Listener listener = ws.listeners().create(l -> l
         .displayName("Outbound transactional")
         .listenerType(ListenerType.SUBMISSION)
-        .streamType(StreamType.TRANSACTIONAL)
-        .defaultTerminalAction(TerminalActionType.DELIVER));
+        .streamType(StreamType.TRANSACTIONAL));
 
 listener.rename("Outbound primary");
 listener.updateRspamdScanning(true);
+listener.updateNotifications(true);
 ```
 
-### Routing rules - `listener.routingRules()`
+### Routing scripts - `listener.routingScripts()`
 
 | Method | Endpoint |
 | --- | --- |
-| `Paged<RoutingRule> list()` | `GET .../{listener}/rules` |
-| `RoutingRuleQuery query()` | builder for the above |
-| `RoutingRule get(String ruleId)` | `GET .../{listener}/rules/{id}` |
-| `RoutingRule create(Consumer<CreateRoutingRuleRequest.Builder>)` | `POST .../{listener}/rules` |
-| `RoutingRule create(CreateRoutingRuleRequest)` | `POST .../{listener}/rules` |
+| `ListenerScript get()` | `GET .../{listener}/script` |
+| `ScriptRevision createRevision(String source)` | `POST .../{listener}/script/revisions` |
+| `ScriptRevision createRevision(CreateScriptRevisionRequest)` | `POST .../{listener}/script/revisions` |
+| `ScriptRevision getRevision(int revision)` | `GET .../{listener}/script/revisions/{revision}` |
+| `Paged<ScriptRevisionSummary> listRevisions()` | `GET .../{listener}/script/revisions` |
+| `ScriptRevisionQuery query()` | builder for the above |
+| `ScriptSimulationResult simulate(int revision, SimulateScriptRevisionRequest)` | `POST .../revisions/{revision}/simulate` |
+| `ListenerScript publish(int revision)` | `POST .../revisions/{revision}/publish` |
+| `ListenerScript rollback(int revision)` | `POST .../script/rollback` |
+| `ExportedListenerScript export()` | `POST .../script/export` |
+| `ListenerScript delete()` | `DELETE .../{listener}/script` |
+| `ListenerScript setBodyAccess(boolean enabled)` | `PUT .../script/body-access` |
 
-`RoutingRuleQuery`: `search(String)`, `actionType(RoutingRuleActionKind)`,
-`active(boolean)`, `pageSize(int)`, `pageToken(String)`, `list()`.
+`ScriptRevisionQuery`: `pageSize(int)`, `pageToken(String)`, `list()`.
 
-`RoutingRule` data: `id()`, `listenerId()`, `priority()`, `expressionText()`,
-`action()`, `isActive()`.
-Operations: `reload()`, `replace(String expressionText, RoutingRuleAction)`,
-`replace(Consumer<ReplaceRoutingRuleRequest.Builder>)`,
-`replace(ReplaceRoutingRuleRequest)`, `setActive(boolean)`,
-`setActive(Consumer<SetRoutingRuleActiveRequest.Builder>)`,
-`setActive(SetRoutingRuleActiveRequest)`, `reorder(int)`,
-`reorder(Consumer<ReorderRoutingRuleRequest.Builder>)`,
-`reorder(ReorderRoutingRuleRequest)`, `delete()`.
+`ListenerScript` data: `listenerId()`, `listenerType()`, `bodyAccess()`,
+`published()`.
+`ScriptRevision` data: `id()`, `listenerId()`, `revision()`, `status()`,
+`publishable()`, `source()`, `sourceSha256()`, `schemaVersion()`,
+`dependencies()`, `diagnostics()`, `createdBy()`, `createdAt()`,
+`publishedBy()`, `publishedAt()`.
+`ScriptRevisionSummary` is the same metadata without the source.
+`ScriptSimulationResult` reports `terminal()`, `defaultApplied()`, `intents()`,
+`skipped()`, `log()`, `fault()`, `httpCalls()`, `trace()`, and `durationUs()`.
+`SimulationFixture` can synthesize the text/plain body, the HTML body
+(`bodyHtml()`, read by `mail.body:links()` and used as a text fallback), and up to
+32 attachment metadata entries (`attachments()`, reported by
+`mail.body:attachments()`).
+
+Drafts are saved even when they do not compile, so work is never lost. Inspect
+`publishable()` and `diagnostics()` before publishing:
 
 ```java
-listener.routingRules().create(rule -> rule
-        .priority(10)
-        .expressionText("to == 'support@example.com'")
-        .action(RoutingRuleAction.notifyWebhook("support-hook")));
+ScriptRevision revision = listener.routingScripts().createRevision("""
+        function handle(mail, mx)
+          if mail.auth.dmarc.result == "fail" then
+            return mx.reject(550, "5.7.1", "DMARC policy")
+          end
+          return mx.deliver_shared()
+        end""");
 
-for (RoutingRule rule : listener.routingRules().list()) {
-    System.out.println(rule.priority() + " " + rule.expressionText() + " " + rule.isActive());
+if (!revision.publishable()) {
+    for (ScriptDiagnostic diagnostic : revision.diagnostics()) {
+        System.out.println(diagnostic.line() + ":" + diagnostic.column()
+                + " " + diagnostic.severity() + " " + diagnostic.message());
+    }
+    return;
 }
+
+ScriptSimulationResult result = listener.routingScripts()
+        .simulate(revision.revision(), SimulateScriptRevisionRequest.empty());
+listener.routingScripts().publish(revision.revision());
 ```
+
+`delete()` unpublishes the script so the listener runs its listener-type default
+again. The published revision becomes superseded and history is kept, so
+`rollback(revision)` can restore it.
+
+The former routing-rule family and the listener default-terminal-action endpoint
+were removed. Publish a script instead. Webhook endpoint *deliveries* are also
+gone: accepted messages, delivery attempts, and sampled routing-script faults arrive on the client notification
+stream in the `mail` module. Webhook endpoints remain as the destinations a
+script names in `mx.http`.
 
 ### API keys - `listener.apiKeys()`
 
@@ -628,6 +608,8 @@ for (RoutingRule rule : listener.routingRules().list()) {
 `APIKey` data: `id()`, `tenantId()`, `listenerId()`, `username()`.
 `IssuedAPIKey` additionally carries the one-time `secret()`.
 `APIKey` operations: `delete()`. There is no single-key read.
+A submission listener's key authenticates SMTP submission; an MTA listener's
+key authenticates the client notification channel.
 
 ```java
 IssuedAPIKey key = listener.apiKeys().create();
@@ -671,7 +653,10 @@ listener throws `IllegalStateException` locally instead of a `422`.
 `SuppressionQuery`: `search(String)`, `reason(SuppressionReason)`,
 `pageSize(int)`, `pageToken(String)`, `list()`.
 
-`TenantSuppression` data: `tenantId()`, `emailAddress()`, `reason()`.
+`TenantSuppression` data: `tenantId()`, `emailAddress()`,
+`canonicalEmailAddress()`, `reason()`, `systemManaged()`, `source()`,
+`feedbackCount()`, `addedAt()`, `lastFeedbackAt()`, `updatedAt()`.
+System-managed suppressions cannot be modified or deleted through the tenant API.
 Operations: `reload()`, `update(SuppressionReason)`,
 `update(Consumer<UpdateTenantSuppressionRequest.Builder>)`,
 `update(UpdateTenantSuppressionRequest)`, `delete()`.
@@ -724,7 +709,7 @@ Operations: `reload()`, `update(Consumer<UpdateRecipientSetRequest.Builder>)`,
 ```java
 RecipientSet set = ws.recipientSets().create(s -> s.displayName("VIP customers"));
 set.members().add("vip@example.com");
-set.members().batchAdd(List.of("a@example.com", "b@example.com"));
+set.members().batchAdd(java.util.Arrays.asList("a@example.com", "b@example.com"));
 
 for (RecipientSetMember member : set.members().list()) {
     System.out.println(member.emailAddress() + " " + member.addedAt());
@@ -740,6 +725,7 @@ for (RecipientSetMember member : set.members().list()) {
 | `AutoReplyTemplate create(CreateAutoReplyTemplateRequest)` | `POST .../auto-reply-templates` |
 | `AutoReplyTemplate get(String templateId)` | `GET .../auto-reply-templates/{id}` |
 | `AutoReplyTemplate getByRef(String templateRef)` | `GET .../auto-reply-templates/ref/{template_ref}` |
+| `AutoReplyTemplateContent getContent(String templateId)` | `GET .../auto-reply-templates/{template_id}/content` |
 
 `AutoReplyTemplate` data: `id()`, `tenantId()`, `templateRef()`, `displayName()`,
 `fromAddress()`, `isActive()`, `content()`, `senderReadiness()`.
@@ -842,30 +828,58 @@ Operations: `reload()`,
 | `WebhookEndpoint getByRef(String webhookRef)` | `GET .../webhook-endpoints/ref/{webhook_ref}` |
 
 `WebhookEndpoint` data: `id()`, `tenantId()`, `webhookRef()`, `displayName()`,
-`targetUrl()`, `signingKid()`, `hasSigningSecret()`, `isActive()`, `createdAt()`,
-`updatedAt()`.
+`targetUrl()`, `signingKid()`, `hasSigningSecret()`, `credentialHeader()`,
+`isActive()`, `createdAt()`, `updatedAt()`.
 Operations: `reload()`, `update(Consumer<UpdateWebhookEndpointRequest.Builder>)`,
 `update(UpdateWebhookEndpointRequest)`, `setActive(boolean)`,
 `setActive(Consumer<SetIntegrationActiveRequest.Builder>)`,
-`setActive(SetIntegrationActiveRequest)`, `rotateSecret()`, `delete()`,
-`deliveries()`.
+`setActive(SetIntegrationActiveRequest)`, `rotateSecret()`,
+`setCredential(SetWebhookEndpointCredentialRequest)`, `deleteCredential()`,
+`delete()`.
 `IssuedWebhookEndpoint` carries the one-time `signingSecret()`.
 
-#### Webhook deliveries - `endpoint.deliveries()`
+Webhook endpoints are the destinations a routing script calls with `mx.http`.
+Delivery history was removed; accepted messages, delivery attempts, and sampled
+script faults arrive on the client notification stream in the `mail` module.
 
-| Method | Endpoint |
-| --- | --- |
-| `Paged<WebhookDelivery> list()` | `GET .../webhook-endpoints/{id}/deliveries` |
+`setCredential(...)` stores a write-only credential and header name for a
+third-party API that authenticates with a key instead of verifying mxRaven's
+signature. While a credential is set, `mx.http` calls carry that header and no
+`X-MxRaven-*` signature headers. `credentialHeader()` reports the configured
+header, never the value. `deleteCredential()` makes calls signed again.
 
 ```java
 IssuedWebhookEndpoint endpoint = ws.webhookEndpoints().create(w -> w
-        .displayName("Billing events")
-        .targetUrl("https://example.com/hooks"));
-System.out.println(endpoint.signingSecret());   // store now
+        .displayName("Risk checks")
+        .targetUrl("https://example.com/mxraven/risk-check"));
+System.out.println(endpoint.signingSecret());   // store now; verify calls with mail/webhook
 
-for (WebhookDelivery delivery : endpoint.deliveries().list()) {
-    System.out.println(delivery);
-}
+// For a third-party API that uses its own key instead of mxRaven signatures:
+endpoint.setCredential(SetWebhookEndpointCredentialRequest.of("X-API-Key", "sk-123"));
+```
+
+### Connected applications - `ws.connectedApps()`
+
+| Method | Endpoint |
+| --- | --- |
+| `Paged<ConnectedAppInstallation> list()` | `GET /v2/tenants/{slug}/connected-apps` |
+| `ConnectedAppInstallation create(CreateConnectedAppInstallationRequest)` | `POST .../connected-apps` |
+| `ConnectedAppInstallation get(String installationId)` | `GET .../connected-apps/{installation_id}` |
+| `void revoke(String installationId)` | `DELETE .../connected-apps/{installation_id}` |
+| `ConnectedAppDeviceAuthorization getDeviceAuthorization(String userCode)` | `GET .../connected-apps/device-authorization/{user_code}` |
+| `ConnectedAppAuthorizationRequest getAuthorizationRequest(String clientId, String redirectUri)` | `GET .../connected-apps/authorization-request` |
+
+Device and browser authorization lookups are consent previews: they approve
+nothing. `create(...)` records (or replaces) the installation grant, and
+`revoke(...)` ends access immediately while retaining the grant as history.
+
+```java
+ConnectedAppDeviceAuthorization pending = ws.connectedApps()
+        .getDeviceAuthorization("ABCD-1234");
+ConnectedAppInstallation installation = ws.connectedApps().create(
+        CreateConnectedAppInstallationRequest.of(
+                pending.appId(),
+                pending.requestedScopes().stream().map(ConnectedAppScope::scope).toList()));
 ```
 
 ### Identity providers - `ws.identityProviders()`
@@ -931,6 +945,8 @@ Listener-level overrides live on `listener.mtaRateLimit()`.
 | --- | --- |
 | `Paged<AuditLog> listAuditLog()` | `GET /v2/tenants/{slug}/audit-log` |
 | `AuditLogQuery auditQuery()` | builder for the above |
+| `Paged<InboundRoutingOutcome> listInboundRoutingOutcomes()` | `GET .../inbound-routing-outcomes` |
+| `InboundRoutingOutcomeQuery inboundRoutingOutcomeQuery()` | builder for the above |
 | `Paged<TenantDedicatedIPPool> listDedicatedIPPools()` | `GET .../dedicated-ip-pools` |
 | `Paged<TenantDedicatedIPPool> listDedicatedIPPools(QueryParams)` | `GET .../dedicated-ip-pools` |
 | `Paged<TenantResourceSearchResult> search(String query)` | `GET .../search` |
@@ -940,6 +956,9 @@ Listener-level overrides live on `listener.mtaRateLimit()`.
 `action(String)`, `resourceType(String)`, `status(AuditStatus)`,
 `createdFrom(String)`, `createdTo(String)`, `pageSize(int)`, `pageToken(String)`,
 `list()`.
+
+`InboundRoutingOutcomeQuery`: `listenerId(String)`, `pageSize(int)`,
+`pageToken(String)`, `list()`.
 
 `ResourceSearchQuery`: `query(String)` (required by the control plane),
 `types(TenantSearchResourceType...)`, `pageSize(int)`, `pageToken(String)`,
@@ -994,6 +1013,8 @@ days. `limit` must be 1-20. Violations throw `IllegalArgumentException`.
 | `MailAnalyticsDomainLifecycle getMailAnalyticsDomainLifecycle(QueryParams params)` | `domain-lifecycle` |
 | `MailAnalyticsTaskSizeStatistics getMailAnalyticsTaskSizeStatistics(String startAt, String endAt)` | `task-size-statistics` |
 | `MailAnalyticsTaskSizeStatistics getMailAnalyticsTaskSizeStatistics(QueryParams params)` | `task-size-statistics` |
+| `MailAnalyticsListenerOverview getMailAnalyticsListenerOverview(String startAt, String endAt, String listenerId)` | `listener-overview` |
+| `MailAnalyticsListenerOverview getMailAnalyticsListenerOverview(QueryParams params)` | `listener-overview` |
 
 ```java
 MailAnalyticsSeries series = ws.mailAnalytics().getMailAnalyticsSeries(
@@ -1063,13 +1084,21 @@ records include:
   `DnsInstructionRecord`, `DnsRecordType`, `CreateDomainRequest`,
   `ReplaceDomainRequest`.
 - Listeners: `Listener`, `ListenerData`, `ListenerType`, `StreamType`,
-  `TerminalActionType`, `TerminalActionPayload`, `CreateListenerRequest`,
-  `UpdateListenerRequest`, `UpdateListenerDefaultTerminalActionRequest`,
-  `UpdateListenerRspamdScanningRequest`.
-- Routing: `RoutingRule`, `RoutingRuleData`, `RoutingRuleAction`,
-  `RoutingRuleActionKind`, `RoutingRulePayload`, `ModifyHeaderOperation`,
-  `ModifyHeaderOp`, `CreateRoutingRuleRequest`, `ReplaceRoutingRuleRequest`,
-  `SetRoutingRuleActiveRequest`, `ReorderRoutingRuleRequest`.
+  `CreateListenerRequest`, `UpdateListenerRequest`,
+  `UpdateListenerRspamdScanningRequest`, `ListenerNotificationSetting`,
+  `UpdateListenerNotificationsRequest`.
+- Routing scripts: `ListenerScript`, `ScriptRevision`, `ScriptRevisionSummary`,
+  `ScriptRevisionStatus`, `ScriptDependencies`, `ScriptDiagnostic`,
+  `ScriptDiagnosticSeverity`, `ScriptFault`, `ScriptFaultReason`, `ScriptIntent`,
+  `ScriptIntentKind`, `ScriptSkippedIntent`, `ScriptHTTPCall`,
+  `ScriptSimulationResult`, `ScriptTraceEntry`, `CreateScriptRevisionRequest`,
+  `RollbackListenerScriptRequest`, `UpdateListenerScriptBodyAccessRequest`,
+  `ExportedListenerScript`, `SimulationFixture`, `SimulationHeader`,
+  `SimulationAttachment`, `SimulationHTTPStub`, `SimulateScriptRevisionRequest`.
+- Connected applications: `ConnectedAppInstallation`,
+  `ConnectedAppInstallationStatus`, `ConnectedAppGrantor`, `ConnectedAppScope`,
+  `CreateConnectedAppInstallationRequest`, `ConnectedAppDeviceAuthorization`,
+  `ConnectedAppAuthorizationRequest`.
 - API keys: `APIKey`, `APIKeyData`, `IssuedAPIKey`.
 - Sending-domain policy: `SendingDomainPolicy`, `SendingDomainPolicyGrant`,
   `SendingDomainPolicyGrantRequest`, `SendingDomainSubdomainScope`,
@@ -1082,7 +1111,8 @@ records include:
   `RecipientSetMembersBatchRequest`, `RecipientSetBatchResult`,
   `CreateRecipientSetRequest`, `UpdateRecipientSetRequest`.
 - Auto-reply: `AutoReplyTemplate`, `AutoReplyTemplateData`,
-  `AutoReplyTemplateContentSummary`, `AutoReplyTemplateHeader`,
+  `AutoReplyTemplateContent`, `AutoReplyTemplateContentSummary`,
+  `AutoReplyTemplateHeader`,
   `AutoReplySenderReadiness`, `CreateAutoReplyTemplateRequest`,
   `UpdateAutoReplyTemplateRequest`, `SetAutoReplyTemplateActiveRequest`,
   `MaskedTemplateField`.
@@ -1100,9 +1130,9 @@ records include:
   `UpdateSmtpRelayRequest`; `StorageIntegration`, `StorageIntegrationData`,
   `CreateStorageIntegrationRequest`, `UpdateStorageIntegrationRequest`,
   `SetIntegrationActiveRequest`.
-- Webhooks: `WebhookEndpoint`, `WebhookEndpointData`, `WebhookDelivery`,
-  `WebhookDeliveryKind`, `IssuedWebhookEndpoint`, `CreateWebhookEndpointRequest`,
-  `UpdateWebhookEndpointRequest`.
+- Webhooks: `WebhookEndpoint`, `WebhookEndpointData`, `IssuedWebhookEndpoint`,
+  `CreateWebhookEndpointRequest`, `UpdateWebhookEndpointRequest`,
+  `SetWebhookEndpointCredentialRequest`.
 - Identity: `TenantIdentityProvider`, `TenantIdentityProviderData`,
   `IdentityProviderType`, `IdentityProviderLifecycleStatus`, `IdentityProvisioning`,
   `IdentityAccessClaim`, `IdpAutoLinking`, `LdapAttributes`, `ProviderOptions`,
@@ -1120,9 +1150,12 @@ records include:
 - MTA rate limits: `MTARateLimitPolicy`, `MTARateLimitOverride`,
   `MtaRateLimitScope`, `MtaRateLimitSource`.
 - Governance: `AuditLog`, `AuditActorKind`, `AuditStatus`,
-  `TenantResourceSearchResult`, `TenantSearchResourceType`.
+  `InboundRoutingOutcome`, `InboundRoutingOutcomeDisposition`,
+  `InboundRoutingOutcomeTerminalAction`, `TenantResourceSearchResult`,
+  `TenantSearchResourceType`.
 - Mail analytics: the `MailAnalytics*` family, including metrics, dimensions,
-  buckets, breakdowns, series, lifecycle, latency and task-size statistics.
+  buckets, breakdowns, series, lifecycle, listener overviews, latency and
+  task-size statistics.
 - Auth: `TenantLoginContext`.
 - Shared: `Problem`, `ProblemError`, `RequestSupport`.
 

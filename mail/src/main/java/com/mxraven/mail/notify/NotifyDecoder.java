@@ -2,8 +2,6 @@ package com.mxraven.mail.notify;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.mxraven.mail.webhook.InboundEmail;
-import com.mxraven.mail.webhook.StatusOutcome;
 
 import java.io.IOException;
 
@@ -11,7 +9,9 @@ import java.io.IOException;
  * Decoding of notification subjects and bodies.
  *
  * <p>The event kind is the final token of the subject. When the subject is
- * unavailable or unrecognized, the body shape is probed instead.
+ * unavailable or unrecognized, the body shape is probed instead: an attempt
+ * carries a {@code channel}, and an accepted event carries a
+ * {@code routing_decision}.
  */
 final class NotifyDecoder {
 
@@ -22,7 +22,7 @@ final class NotifyDecoder {
      * Decodes one notification body.
      *
      * @param subject the subject the notification was published to
-     * @param body    the JSON body
+     * @param body the JSON body
      * @return the decoded notification
      * @throws NotificationDecodeException when the body is not valid JSON, has
      *                                     a field of the wrong type, or cannot
@@ -47,14 +47,20 @@ final class NotifyDecoder {
         if (NotificationKind.ATTEMPT.wire().equals(kind)) {
             return decodeAttempt(payload, safeSubject);
         }
+        if (NotificationKind.FAULT.wire().equals(kind)) {
+            return decodeFault(payload, safeSubject);
+        }
 
-        JsonNode eventType = payload.get("event_type");
-        if (eventType != null && eventType.isTextual() && "inbound_email".equals(eventType.textValue())) {
+        if (isTextual(payload.get("channel"))) {
+            return decodeAttempt(payload, safeSubject);
+        }
+        JsonNode routingDecision = payload.get("routing_decision");
+        if (routingDecision != null && !routingDecision.isNull()) {
             return decodeAccepted(payload, safeSubject);
         }
-        JsonNode channel = payload.get("channel");
-        if (channel != null && channel.isTextual() && !channel.textValue().isEmpty()) {
-            return decodeAttempt(payload, safeSubject);
+        JsonNode fault = payload.get("fault");
+        if (fault != null && !fault.isNull()) {
+            return decodeFault(payload, safeSubject);
         }
         throw new NotificationDecodeException(safeSubject, "unrecognized notification body");
     }
@@ -66,121 +72,147 @@ final class NotifyDecoder {
         return index >= 0 ? trimmed.substring(index + 1).trim() : trimmed;
     }
 
-    /**
-     * Decodes an accepted-message body. The payload is the webhook inbound-email
-     * model, so it is reused verbatim.
-     */
+    /** Decodes an accepted-message body and validates its required fields. */
     private static NotificationEvent decodeAccepted(JsonNode payload, String subject) {
+        require(payload, subject, "task_id", "tenant_id", "listener_id", "attempt",
+                "accepted_at_utc", "occurred_at_utc", "routing_decision", "envelope");
+        if (!isTextual(payload.get("task_id")) || payload.get("task_id").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "task_id", "a non-empty string");
+        }
+        if (!isTextual(payload.get("tenant_id")) || payload.get("tenant_id").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "tenant_id", "a non-empty string");
+        }
+        if (!isTextual(payload.get("listener_id")) || payload.get("listener_id").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "listener_id", "a non-empty string");
+        }
+        if (!isNumber(payload.get("attempt")) || payload.get("attempt").longValue() < 1) {
+            throw fieldTypeError(subject, "attempt", "a positive number");
+        }
+
+        JsonNode decision = payload.get("routing_decision");
+        if (!decision.isObject()) {
+            throw fieldTypeError(subject, "routing_decision", "an object");
+        }
+        require(decision, subject, "terminal_action", "used_listener_default");
+        if (!isTextual(decision.get("terminal_action")) || decision.get("terminal_action").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "routing_decision.terminal_action", "a non-empty string");
+        }
+        JsonNode envelope = payload.get("envelope");
+        if (!envelope.isObject()) {
+            throw fieldTypeError(subject, "envelope", "an object");
+        }
+        require(envelope, subject, "mail_from");
+
+        AcceptedMessage accepted;
         try {
-            InboundEmail accepted = NotifyJson.MAPPER.treeToValue(payload, InboundEmail.class);
-            if (accepted == null) {
-                throw new NotificationDecodeException(subject, "body is not a JSON object");
-            }
-            return new AcceptedNotification(accepted);
+            accepted = NotifyJson.MAPPER.treeToValue(payload, AcceptedMessage.class);
         } catch (JsonProcessingException e) {
             throw new NotificationDecodeException(subject, e.getOriginalMessage());
         }
+        if (accepted == null) {
+            throw new NotificationDecodeException(subject, "body is not a JSON object");
+        }
+        for (int index = 0; index < accepted.headers().size(); index++) {
+            HeaderField header = accepted.headers().get(index);
+            if (header.name() == null || header.name().isEmpty()) {
+                throw fieldTypeError(subject, "headers[" + index + "].name", "a non-empty string");
+            }
+        }
+        return new AcceptedNotification(accepted);
     }
 
-    /** Decodes an attempt body into its typed model. */
+    /** Decodes an attempt body and validates its required fields. */
     private static NotificationEvent decodeAttempt(JsonNode source, String subject) {
-        String channelWire = requiredText(source, "channel", subject);
-        String statusWire = requiredText(source, "status", subject);
-        AttemptChannel channel;
-        StatusOutcome status;
+        require(source, subject, "channel", "task_id", "tenant_id", "listener_id",
+                "status", "attempt", "occurred_at_utc");
+        if (!isTextual(source.get("channel")) || source.get("channel").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "channel", "a non-empty string");
+        }
+        if (!isTextual(source.get("task_id")) || source.get("task_id").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "task_id", "a non-empty string");
+        }
+        if (!isTextual(source.get("tenant_id")) || source.get("tenant_id").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "tenant_id", "a non-empty string");
+        }
+        if (!isTextual(source.get("listener_id")) || source.get("listener_id").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "listener_id", "a non-empty string");
+        }
+        if (!isTextual(source.get("status")) || source.get("status").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "status", "a non-empty string");
+        }
+        if (!isNumber(source.get("attempt")) || source.get("attempt").longValue() < 1) {
+            throw fieldTypeError(subject, "attempt", "a positive number");
+        }
+
         try {
-            channel = AttemptChannel.fromWire(channelWire);
+            AttemptEvent attempt = NotifyJson.MAPPER.treeToValue(source, AttemptEvent.class);
+            if (attempt == null) {
+                throw new NotificationDecodeException(subject, "body is not a JSON object");
+            }
+            return new AttemptNotification(attempt);
+        } catch (JsonProcessingException e) {
+            throw new NotificationDecodeException(subject, e.getOriginalMessage());
         } catch (IllegalArgumentException e) {
-            throw new NotificationDecodeException(subject, "unknown channel \"" + channelWire + "\"");
+            throw new NotificationDecodeException(subject, e.getMessage());
         }
+    }
+
+    /** Decodes a routing-script fault body and validates its required fields. */
+    private static NotificationEvent decodeFault(JsonNode payload, String subject) {
+        require(payload, subject, "tenant_id", "listener_id", "message_ref",
+                "occurred_at_utc", "script_revision_id", "script_revision", "mail_from",
+                "recipient", "smtp_response", "fault", "log", "suppressed_faults");
+        requireNonEmptyText(payload, subject, "tenant_id");
+        requireNonEmptyText(payload, subject, "listener_id");
+        requireNonEmptyText(payload, subject, "message_ref");
+        requireNonEmptyText(payload, subject, "recipient");
+
+        JsonNode fault = payload.get("fault");
+        if (!fault.isObject()) {
+            throw fieldTypeError(subject, "fault", "an object");
+        }
+        require(fault, subject, "reason", "message");
+        if (!isTextual(fault.get("reason")) || fault.get("reason").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "fault.reason", "a non-empty string");
+        }
+        if (!isTextual(fault.get("message")) || fault.get("message").textValue().isEmpty()) {
+            throw fieldTypeError(subject, "fault.message", "a non-empty string");
+        }
+
         try {
-            status = StatusOutcome.fromWire(statusWire);
+            FaultEvent event = NotifyJson.MAPPER.treeToValue(payload, FaultEvent.class);
+            if (event == null) {
+                throw new NotificationDecodeException(subject, "body is not a JSON object");
+            }
+            return new FaultNotification(event);
+        } catch (JsonProcessingException e) {
+            throw new NotificationDecodeException(subject, e.getOriginalMessage());
         } catch (IllegalArgumentException e) {
-            throw new NotificationDecodeException(subject, "unknown status \"" + statusWire + "\"");
+            throw new NotificationDecodeException(subject, e.getMessage());
         }
-
-        AttemptEvent attempt = new AttemptEvent(
-                optionalText(source, "event_type", subject),
-                channel,
-                requiredText(source, "task_id", subject),
-                requiredText(source, "tenant_id", subject),
-                requiredText(source, "listener_id", subject),
-                optionalText(source, "correlation_id", subject),
-                status,
-                requiredLong(source, "attempt", subject),
-                optionalLong(source, "accepted_at_utc", subject),
-                requiredLong(source, "occurred_at_utc", subject),
-                optionalText(source, "source_ip", subject),
-                optionalText(source, "destination_domain", subject),
-                optionalText(source, "remote_host", subject),
-                optionalInteger(source, "smtp_code", subject),
-                optionalText(source, "enhanced_status_code", subject),
-                optionalText(source, "reason", subject),
-                optionalText(source, "remote_response", subject),
-                optionalText(source, "correlation_task_id", subject),
-                optionalText(source, "storage_ref", subject),
-                optionalText(source, "bucket_name", subject),
-                optionalText(source, "object_key", subject),
-                optionalText(source, "endpoint_host", subject),
-                optionalText(source, "error_code", subject),
-                optionalInteger(source, "status_code", subject),
-                optionalText(source, "message", subject),
-                optionalLong(source, "next_retry_at_utc", subject),
-                optionalLong(source, "retry_after_ms", subject),
-                optionalText(source, "target_url_host", subject),
-                optionalText(source, "webhook_ref", subject),
-                optionalText(source, "signing_key_kid", subject),
-                optionalLong(source, "raw_token_ttl_seconds", subject));
-        return new AttemptNotification(attempt);
     }
 
-    private static String requiredText(JsonNode source, String field, String subject) {
-        JsonNode value = source.get(field);
-        if (value == null || !value.isTextual()) {
-            throw fieldTypeError(subject, field, "a string");
+    private static void requireNonEmptyText(JsonNode source, String subject, String field) {
+        if (!isTextual(source.get(field)) || source.get(field).textValue().isEmpty()) {
+            throw fieldTypeError(subject, field, "a non-empty string");
         }
-        return value.textValue();
     }
 
-    private static String optionalText(JsonNode source, String field, String subject) {
-        JsonNode value = source.get(field);
-        if (value == null || value.isNull()) {
-            return null;
+    private static void require(JsonNode source, String subject, String... fields) {
+        for (String field : fields) {
+            JsonNode value = source.get(field);
+            if (value == null || value.isNull()) {
+                throw fieldTypeError(subject, field, "present");
+            }
         }
-        if (!value.isTextual()) {
-            throw fieldTypeError(subject, field, "a string");
-        }
-        return value.textValue();
     }
 
-    private static long requiredLong(JsonNode source, String field, String subject) {
-        JsonNode value = source.get(field);
-        if (value == null || !value.isNumber()) {
-            throw fieldTypeError(subject, field, "a number");
-        }
-        return value.longValue();
+    private static boolean isTextual(JsonNode value) {
+        return value != null && value.isTextual();
     }
 
-    private static Long optionalLong(JsonNode source, String field, String subject) {
-        JsonNode value = source.get(field);
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (!value.isNumber()) {
-            throw fieldTypeError(subject, field, "a number");
-        }
-        return value.longValue();
-    }
-
-    private static Integer optionalInteger(JsonNode source, String field, String subject) {
-        JsonNode value = source.get(field);
-        if (value == null || value.isNull()) {
-            return null;
-        }
-        if (!value.isNumber()) {
-            throw fieldTypeError(subject, field, "a number");
-        }
-        return value.intValue();
+    private static boolean isNumber(JsonNode value) {
+        return value != null && value.isNumber();
     }
 
     private static NotificationDecodeException fieldTypeError(String subject, String field, String want) {

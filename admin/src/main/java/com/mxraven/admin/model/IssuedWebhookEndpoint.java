@@ -7,6 +7,7 @@ import java.util.Objects;
 /**
  * A webhook endpoint returned by creation or secret rotation, including the
  * one-time {@code signingSecret}.
+ *
  */
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public final class IssuedWebhookEndpoint {
@@ -17,6 +18,7 @@ public final class IssuedWebhookEndpoint {
     private final String targetUrl;
     private final String signingKid;
     private final boolean hasSigningSecret;
+    private final String credentialHeader;
     private final boolean isActive;
     private final String createdAt;
     private final String updatedAt;
@@ -57,6 +59,11 @@ public final class IssuedWebhookEndpoint {
         return hasSigningSecret;
     }
 
+    /** header carrying the stored credential, when one is set */
+    public String credentialHeader() {
+        return credentialHeader;
+    }
+
     /** whether the endpoint is active */
     public boolean isActive() {
         return isActive;
@@ -72,7 +79,6 @@ public final class IssuedWebhookEndpoint {
         return updatedAt;
     }
 
-    /** one-time plaintext signing secret, returned only on creation or rotation */
     public String signingSecret() {
         return signingSecret;
     }
@@ -86,27 +92,17 @@ public final class IssuedWebhookEndpoint {
             return false;
         }
         IssuedWebhookEndpoint that = (IssuedWebhookEndpoint) o;
-        return Objects.equals(this.id, that.id)
-                && Objects.equals(this.tenantId, that.tenantId)
-                && Objects.equals(this.webhookRef, that.webhookRef)
-                && Objects.equals(this.displayName, that.displayName)
-                && Objects.equals(this.targetUrl, that.targetUrl)
-                && Objects.equals(this.signingKid, that.signingKid)
-                && this.hasSigningSecret == that.hasSigningSecret
-                && this.isActive == that.isActive
-                && Objects.equals(this.createdAt, that.createdAt)
-                && Objects.equals(this.updatedAt, that.updatedAt)
-                && Objects.equals(this.signingSecret, that.signingSecret);
+        return Objects.equals(this.id, that.id) && Objects.equals(this.tenantId, that.tenantId) && Objects.equals(this.webhookRef, that.webhookRef) && Objects.equals(this.displayName, that.displayName) && Objects.equals(this.targetUrl, that.targetUrl) && Objects.equals(this.signingKid, that.signingKid) && this.hasSigningSecret == that.hasSigningSecret && Objects.equals(this.credentialHeader, that.credentialHeader) && this.isActive == that.isActive && Objects.equals(this.createdAt, that.createdAt) && Objects.equals(this.updatedAt, that.updatedAt) && Objects.equals(this.signingSecret, that.signingSecret);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id, this.tenantId, this.webhookRef, this.displayName, this.targetUrl, this.signingKid, this.hasSigningSecret, this.isActive, this.createdAt, this.updatedAt, this.signingSecret);
+        return Objects.hash(this.id, this.tenantId, this.webhookRef, this.displayName, this.targetUrl, this.signingKid, this.hasSigningSecret, this.credentialHeader, this.isActive, this.createdAt, this.updatedAt, this.signingSecret);
     }
 
     @Override
     public String toString() {
-        return "IssuedWebhookEndpoint[" + "id=" + this.id + ", " + "tenantId=" + this.tenantId + ", " + "webhookRef=" + this.webhookRef + ", " + "displayName=" + this.displayName + ", " + "targetUrl=" + this.targetUrl + ", " + "signingKid=" + this.signingKid + ", " + "hasSigningSecret=" + this.hasSigningSecret + ", " + "isActive=" + this.isActive + ", " + "createdAt=" + this.createdAt + ", " + "updatedAt=" + this.updatedAt + ", " + "signingSecret=" + this.signingSecret + "]";
+        return "IssuedWebhookEndpoint[" + "id=" + this.id + ", " + "tenantId=" + this.tenantId + ", " + "webhookRef=" + this.webhookRef + ", " + "displayName=" + this.displayName + ", " + "targetUrl=" + this.targetUrl + ", " + "signingKid=" + this.signingKid + ", " + "hasSigningSecret=" + this.hasSigningSecret + ", " + "credentialHeader=" + this.credentialHeader + ", " + "isActive=" + this.isActive + ", " + "createdAt=" + this.createdAt + ", " + "updatedAt=" + this.updatedAt + ", " + "signingSecret=" + this.signingSecret + "]";
     }
 
     /**
@@ -119,13 +115,14 @@ public final class IssuedWebhookEndpoint {
      * @param targetUrl URL webhooks are delivered to
      * @param signingKid identifier of the active signing key
      * @param hasSigningSecret whether a signing secret is configured
+     * @param credentialHeader header carrying the stored credential, when one is set
      * @param isActive whether the endpoint is active
      * @param createdAt creation timestamp
      * @param updatedAt timestamp of the last update
-     * @param signingSecret one-time plaintext signing secret, returned only on creation or rotation
+     * @param signingSecret signingSecret
      */
     @JsonCreator
-    public IssuedWebhookEndpoint(String id, String tenantId, String webhookRef, String displayName, String targetUrl, String signingKid, boolean hasSigningSecret, boolean isActive, String createdAt, String updatedAt, String signingSecret) {
+    public IssuedWebhookEndpoint(String id, String tenantId, String webhookRef, String displayName, String targetUrl, String signingKid, boolean hasSigningSecret, String credentialHeader, boolean isActive, String createdAt, String updatedAt, String signingSecret) {
         this.id = id;
         this.tenantId = tenantId;
         this.webhookRef = webhookRef;
@@ -133,6 +130,7 @@ public final class IssuedWebhookEndpoint {
         this.targetUrl = targetUrl;
         this.signingKid = signingKid;
         this.hasSigningSecret = hasSigningSecret;
+        this.credentialHeader = credentialHeader;
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;

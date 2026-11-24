@@ -7,6 +7,7 @@ import java.util.Objects;
 /**
  * Effective tenant quota values after merging the guardrail profile with any
  * tenant overrides, plus the profile they were derived from.
+ *
  */
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public final class EffectiveTenantQuotas {
@@ -20,11 +21,11 @@ public final class EffectiveTenantQuotas {
     private final Integer maxInboundRoutes;
     private final Integer maxApiKeys;
     private final Integer maxApiKeysPerListener;
-    private final Integer maxRoutingRules;
-    private final Integer maxRoutingRulesPerListener;
+    private final Integer maxScriptSourceBytes;
+    private final Integer maxScriptRevisionsPerListener;
     private final Integer maxSmtpRelays;
     private final Integer maxStorageIntegrations;
-    private final Integer maxWebhookEndpoints;
+    private final Integer maxHttpEndpoints;
     private final Integer maxAutoReplyTemplates;
     private final Integer maxIdentityProviders;
     private final Integer maxManualTenantSuppressions;
@@ -115,14 +116,14 @@ public final class EffectiveTenantQuotas {
         return maxApiKeysPerListener;
     }
 
-    /** maximum routing rules allowed */
-    public Integer maxRoutingRules() {
-        return maxRoutingRules;
+    /** maximum total routing-script source bytes allowed */
+    public Integer maxScriptSourceBytes() {
+        return maxScriptSourceBytes;
     }
 
-    /** maximum routing rules per listener */
-    public Integer maxRoutingRulesPerListener() {
-        return maxRoutingRulesPerListener;
+    /** maximum retained routing-script revisions per listener */
+    public Integer maxScriptRevisionsPerListener() {
+        return maxScriptRevisionsPerListener;
     }
 
     /** maximum SMTP relays allowed */
@@ -135,9 +136,9 @@ public final class EffectiveTenantQuotas {
         return maxStorageIntegrations;
     }
 
-    /** maximum webhook endpoints allowed */
-    public Integer maxWebhookEndpoints() {
-        return maxWebhookEndpoints;
+    /** maximum webhook endpoints available to mx.http allowed */
+    public Integer maxHttpEndpoints() {
+        return maxHttpEndpoints;
     }
 
     /** maximum auto-reply templates allowed */
@@ -330,7 +331,6 @@ public final class EffectiveTenantQuotas {
         return abuseUnsubscribeRateThreshold;
     }
 
-    /** low reputation score abuse threshold */
     public Integer abuseLowReputationScoreThreshold() {
         return abuseLowReputationScoreThreshold;
     }
@@ -344,70 +344,17 @@ public final class EffectiveTenantQuotas {
             return false;
         }
         EffectiveTenantQuotas that = (EffectiveTenantQuotas) o;
-        return Objects.equals(this.profileId, that.profileId)
-                && Objects.equals(this.profileRef, that.profileRef)
-                && Objects.equals(this.profileDisplayName, that.profileDisplayName)
-                && this.profileIsActive == that.profileIsActive
-                && Objects.equals(this.maxSubmissionListeners, that.maxSubmissionListeners)
-                && Objects.equals(this.maxMtaListeners, that.maxMtaListeners)
-                && Objects.equals(this.maxDomains, that.maxDomains)
-                && Objects.equals(this.maxInboundRoutes, that.maxInboundRoutes)
-                && Objects.equals(this.maxApiKeys, that.maxApiKeys)
-                && Objects.equals(this.maxApiKeysPerListener, that.maxApiKeysPerListener)
-                && Objects.equals(this.maxRoutingRules, that.maxRoutingRules)
-                && Objects.equals(this.maxRoutingRulesPerListener, that.maxRoutingRulesPerListener)
-                && Objects.equals(this.maxSmtpRelays, that.maxSmtpRelays)
-                && Objects.equals(this.maxStorageIntegrations, that.maxStorageIntegrations)
-                && Objects.equals(this.maxWebhookEndpoints, that.maxWebhookEndpoints)
-                && Objects.equals(this.maxAutoReplyTemplates, that.maxAutoReplyTemplates)
-                && Objects.equals(this.maxIdentityProviders, that.maxIdentityProviders)
-                && Objects.equals(this.maxManualTenantSuppressions, that.maxManualTenantSuppressions)
-                && Objects.equals(this.maxRecipientSets, that.maxRecipientSets)
-                && Objects.equals(this.maxRecipientSetMembers, that.maxRecipientSetMembers)
-                && Objects.equals(this.maxRecipientSetMembersPerSet, that.maxRecipientSetMembersPerSet)
-                && Objects.equals(this.maxDedicatedIpLeases, that.maxDedicatedIpLeases)
-                && Objects.equals(this.maxDedicatedIpAddresses, that.maxDedicatedIpAddresses)
-                && Objects.equals(this.submissionBaseRecipientRatePerMinute, that.submissionBaseRecipientRatePerMinute)
-                && Objects.equals(this.submissionBurst, that.submissionBurst)
-                && Objects.equals(this.submissionMaxConcurrency, that.submissionMaxConcurrency)
-                && Objects.equals(this.submissionMinRateMultiplier, that.submissionMinRateMultiplier)
-                && Objects.equals(this.mtaMessageRatePerMinute, that.mtaMessageRatePerMinute)
-                && Objects.equals(this.mtaRecipientRatePerMinute, that.mtaRecipientRatePerMinute)
-                && Objects.equals(this.mtaTaskRatePerMinute, that.mtaTaskRatePerMinute)
-                && Objects.equals(this.mtaBurst, that.mtaBurst)
-                && Objects.equals(this.mtaMaxConcurrency, that.mtaMaxConcurrency)
-                && Objects.equals(this.mtaRspamdScanningEnabled, that.mtaRspamdScanningEnabled)
-                && Objects.equals(this.reputationRecoveryTargetScore, that.reputationRecoveryTargetScore)
-                && Objects.equals(this.reputationSpamComplaintWeight, that.reputationSpamComplaintWeight)
-                && Objects.equals(this.reputationPolicyViolationWeight, that.reputationPolicyViolationWeight)
-                && Objects.equals(this.reputationHardBounceWeight, that.reputationHardBounceWeight)
-                && Objects.equals(this.reputationUnsubscribeWeight, that.reputationUnsubscribeWeight)
-                && Objects.equals(this.reputationNegativeStreakBonusCap, that.reputationNegativeStreakBonusCap)
-                && Objects.equals(this.reputationUnsubscribeWindowSeconds, that.reputationUnsubscribeWindowSeconds)
-                && Objects.equals(this.reputationUnsubscribeThreshold, that.reputationUnsubscribeThreshold)
-                && Objects.equals(this.reputationRecoveryQuietPeriodSeconds, that.reputationRecoveryQuietPeriodSeconds)
-                && Objects.equals(this.reputationRecoverySuccessesPerPoint, that.reputationRecoverySuccessesPerPoint)
-                && Objects.equals(this.abuseControlEnabled, that.abuseControlEnabled)
-                && Objects.equals(this.abuseAutoPauseEnabled, that.abuseAutoPauseEnabled)
-                && Objects.equals(this.abuseEvaluationWindowSeconds, that.abuseEvaluationWindowSeconds)
-                && Objects.equals(this.abuseMinEgressTasks, that.abuseMinEgressTasks)
-                && Objects.equals(this.abuseSuppressedSendRateThreshold, that.abuseSuppressedSendRateThreshold)
-                && Objects.equals(this.abuseSuppressionAppliedRateThreshold, that.abuseSuppressionAppliedRateThreshold)
-                && Objects.equals(this.abuseSpamComplaintRateThreshold, that.abuseSpamComplaintRateThreshold)
-                && Objects.equals(this.abuseHardBounceRateThreshold, that.abuseHardBounceRateThreshold)
-                && Objects.equals(this.abusePolicyViolationRateThreshold, that.abusePolicyViolationRateThreshold)
-                && Objects.equals(this.abuseUnsubscribeRateThreshold, that.abuseUnsubscribeRateThreshold)
-                && Objects.equals(this.abuseLowReputationScoreThreshold, that.abuseLowReputationScoreThreshold);
+        return Objects.equals(this.profileId, that.profileId) && Objects.equals(this.profileRef, that.profileRef) && Objects.equals(this.profileDisplayName, that.profileDisplayName) && this.profileIsActive == that.profileIsActive && Objects.equals(this.maxSubmissionListeners, that.maxSubmissionListeners) && Objects.equals(this.maxMtaListeners, that.maxMtaListeners) && Objects.equals(this.maxDomains, that.maxDomains) && Objects.equals(this.maxInboundRoutes, that.maxInboundRoutes) && Objects.equals(this.maxApiKeys, that.maxApiKeys) && Objects.equals(this.maxApiKeysPerListener, that.maxApiKeysPerListener) && Objects.equals(this.maxScriptSourceBytes, that.maxScriptSourceBytes) && Objects.equals(this.maxScriptRevisionsPerListener, that.maxScriptRevisionsPerListener) && Objects.equals(this.maxSmtpRelays, that.maxSmtpRelays) && Objects.equals(this.maxStorageIntegrations, that.maxStorageIntegrations) && Objects.equals(this.maxHttpEndpoints, that.maxHttpEndpoints) && Objects.equals(this.maxAutoReplyTemplates, that.maxAutoReplyTemplates) && Objects.equals(this.maxIdentityProviders, that.maxIdentityProviders) && Objects.equals(this.maxManualTenantSuppressions, that.maxManualTenantSuppressions) && Objects.equals(this.maxRecipientSets, that.maxRecipientSets) && Objects.equals(this.maxRecipientSetMembers, that.maxRecipientSetMembers) && Objects.equals(this.maxRecipientSetMembersPerSet, that.maxRecipientSetMembersPerSet) && Objects.equals(this.maxDedicatedIpLeases, that.maxDedicatedIpLeases) && Objects.equals(this.maxDedicatedIpAddresses, that.maxDedicatedIpAddresses) && Objects.equals(this.submissionBaseRecipientRatePerMinute, that.submissionBaseRecipientRatePerMinute) && Objects.equals(this.submissionBurst, that.submissionBurst) && Objects.equals(this.submissionMaxConcurrency, that.submissionMaxConcurrency) && Objects.equals(this.submissionMinRateMultiplier, that.submissionMinRateMultiplier) && Objects.equals(this.mtaMessageRatePerMinute, that.mtaMessageRatePerMinute) && Objects.equals(this.mtaRecipientRatePerMinute, that.mtaRecipientRatePerMinute) && Objects.equals(this.mtaTaskRatePerMinute, that.mtaTaskRatePerMinute) && Objects.equals(this.mtaBurst, that.mtaBurst) && Objects.equals(this.mtaMaxConcurrency, that.mtaMaxConcurrency) && Objects.equals(this.mtaRspamdScanningEnabled, that.mtaRspamdScanningEnabled) && Objects.equals(this.reputationRecoveryTargetScore, that.reputationRecoveryTargetScore) && Objects.equals(this.reputationSpamComplaintWeight, that.reputationSpamComplaintWeight) && Objects.equals(this.reputationPolicyViolationWeight, that.reputationPolicyViolationWeight) && Objects.equals(this.reputationHardBounceWeight, that.reputationHardBounceWeight) && Objects.equals(this.reputationUnsubscribeWeight, that.reputationUnsubscribeWeight) && Objects.equals(this.reputationNegativeStreakBonusCap, that.reputationNegativeStreakBonusCap) && Objects.equals(this.reputationUnsubscribeWindowSeconds, that.reputationUnsubscribeWindowSeconds) && Objects.equals(this.reputationUnsubscribeThreshold, that.reputationUnsubscribeThreshold) && Objects.equals(this.reputationRecoveryQuietPeriodSeconds, that.reputationRecoveryQuietPeriodSeconds) && Objects.equals(this.reputationRecoverySuccessesPerPoint, that.reputationRecoverySuccessesPerPoint) && Objects.equals(this.abuseControlEnabled, that.abuseControlEnabled) && Objects.equals(this.abuseAutoPauseEnabled, that.abuseAutoPauseEnabled) && Objects.equals(this.abuseEvaluationWindowSeconds, that.abuseEvaluationWindowSeconds) && Objects.equals(this.abuseMinEgressTasks, that.abuseMinEgressTasks) && Objects.equals(this.abuseSuppressedSendRateThreshold, that.abuseSuppressedSendRateThreshold) && Objects.equals(this.abuseSuppressionAppliedRateThreshold, that.abuseSuppressionAppliedRateThreshold) && Objects.equals(this.abuseSpamComplaintRateThreshold, that.abuseSpamComplaintRateThreshold) && Objects.equals(this.abuseHardBounceRateThreshold, that.abuseHardBounceRateThreshold) && Objects.equals(this.abusePolicyViolationRateThreshold, that.abusePolicyViolationRateThreshold) && Objects.equals(this.abuseUnsubscribeRateThreshold, that.abuseUnsubscribeRateThreshold) && Objects.equals(this.abuseLowReputationScoreThreshold, that.abuseLowReputationScoreThreshold);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.profileId, this.profileRef, this.profileDisplayName, this.profileIsActive, this.maxSubmissionListeners, this.maxMtaListeners, this.maxDomains, this.maxInboundRoutes, this.maxApiKeys, this.maxApiKeysPerListener, this.maxRoutingRules, this.maxRoutingRulesPerListener, this.maxSmtpRelays, this.maxStorageIntegrations, this.maxWebhookEndpoints, this.maxAutoReplyTemplates, this.maxIdentityProviders, this.maxManualTenantSuppressions, this.maxRecipientSets, this.maxRecipientSetMembers, this.maxRecipientSetMembersPerSet, this.maxDedicatedIpLeases, this.maxDedicatedIpAddresses, this.submissionBaseRecipientRatePerMinute, this.submissionBurst, this.submissionMaxConcurrency, this.submissionMinRateMultiplier, this.mtaMessageRatePerMinute, this.mtaRecipientRatePerMinute, this.mtaTaskRatePerMinute, this.mtaBurst, this.mtaMaxConcurrency, this.mtaRspamdScanningEnabled, this.reputationRecoveryTargetScore, this.reputationSpamComplaintWeight, this.reputationPolicyViolationWeight, this.reputationHardBounceWeight, this.reputationUnsubscribeWeight, this.reputationNegativeStreakBonusCap, this.reputationUnsubscribeWindowSeconds, this.reputationUnsubscribeThreshold, this.reputationRecoveryQuietPeriodSeconds, this.reputationRecoverySuccessesPerPoint, this.abuseControlEnabled, this.abuseAutoPauseEnabled, this.abuseEvaluationWindowSeconds, this.abuseMinEgressTasks, this.abuseSuppressedSendRateThreshold, this.abuseSuppressionAppliedRateThreshold, this.abuseSpamComplaintRateThreshold, this.abuseHardBounceRateThreshold, this.abusePolicyViolationRateThreshold, this.abuseUnsubscribeRateThreshold, this.abuseLowReputationScoreThreshold);
+        return Objects.hash(this.profileId, this.profileRef, this.profileDisplayName, this.profileIsActive, this.maxSubmissionListeners, this.maxMtaListeners, this.maxDomains, this.maxInboundRoutes, this.maxApiKeys, this.maxApiKeysPerListener, this.maxScriptSourceBytes, this.maxScriptRevisionsPerListener, this.maxSmtpRelays, this.maxStorageIntegrations, this.maxHttpEndpoints, this.maxAutoReplyTemplates, this.maxIdentityProviders, this.maxManualTenantSuppressions, this.maxRecipientSets, this.maxRecipientSetMembers, this.maxRecipientSetMembersPerSet, this.maxDedicatedIpLeases, this.maxDedicatedIpAddresses, this.submissionBaseRecipientRatePerMinute, this.submissionBurst, this.submissionMaxConcurrency, this.submissionMinRateMultiplier, this.mtaMessageRatePerMinute, this.mtaRecipientRatePerMinute, this.mtaTaskRatePerMinute, this.mtaBurst, this.mtaMaxConcurrency, this.mtaRspamdScanningEnabled, this.reputationRecoveryTargetScore, this.reputationSpamComplaintWeight, this.reputationPolicyViolationWeight, this.reputationHardBounceWeight, this.reputationUnsubscribeWeight, this.reputationNegativeStreakBonusCap, this.reputationUnsubscribeWindowSeconds, this.reputationUnsubscribeThreshold, this.reputationRecoveryQuietPeriodSeconds, this.reputationRecoverySuccessesPerPoint, this.abuseControlEnabled, this.abuseAutoPauseEnabled, this.abuseEvaluationWindowSeconds, this.abuseMinEgressTasks, this.abuseSuppressedSendRateThreshold, this.abuseSuppressionAppliedRateThreshold, this.abuseSpamComplaintRateThreshold, this.abuseHardBounceRateThreshold, this.abusePolicyViolationRateThreshold, this.abuseUnsubscribeRateThreshold, this.abuseLowReputationScoreThreshold);
     }
 
     @Override
     public String toString() {
-        return "EffectiveTenantQuotas[" + "profileId=" + this.profileId + ", " + "profileRef=" + this.profileRef + ", " + "profileDisplayName=" + this.profileDisplayName + ", " + "profileIsActive=" + this.profileIsActive + ", " + "maxSubmissionListeners=" + this.maxSubmissionListeners + ", " + "maxMtaListeners=" + this.maxMtaListeners + ", " + "maxDomains=" + this.maxDomains + ", " + "maxInboundRoutes=" + this.maxInboundRoutes + ", " + "maxApiKeys=" + this.maxApiKeys + ", " + "maxApiKeysPerListener=" + this.maxApiKeysPerListener + ", " + "maxRoutingRules=" + this.maxRoutingRules + ", " + "maxRoutingRulesPerListener=" + this.maxRoutingRulesPerListener + ", " + "maxSmtpRelays=" + this.maxSmtpRelays + ", " + "maxStorageIntegrations=" + this.maxStorageIntegrations + ", " + "maxWebhookEndpoints=" + this.maxWebhookEndpoints + ", " + "maxAutoReplyTemplates=" + this.maxAutoReplyTemplates + ", " + "maxIdentityProviders=" + this.maxIdentityProviders + ", " + "maxManualTenantSuppressions=" + this.maxManualTenantSuppressions + ", " + "maxRecipientSets=" + this.maxRecipientSets + ", " + "maxRecipientSetMembers=" + this.maxRecipientSetMembers + ", " + "maxRecipientSetMembersPerSet=" + this.maxRecipientSetMembersPerSet + ", " + "maxDedicatedIpLeases=" + this.maxDedicatedIpLeases + ", " + "maxDedicatedIpAddresses=" + this.maxDedicatedIpAddresses + ", " + "submissionBaseRecipientRatePerMinute=" + this.submissionBaseRecipientRatePerMinute + ", " + "submissionBurst=" + this.submissionBurst + ", " + "submissionMaxConcurrency=" + this.submissionMaxConcurrency + ", " + "submissionMinRateMultiplier=" + this.submissionMinRateMultiplier + ", " + "mtaMessageRatePerMinute=" + this.mtaMessageRatePerMinute + ", " + "mtaRecipientRatePerMinute=" + this.mtaRecipientRatePerMinute + ", " + "mtaTaskRatePerMinute=" + this.mtaTaskRatePerMinute + ", " + "mtaBurst=" + this.mtaBurst + ", " + "mtaMaxConcurrency=" + this.mtaMaxConcurrency + ", " + "mtaRspamdScanningEnabled=" + this.mtaRspamdScanningEnabled + ", " + "reputationRecoveryTargetScore=" + this.reputationRecoveryTargetScore + ", " + "reputationSpamComplaintWeight=" + this.reputationSpamComplaintWeight + ", " + "reputationPolicyViolationWeight=" + this.reputationPolicyViolationWeight + ", " + "reputationHardBounceWeight=" + this.reputationHardBounceWeight + ", " + "reputationUnsubscribeWeight=" + this.reputationUnsubscribeWeight + ", " + "reputationNegativeStreakBonusCap=" + this.reputationNegativeStreakBonusCap + ", " + "reputationUnsubscribeWindowSeconds=" + this.reputationUnsubscribeWindowSeconds + ", " + "reputationUnsubscribeThreshold=" + this.reputationUnsubscribeThreshold + ", " + "reputationRecoveryQuietPeriodSeconds=" + this.reputationRecoveryQuietPeriodSeconds + ", " + "reputationRecoverySuccessesPerPoint=" + this.reputationRecoverySuccessesPerPoint + ", " + "abuseControlEnabled=" + this.abuseControlEnabled + ", " + "abuseAutoPauseEnabled=" + this.abuseAutoPauseEnabled + ", " + "abuseEvaluationWindowSeconds=" + this.abuseEvaluationWindowSeconds + ", " + "abuseMinEgressTasks=" + this.abuseMinEgressTasks + ", " + "abuseSuppressedSendRateThreshold=" + this.abuseSuppressedSendRateThreshold + ", " + "abuseSuppressionAppliedRateThreshold=" + this.abuseSuppressionAppliedRateThreshold + ", " + "abuseSpamComplaintRateThreshold=" + this.abuseSpamComplaintRateThreshold + ", " + "abuseHardBounceRateThreshold=" + this.abuseHardBounceRateThreshold + ", " + "abusePolicyViolationRateThreshold=" + this.abusePolicyViolationRateThreshold + ", " + "abuseUnsubscribeRateThreshold=" + this.abuseUnsubscribeRateThreshold + ", " + "abuseLowReputationScoreThreshold=" + this.abuseLowReputationScoreThreshold + "]";
+        return "EffectiveTenantQuotas[" + "profileId=" + this.profileId + ", " + "profileRef=" + this.profileRef + ", " + "profileDisplayName=" + this.profileDisplayName + ", " + "profileIsActive=" + this.profileIsActive + ", " + "maxSubmissionListeners=" + this.maxSubmissionListeners + ", " + "maxMtaListeners=" + this.maxMtaListeners + ", " + "maxDomains=" + this.maxDomains + ", " + "maxInboundRoutes=" + this.maxInboundRoutes + ", " + "maxApiKeys=" + this.maxApiKeys + ", " + "maxApiKeysPerListener=" + this.maxApiKeysPerListener + ", " + "maxScriptSourceBytes=" + this.maxScriptSourceBytes + ", " + "maxScriptRevisionsPerListener=" + this.maxScriptRevisionsPerListener + ", " + "maxSmtpRelays=" + this.maxSmtpRelays + ", " + "maxStorageIntegrations=" + this.maxStorageIntegrations + ", " + "maxHttpEndpoints=" + this.maxHttpEndpoints + ", " + "maxAutoReplyTemplates=" + this.maxAutoReplyTemplates + ", " + "maxIdentityProviders=" + this.maxIdentityProviders + ", " + "maxManualTenantSuppressions=" + this.maxManualTenantSuppressions + ", " + "maxRecipientSets=" + this.maxRecipientSets + ", " + "maxRecipientSetMembers=" + this.maxRecipientSetMembers + ", " + "maxRecipientSetMembersPerSet=" + this.maxRecipientSetMembersPerSet + ", " + "maxDedicatedIpLeases=" + this.maxDedicatedIpLeases + ", " + "maxDedicatedIpAddresses=" + this.maxDedicatedIpAddresses + ", " + "submissionBaseRecipientRatePerMinute=" + this.submissionBaseRecipientRatePerMinute + ", " + "submissionBurst=" + this.submissionBurst + ", " + "submissionMaxConcurrency=" + this.submissionMaxConcurrency + ", " + "submissionMinRateMultiplier=" + this.submissionMinRateMultiplier + ", " + "mtaMessageRatePerMinute=" + this.mtaMessageRatePerMinute + ", " + "mtaRecipientRatePerMinute=" + this.mtaRecipientRatePerMinute + ", " + "mtaTaskRatePerMinute=" + this.mtaTaskRatePerMinute + ", " + "mtaBurst=" + this.mtaBurst + ", " + "mtaMaxConcurrency=" + this.mtaMaxConcurrency + ", " + "mtaRspamdScanningEnabled=" + this.mtaRspamdScanningEnabled + ", " + "reputationRecoveryTargetScore=" + this.reputationRecoveryTargetScore + ", " + "reputationSpamComplaintWeight=" + this.reputationSpamComplaintWeight + ", " + "reputationPolicyViolationWeight=" + this.reputationPolicyViolationWeight + ", " + "reputationHardBounceWeight=" + this.reputationHardBounceWeight + ", " + "reputationUnsubscribeWeight=" + this.reputationUnsubscribeWeight + ", " + "reputationNegativeStreakBonusCap=" + this.reputationNegativeStreakBonusCap + ", " + "reputationUnsubscribeWindowSeconds=" + this.reputationUnsubscribeWindowSeconds + ", " + "reputationUnsubscribeThreshold=" + this.reputationUnsubscribeThreshold + ", " + "reputationRecoveryQuietPeriodSeconds=" + this.reputationRecoveryQuietPeriodSeconds + ", " + "reputationRecoverySuccessesPerPoint=" + this.reputationRecoverySuccessesPerPoint + ", " + "abuseControlEnabled=" + this.abuseControlEnabled + ", " + "abuseAutoPauseEnabled=" + this.abuseAutoPauseEnabled + ", " + "abuseEvaluationWindowSeconds=" + this.abuseEvaluationWindowSeconds + ", " + "abuseMinEgressTasks=" + this.abuseMinEgressTasks + ", " + "abuseSuppressedSendRateThreshold=" + this.abuseSuppressedSendRateThreshold + ", " + "abuseSuppressionAppliedRateThreshold=" + this.abuseSuppressionAppliedRateThreshold + ", " + "abuseSpamComplaintRateThreshold=" + this.abuseSpamComplaintRateThreshold + ", " + "abuseHardBounceRateThreshold=" + this.abuseHardBounceRateThreshold + ", " + "abusePolicyViolationRateThreshold=" + this.abusePolicyViolationRateThreshold + ", " + "abuseUnsubscribeRateThreshold=" + this.abuseUnsubscribeRateThreshold + ", " + "abuseLowReputationScoreThreshold=" + this.abuseLowReputationScoreThreshold + "]";
     }
 
     /**
@@ -423,11 +370,11 @@ public final class EffectiveTenantQuotas {
      * @param maxInboundRoutes maximum inbound routes allowed
      * @param maxApiKeys maximum API keys allowed
      * @param maxApiKeysPerListener maximum API keys per listener
-     * @param maxRoutingRules maximum routing rules allowed
-     * @param maxRoutingRulesPerListener maximum routing rules per listener
+     * @param maxScriptSourceBytes maximum total routing-script source bytes allowed
+     * @param maxScriptRevisionsPerListener maximum retained routing-script revisions per listener
      * @param maxSmtpRelays maximum SMTP relays allowed
      * @param maxStorageIntegrations maximum storage integrations allowed
-     * @param maxWebhookEndpoints maximum webhook endpoints allowed
+     * @param maxHttpEndpoints maximum webhook endpoints available to mx.http allowed
      * @param maxAutoReplyTemplates maximum auto-reply templates allowed
      * @param maxIdentityProviders maximum identity providers allowed
      * @param maxManualTenantSuppressions maximum manual tenant suppressions allowed
@@ -466,10 +413,10 @@ public final class EffectiveTenantQuotas {
      * @param abuseHardBounceRateThreshold hard-bounce rate abuse threshold
      * @param abusePolicyViolationRateThreshold policy-violation rate abuse threshold
      * @param abuseUnsubscribeRateThreshold unsubscribe rate abuse threshold
-     * @param abuseLowReputationScoreThreshold low reputation score abuse threshold
+     * @param abuseLowReputationScoreThreshold abuseLowReputationScoreThreshold
      */
     @JsonCreator
-    public EffectiveTenantQuotas(String profileId, String profileRef, String profileDisplayName, boolean profileIsActive, Integer maxSubmissionListeners, Integer maxMtaListeners, Integer maxDomains, Integer maxInboundRoutes, Integer maxApiKeys, Integer maxApiKeysPerListener, Integer maxRoutingRules, Integer maxRoutingRulesPerListener, Integer maxSmtpRelays, Integer maxStorageIntegrations, Integer maxWebhookEndpoints, Integer maxAutoReplyTemplates, Integer maxIdentityProviders, Integer maxManualTenantSuppressions, Integer maxRecipientSets, Integer maxRecipientSetMembers, Integer maxRecipientSetMembersPerSet, Integer maxDedicatedIpLeases, Integer maxDedicatedIpAddresses, Double submissionBaseRecipientRatePerMinute, Integer submissionBurst, Integer submissionMaxConcurrency, Double submissionMinRateMultiplier, Double mtaMessageRatePerMinute, Double mtaRecipientRatePerMinute, Double mtaTaskRatePerMinute, Integer mtaBurst, Integer mtaMaxConcurrency, Boolean mtaRspamdScanningEnabled, Integer reputationRecoveryTargetScore, Integer reputationSpamComplaintWeight, Integer reputationPolicyViolationWeight, Integer reputationHardBounceWeight, Integer reputationUnsubscribeWeight, Integer reputationNegativeStreakBonusCap, Long reputationUnsubscribeWindowSeconds, Long reputationUnsubscribeThreshold, Long reputationRecoveryQuietPeriodSeconds, Long reputationRecoverySuccessesPerPoint, Boolean abuseControlEnabled, Boolean abuseAutoPauseEnabled, Long abuseEvaluationWindowSeconds, Long abuseMinEgressTasks, Double abuseSuppressedSendRateThreshold, Double abuseSuppressionAppliedRateThreshold, Double abuseSpamComplaintRateThreshold, Double abuseHardBounceRateThreshold, Double abusePolicyViolationRateThreshold, Double abuseUnsubscribeRateThreshold, Integer abuseLowReputationScoreThreshold) {
+    public EffectiveTenantQuotas(String profileId, String profileRef, String profileDisplayName, boolean profileIsActive, Integer maxSubmissionListeners, Integer maxMtaListeners, Integer maxDomains, Integer maxInboundRoutes, Integer maxApiKeys, Integer maxApiKeysPerListener, Integer maxScriptSourceBytes, Integer maxScriptRevisionsPerListener, Integer maxSmtpRelays, Integer maxStorageIntegrations, Integer maxHttpEndpoints, Integer maxAutoReplyTemplates, Integer maxIdentityProviders, Integer maxManualTenantSuppressions, Integer maxRecipientSets, Integer maxRecipientSetMembers, Integer maxRecipientSetMembersPerSet, Integer maxDedicatedIpLeases, Integer maxDedicatedIpAddresses, Double submissionBaseRecipientRatePerMinute, Integer submissionBurst, Integer submissionMaxConcurrency, Double submissionMinRateMultiplier, Double mtaMessageRatePerMinute, Double mtaRecipientRatePerMinute, Double mtaTaskRatePerMinute, Integer mtaBurst, Integer mtaMaxConcurrency, Boolean mtaRspamdScanningEnabled, Integer reputationRecoveryTargetScore, Integer reputationSpamComplaintWeight, Integer reputationPolicyViolationWeight, Integer reputationHardBounceWeight, Integer reputationUnsubscribeWeight, Integer reputationNegativeStreakBonusCap, Long reputationUnsubscribeWindowSeconds, Long reputationUnsubscribeThreshold, Long reputationRecoveryQuietPeriodSeconds, Long reputationRecoverySuccessesPerPoint, Boolean abuseControlEnabled, Boolean abuseAutoPauseEnabled, Long abuseEvaluationWindowSeconds, Long abuseMinEgressTasks, Double abuseSuppressedSendRateThreshold, Double abuseSuppressionAppliedRateThreshold, Double abuseSpamComplaintRateThreshold, Double abuseHardBounceRateThreshold, Double abusePolicyViolationRateThreshold, Double abuseUnsubscribeRateThreshold, Integer abuseLowReputationScoreThreshold) {
         this.profileId = profileId;
         this.profileRef = profileRef;
         this.profileDisplayName = profileDisplayName;
@@ -480,11 +427,11 @@ public final class EffectiveTenantQuotas {
         this.maxInboundRoutes = maxInboundRoutes;
         this.maxApiKeys = maxApiKeys;
         this.maxApiKeysPerListener = maxApiKeysPerListener;
-        this.maxRoutingRules = maxRoutingRules;
-        this.maxRoutingRulesPerListener = maxRoutingRulesPerListener;
+        this.maxScriptSourceBytes = maxScriptSourceBytes;
+        this.maxScriptRevisionsPerListener = maxScriptRevisionsPerListener;
         this.maxSmtpRelays = maxSmtpRelays;
         this.maxStorageIntegrations = maxStorageIntegrations;
-        this.maxWebhookEndpoints = maxWebhookEndpoints;
+        this.maxHttpEndpoints = maxHttpEndpoints;
         this.maxAutoReplyTemplates = maxAutoReplyTemplates;
         this.maxIdentityProviders = maxIdentityProviders;
         this.maxManualTenantSuppressions = maxManualTenantSuppressions;

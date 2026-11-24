@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /**
  * Wire representation backing the {@link WebhookEndpoint} entity.
+ *
  */
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public final class WebhookEndpointData {
@@ -16,6 +17,7 @@ public final class WebhookEndpointData {
     private final String targetUrl;
     private final String signingKid;
     private final boolean hasSigningSecret;
+    private final String credentialHeader;
     private final boolean isActive;
     private final String createdAt;
     private final String updatedAt;
@@ -40,12 +42,12 @@ public final class WebhookEndpointData {
         return displayName;
     }
 
-    /** HTTPS URL that deliveries are sent to */
+    /** HTTPS URL that routing scripts call with mx.http */
     public String targetUrl() {
         return targetUrl;
     }
 
-    /** key identifier used to sign deliveries */
+    /** key identifier used to sign endpoint calls */
     public String signingKid() {
         return signingKid;
     }
@@ -53,6 +55,11 @@ public final class WebhookEndpointData {
     /** whether a signing secret is stored */
     public boolean hasSigningSecret() {
         return hasSigningSecret;
+    }
+
+    /** header carrying the stored credential, when one is set */
+    public String credentialHeader() {
+        return credentialHeader;
     }
 
     /** whether the endpoint is active */
@@ -65,7 +72,6 @@ public final class WebhookEndpointData {
         return createdAt;
     }
 
-    /** timestamp when the endpoint was last updated */
     public String updatedAt() {
         return updatedAt;
     }
@@ -79,26 +85,17 @@ public final class WebhookEndpointData {
             return false;
         }
         WebhookEndpointData that = (WebhookEndpointData) o;
-        return Objects.equals(this.id, that.id)
-                && Objects.equals(this.tenantId, that.tenantId)
-                && Objects.equals(this.webhookRef, that.webhookRef)
-                && Objects.equals(this.displayName, that.displayName)
-                && Objects.equals(this.targetUrl, that.targetUrl)
-                && Objects.equals(this.signingKid, that.signingKid)
-                && this.hasSigningSecret == that.hasSigningSecret
-                && this.isActive == that.isActive
-                && Objects.equals(this.createdAt, that.createdAt)
-                && Objects.equals(this.updatedAt, that.updatedAt);
+        return Objects.equals(this.id, that.id) && Objects.equals(this.tenantId, that.tenantId) && Objects.equals(this.webhookRef, that.webhookRef) && Objects.equals(this.displayName, that.displayName) && Objects.equals(this.targetUrl, that.targetUrl) && Objects.equals(this.signingKid, that.signingKid) && this.hasSigningSecret == that.hasSigningSecret && Objects.equals(this.credentialHeader, that.credentialHeader) && this.isActive == that.isActive && Objects.equals(this.createdAt, that.createdAt) && Objects.equals(this.updatedAt, that.updatedAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.id, this.tenantId, this.webhookRef, this.displayName, this.targetUrl, this.signingKid, this.hasSigningSecret, this.isActive, this.createdAt, this.updatedAt);
+        return Objects.hash(this.id, this.tenantId, this.webhookRef, this.displayName, this.targetUrl, this.signingKid, this.hasSigningSecret, this.credentialHeader, this.isActive, this.createdAt, this.updatedAt);
     }
 
     @Override
     public String toString() {
-        return "WebhookEndpointData[" + "id=" + this.id + ", " + "tenantId=" + this.tenantId + ", " + "webhookRef=" + this.webhookRef + ", " + "displayName=" + this.displayName + ", " + "targetUrl=" + this.targetUrl + ", " + "signingKid=" + this.signingKid + ", " + "hasSigningSecret=" + this.hasSigningSecret + ", " + "isActive=" + this.isActive + ", " + "createdAt=" + this.createdAt + ", " + "updatedAt=" + this.updatedAt + "]";
+        return "WebhookEndpointData[" + "id=" + this.id + ", " + "tenantId=" + this.tenantId + ", " + "webhookRef=" + this.webhookRef + ", " + "displayName=" + this.displayName + ", " + "targetUrl=" + this.targetUrl + ", " + "signingKid=" + this.signingKid + ", " + "hasSigningSecret=" + this.hasSigningSecret + ", " + "credentialHeader=" + this.credentialHeader + ", " + "isActive=" + this.isActive + ", " + "createdAt=" + this.createdAt + ", " + "updatedAt=" + this.updatedAt + "]";
     }
 
     /**
@@ -108,15 +105,16 @@ public final class WebhookEndpointData {
      * @param tenantId identifier of the owning tenant
      * @param webhookRef stable reference for the endpoint
      * @param displayName human-readable endpoint name
-     * @param targetUrl HTTPS URL that deliveries are sent to
-     * @param signingKid key identifier used to sign deliveries
+     * @param targetUrl HTTPS URL that routing scripts call with mx.http
+     * @param signingKid key identifier used to sign endpoint calls
      * @param hasSigningSecret whether a signing secret is stored
+     * @param credentialHeader header carrying the stored credential, when one is set
      * @param isActive whether the endpoint is active
      * @param createdAt timestamp when the endpoint was created
-     * @param updatedAt timestamp when the endpoint was last updated
+     * @param updatedAt updatedAt
      */
     @JsonCreator
-    public WebhookEndpointData(String id, String tenantId, String webhookRef, String displayName, String targetUrl, String signingKid, boolean hasSigningSecret, boolean isActive, String createdAt, String updatedAt) {
+    public WebhookEndpointData(String id, String tenantId, String webhookRef, String displayName, String targetUrl, String signingKid, boolean hasSigningSecret, String credentialHeader, boolean isActive, String createdAt, String updatedAt) {
         this.id = id;
         this.tenantId = tenantId;
         this.webhookRef = webhookRef;
@@ -124,6 +122,7 @@ public final class WebhookEndpointData {
         this.targetUrl = targetUrl;
         this.signingKid = signingKid;
         this.hasSigningSecret = hasSigningSecret;
+        this.credentialHeader = credentialHeader;
         this.isActive = isActive;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;

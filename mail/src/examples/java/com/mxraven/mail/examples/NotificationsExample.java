@@ -1,12 +1,13 @@
 package com.mxraven.mail.examples;
 
 import com.mxraven.mail.Cancellation;
+import com.mxraven.mail.notify.AcceptedMessage;
 import com.mxraven.mail.notify.AttemptEvent;
+import com.mxraven.mail.notify.FaultEvent;
 import com.mxraven.mail.notify.HandlerResult;
 import com.mxraven.mail.notify.NotificationCallbacks;
 import com.mxraven.mail.notify.NotificationClient;
 import com.mxraven.mail.notify.NotificationClientOptions;
-import com.mxraven.mail.webhook.InboundEmail;
 
 /**
  * Consumes one listener's client notification events over NATS JetStream.
@@ -44,14 +45,15 @@ public final class NotificationsExample {
 
             client.consume(new NotificationCallbacks() {
                 @Override
-                public HandlerResult onAccepted(InboundEmail email) {
-                    System.out.println("accepted " + email.taskId()
-                            + " " + email.message().subject());
-                    if (email.rawEmail() != null) {
+                public HandlerResult onAccepted(AcceptedMessage message) {
+                    System.out.println("accepted " + message.taskId()
+                            + " " + message.message().subject()
+                            + " terminal=" + message.routingDecision().terminalAction());
+                    if (message.rawEmail() != null) {
                         // MTA listeners can download the raw message; a
                         // submission listener's accepted event carries no raw
                         // message access.
-                        System.out.println("raw message: " + email.rawEmail().url());
+                        System.out.println("raw message: " + message.rawEmail().url());
                     }
                     return HandlerResult.CONTINUE;
                 }
@@ -61,6 +63,14 @@ public final class NotificationsExample {
                     String reason = event.reason() == null ? "" : " (" + event.reason() + ")";
                     System.out.println(event.channel() + " " + event.taskId() + " "
                             + event.status() + reason);
+                    return HandlerResult.CONTINUE;
+                }
+
+                @Override
+                public HandlerResult onFault(FaultEvent event) {
+                    System.out.println("script fault revision=" + event.scriptRevision()
+                            + " reason=" + event.fault().reason()
+                            + " suppressed=" + event.suppressedFaults());
                     return HandlerResult.CONTINUE;
                 }
             }, cancellation);

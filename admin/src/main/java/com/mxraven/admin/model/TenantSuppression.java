@@ -55,6 +55,70 @@ public final class TenantSuppression extends Entity<TenantSuppressionData> {
     }
 
     /**
+     * Returns the provider-canonical mailbox identity used for matching.
+     *
+     * @return the canonical email address
+     */
+    public String canonicalEmailAddress() {
+        return data.canonicalEmailAddress();
+    }
+
+    /**
+     * Returns whether mxRaven feedback, rather than a customer, wrote the
+     * suppression.
+     *
+     * @return {@code true} when the suppression is system-managed
+     */
+    public boolean systemManaged() {
+        return data.systemManaged();
+    }
+
+    /**
+     * Returns the opaque provenance label, when the suppression has one.
+     *
+     * @return the provenance label, or {@code null}
+     */
+    public String source() {
+        return data.source();
+    }
+
+    /**
+     * Returns the number of feedback signals that contributed to the suppression.
+     *
+     * @return the contributing feedback count
+     */
+    public long feedbackCount() {
+        return data.feedbackCount();
+    }
+
+    /**
+     * Returns the timestamp when the suppression was added.
+     *
+     * @return the addition timestamp
+     */
+    public String addedAt() {
+        return data.addedAt();
+    }
+
+    /**
+     * Returns the timestamp of the latest contributing feedback signal.
+     *
+     * @return the latest feedback timestamp, or {@code null}
+     */
+    public String lastFeedbackAt() {
+        return data.lastFeedbackAt();
+    }
+
+    /**
+     * Returns the timestamp when the suppression was last updated.
+     *
+     * @return the last-update timestamp
+     */
+    public String updatedAt() {
+        return data.updatedAt();
+    }
+
+    /**
      * Re-fetches this suppression and returns a fresh snapshot.
      *
      * @return a fresh suppression snapshot

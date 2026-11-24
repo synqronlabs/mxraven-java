@@ -5,7 +5,9 @@ public enum NotificationKind {
     /** A message the listener accepted and whose terminal action was resolved. */
     ACCEPTED("accepted"),
     /** One delivery attempt for an accepted message on an egress channel. */
-    ATTEMPT("attempt");
+    ATTEMPT("attempt"),
+    /** An MTA listener's routing script faulted and the message was deferred. */
+    FAULT("fault");
 
     private final String wire;
 

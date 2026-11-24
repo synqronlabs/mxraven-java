@@ -31,11 +31,17 @@
  * {@link com.mxraven.mail.notify.NotificationClient#events()} is the
  * lower-level iterator for callers that acknowledge each event themselves.
  *
- * <p>Accepted events reuse the webhook payload model,
- * {@link com.mxraven.mail.webhook.InboundEmail}; an MTA listener's accepted
- * event carries raw-message access that
- * {@link com.mxraven.mail.webhook.InboundEmail#parse()} downloads. Attempt
- * events are described by {@link com.mxraven.mail.notify.AttemptEvent}.
+ * <p>Fault events are described by {@link com.mxraven.mail.notify.FaultEvent}: an
+ * MTA listener's routing script faulted and deferred the transaction, so there
+ * is no accepted event. They are sampled per script revision.
+ *
+ * <p>Accepted events are described by {@link com.mxraven.mail.notify.AcceptedMessage}:
+ * the message summary and headers, the SMTP envelope, the routing-script
+ * decision, and raw-message access. An MTA listener's accepted event carries a
+ * {@link com.mxraven.mail.notify.RawEmail} that
+ * {@link com.mxraven.mail.notify.AcceptedMessage#parse()} downloads; a
+ * submission listener's event leaves it empty. Attempt events are described by
+ * {@link com.mxraven.mail.notify.AttemptEvent}.
  *
  * <p>The consumer and its subject are managed by the control plane. Enable
  * notifications with the administrative API before connecting; the consumer

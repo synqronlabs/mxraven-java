@@ -118,7 +118,7 @@ Releases are published automatically by
 [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 1. Merge the change into the `jdk8` branch.
-2. Create a GitHub tag and release from that branch (for example `v2.1.0`).
+2. Create a GitHub tag and release from that branch (for example `3.0.0-jdk8`).
 3. The **Release** workflow checks out the tag, sets the version from the tag,
    runs `./gradlew test`, and runs `./gradlew publishAggregationToCentralPortal`.
 

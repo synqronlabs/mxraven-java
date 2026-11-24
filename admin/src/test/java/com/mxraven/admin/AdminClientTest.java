@@ -1,7 +1,5 @@
 package com.mxraven.admin;
 
-import com.mxraven.admin.internal.Java8;
-
 import com.mxraven.admin.exception.ApiException;
 import com.mxraven.admin.model.Domain;
 import com.mxraven.admin.model.Listener;
@@ -13,7 +11,6 @@ import com.mxraven.admin.model.MailAnalyticsListenerOverview;
 import com.mxraven.admin.model.MailAnalyticsListenerState;
 import com.mxraven.admin.model.SmtpRelay;
 import com.mxraven.admin.model.StreamType;
-import com.mxraven.admin.model.TerminalActionType;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
@@ -56,7 +53,7 @@ class AdminClientTest {
     private static void handle(HttpExchange exchange) throws IOException {
         LAST_METHOD.set(exchange.getRequestMethod());
         LAST_AUTH.set(exchange.getRequestHeaders().getFirst("Authorization"));
-        LAST_BODY.set(new String(Java8.readAllBytes(exchange.getRequestBody()), StandardCharsets.UTF_8));
+        LAST_BODY.set(new String(com.mxraven.admin.internal.Java8.readAllBytes(exchange.getRequestBody()), StandardCharsets.UTF_8));
         LAST_PATH.set(exchange.getRequestURI().getPath());
         LAST_QUERY.set(exchange.getRequestURI().getRawQuery());
 
@@ -231,12 +228,10 @@ class AdminClientTest {
         client().workspace("acme").listeners().create(listener -> listener
                 .displayName("Inbound")
                 .listenerType(ListenerType.MTA)
-                .streamType(StreamType.MARKETING)
-                .defaultTerminalAction(TerminalActionType.DROP));
+                .streamType(StreamType.MARKETING));
         assertEquals("POST", LAST_METHOD.get());
         assertTrue(LAST_BODY.get().contains("\"display_name\":\"Inbound\""));
         assertTrue(LAST_BODY.get().contains("\"listener_type\":\"mta\""));
-        assertTrue(LAST_BODY.get().contains("\"default_terminal_action_type\":\"DROP\""));
     }
 
     @Test
@@ -285,7 +280,7 @@ class AdminClientTest {
         assertEquals("mxraven.client.events", setting.subject());
         assertEquals("listener-l1-events", setting.consumer());
 
-        ListenerNotificationSetting updated = listener.updateNotifications(false);
+        ListenerNotificationSetting updated = listener.updateNotifications(n -> n.enabled(false));
         assertEquals("PUT", LAST_METHOD.get());
         assertEquals("/v2/tenants/acme/listeners/l1/notifications", LAST_PATH.get());
         assertTrue(LAST_BODY.get().contains("\"enabled\":false"));

@@ -3,7 +3,7 @@ package com.mxraven.admin.model;
 import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Entity;
 import com.mxraven.admin.client.ApiKeysClient;
-import com.mxraven.admin.client.RoutingRulesClient;
+import com.mxraven.admin.client.RoutingScriptsClient;
 import com.mxraven.admin.client.SendingDomainPoliciesClient;
 import com.mxraven.admin.client.ListenerMtaRateLimitClient;
 
@@ -13,10 +13,10 @@ import java.util.function.Consumer;
 /**
  * A submission or MTA listener.
  *
- * <p>Listener type, stream, default action, and scanning settings are immutable
- * through the plain update; use the dedicated operations. Reach the listener's
- * strictly-owned children through {@link #routingRules()}, {@link #apiKeys()},
- * {@link #sendingDomainPolicy()}, and {@link #mtaRateLimit()}.
+ * <p>Listener type, stream, scanning, notification settings, and the routing
+ * script are immutable through the plain update; use the dedicated operations.
+ * Reach the listener's strictly-owned children through {@link #routingScripts()},
+ * {@link #apiKeys()}, {@link #sendingDomainPolicy()}, and {@link #mtaRateLimit()}.
  */
 public final class Listener extends Entity<ListenerData> {
     /**
@@ -82,21 +82,26 @@ public final class Listener extends Entity<ListenerData> {
     }
 
     /**
-     * Returns the terminal action applied when no rule matches.
+     * Returns the published routing-script revision, when the listener has one.
      *
-     * @return the default terminal action type
+     * <p>Absent means the listener-type default applies: submission listeners
+     * deliver through the shared pool and MTA listeners drop after acceptance.
+     *
+     * @return the published revision identifier, or {@code null}
      */
-    public TerminalActionType defaultTerminalActionType() {
-        return data.defaultTerminalActionType();
+    public String activeScriptRevisionId() {
+        return data.activeScriptRevisionId();
     }
 
     /**
-     * Returns the action-specific payload for the default terminal action.
+     * Returns whether the routing script may read the text/plain body.
      *
-     * @return the default terminal action payload
+     * <p>Body access is available to MTA listeners only.
+     *
+     * @return {@code true} when {@code mail.body:text()} may read the body
      */
-    public TerminalActionPayload defaultTerminalActionPayload() {
-        return data.defaultTerminalActionPayload();
+    public boolean scriptBodyAccess() {
+        return data.scriptBodyAccess();
     }
 
     /**
@@ -153,56 +158,6 @@ public final class Listener extends Entity<ListenerData> {
      */
     public Listener update(UpdateListenerRequest request) throws IOException {
         return new Listener(client, path, client.put(path, request).as(ListenerData.class), isDeleted());
-    }
-
-    /**
-     * Set the default terminal action with an empty payload.
-     *
-     * @param actionType the new default terminal action type
-     * @return the updated listener
-     * @throws IOException if the request fails or is interrupted
-     */
-    public Listener updateDefaultTerminalAction(TerminalActionType actionType) throws IOException {
-        return updateDefaultTerminalAction(actionType, TerminalActionPayload.empty());
-    }
-
-    /**
-     * Set the default terminal action and its action-specific payload.
-     *
-     * @param actionType the new default terminal action type
-     * @param actionPayload the action-specific payload
-     * @return the updated listener
-     * @throws IOException if the request fails or is interrupted
-     */
-    public Listener updateDefaultTerminalAction(TerminalActionType actionType, TerminalActionPayload actionPayload)
-            throws IOException {
-        return updateDefaultTerminalAction(new UpdateListenerDefaultTerminalActionRequest(actionType, actionPayload));
-    }
-
-    /**
-     * Updates the default terminal action using a request builder.
-     *
-     * @param configure callback that configures the update request builder
-     * @return the updated listener
-     * @throws IOException if the request fails or is interrupted
-     */
-    public Listener updateDefaultTerminalAction(Consumer<UpdateListenerDefaultTerminalActionRequest.Builder> configure) throws IOException {
-        UpdateListenerDefaultTerminalActionRequest.Builder builder = UpdateListenerDefaultTerminalActionRequest.builder();
-        configure.accept(builder);
-        return updateDefaultTerminalAction(builder.build());
-    }
-
-    /**
-     * Updates the default terminal action with a prepared request.
-     *
-     * @param request the update request
-     * @return the updated listener
-     * @throws IOException if the request fails or is interrupted
-     */
-    public Listener updateDefaultTerminalAction(UpdateListenerDefaultTerminalActionRequest request)
-            throws IOException {
-        return new Listener(client, path,
-                client.put(path + "/default-terminal-action", request).as(ListenerData.class), isDeleted());
     }
 
     /**
@@ -296,12 +251,12 @@ public final class Listener extends Entity<ListenerData> {
     // --- children ------------------------------------------------------------
 
     /**
-     * Returns a client for the listener's routing rules.
+     * Returns a client for the listener's routing script.
      *
-     * @return the routing rules client
+     * @return the routing-script client
      */
-    public RoutingRulesClient routingRules() {
-        return new RoutingRulesClient(client, path + "/rules");
+    public RoutingScriptsClient routingScripts() {
+        return new RoutingScriptsClient(client, path + "/script", listenerType());
     }
 
     /**

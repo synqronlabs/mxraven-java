@@ -2,7 +2,6 @@ package com.mxraven.admin.model;
 
 import com.mxraven.admin.AdminClient;
 import com.mxraven.admin.Entity;
-import com.mxraven.admin.client.WebhookDeliveriesClient;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +87,18 @@ public final class WebhookEndpoint extends Entity<WebhookEndpointData> {
      */
     public boolean hasSigningSecret() {
         return data.hasSigningSecret();
+    }
+
+    /**
+     * Returns the header that carries the endpoint's stored credential on
+     * routing-script {@code mx.http} calls.
+     *
+     * <p>The credential value is write-only and never returned.
+     *
+     * @return the credential header, or {@code null}
+     */
+    public String credentialHeader() {
+        return data.credentialHeader();
     }
 
     /**
@@ -198,11 +209,27 @@ public final class WebhookEndpoint extends Entity<WebhookEndpointData> {
     }
 
     /**
-     * Returns the client for this endpoint's deliveries.
+     * Stores a credential that {@code mx.http} calls to this endpoint send as a
+     * header.
      *
-     * @return the deliveries client
+     * @param request the header and credential value
+     * @return the updated endpoint
+     * @throws IOException if the request fails
      */
-    public WebhookDeliveriesClient deliveries() {
-        return new WebhookDeliveriesClient(client, path + "/deliveries");
+    public WebhookEndpoint setCredential(SetWebhookEndpointCredentialRequest request) throws IOException {
+        return new WebhookEndpoint(client, path,
+                client.put(path + "/credential", request).as(WebhookEndpointData.class), isDeleted());
     }
+
+    /**
+     * Removes the stored credential so {@code mx.http} calls are signed again.
+     *
+     * @return the updated endpoint without a credential
+     * @throws IOException if the request fails
+     */
+    public WebhookEndpoint deleteCredential() throws IOException {
+        return new WebhookEndpoint(client, path,
+                client.delete(path + "/credential").as(WebhookEndpointData.class), isDeleted());
+    }
+
 }
